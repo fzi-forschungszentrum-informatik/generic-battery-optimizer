@@ -1,4 +1,3 @@
-from pandas import Timestamp
 from pydantic import ConfigDict, field_validator, BaseModel, Field
 from datetime import datetime
 from typing import Optional
@@ -54,8 +53,6 @@ class Battery(BaseModel):
         This value is optional.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     # The batteries name used in the model. This must be unique and is
     # generated automatically
     name: str = secrets.token_hex(SECRET_LENGTH)
@@ -64,10 +61,10 @@ class Battery(BaseModel):
     end_soc: Optional[float] = Field(None, ge=0, le=1)
 
     # Charge end time
-    end_soc_time: Optional[Timestamp] = None
+    end_soc_time: Optional[datetime] = None
 
     # Charge start time
-    start_soc_time: Optional[Timestamp] = None
+    start_soc_time: Optional[datetime] = None
 
     # Capacity (Energie)
     capacity: float = Field(ge=0)
