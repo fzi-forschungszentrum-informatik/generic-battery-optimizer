@@ -28,7 +28,8 @@ def optimize(
         Power is assumed to be in W. If none of the profiles has a price_above
         specified a "padding" profile is added to the stack to prevent
         infeasible model results. If this padding profile is used the power
-        demand from fixed constraints can not be fulfilled at that point in time.
+        demand from fixed constraints can not be fulfilled at that point in
+        time.
     sell_prices : ProfileStack
         All profiles to sell energy to. Price is assumed to be in ct/kWh. Power
         is assumed to be in W.
