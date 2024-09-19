@@ -138,7 +138,7 @@ def to_battery_soc(optimizer: Optimizer) -> pd.DataFrame:
             continue
         variables = variables | __ctype_to_dict(component)
 
-    raw_df = __convert_to_power(pd.DataFrame.from_dict(data=variables), True)
+    raw_df = pd.DataFrame.from_dict(data=variables)
 
     # Strip the padding text from the column names
     cleaned_df = __replace_padding_text(raw_df, TEXT_BATTERY_BASE, TEXT_SOC)
