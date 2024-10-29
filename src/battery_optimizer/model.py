@@ -1,11 +1,35 @@
+from battery_optimizer.static.model import (
+    TEXT_BATTERY_BASE,
+    TEXT_CHARGE_ENERGY,
+    TEXT_DISCHARGE_ENERGY,
+    TEXT_SOC,
+    TEXT_SOC_CONSTRAINT,
+    TEXT_CHARGE_COMPLETION,
+    TEXT_CHARGE_START,
+    TEXT_IS_CHARGING,
+    TEXT_IS_DISCHARGING,
+    TEXT_ENFORCE_CHARGING,
+    TEXT_ENFORCE_DISCHARGING,
+    TEXT_ENFORCE_BINARY_POWER,
+    TEXT_ENFORCE_MIN_CHARGE_POWER,
+    TEXT_ENFORCE_MIN_DISCHARGE_POWER,
+    TEXT_ENERGY_PROFILE_BASE,
+    TEXT_SOURCE_DATA_ENERGY_COLUMN,
+    TEXT_SOURCE_DATA_PRICE_COLUMN,
+    TEXT_SELL_PROFILE_BASE,
+    TEXT_CONSUMPTION_PROFILE_BASE,
+    TEXT_ENERGY,
+    TEXT_PRICE,
+    TEXT_ENERGY_PATH_MATRIX,
+    TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS,
+    TEXT_ENERGY_PATH_SINK_CONSTRAINTS,
+    TEXT_SEPARATOR,
+    TEXT_OBJECTIVE_NAME,
+)
+from battery_optimizer.static.profiles import REGEX
 from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.parse_profile_stacks import (
-    REGEX,
-    MODEL_PRICE_BELOW,
-    MODEL_PRICE_ABOVE,
-    MODEL_POWER_BELOW,
-    MODEL_POWER_ABOVE,
     parse_profiles,
 )
 from battery_optimizer.profiles.profiles import ProfileStack
@@ -15,44 +39,6 @@ import pandas as pd
 import logging
 
 log = logging.getLogger(__name__)
-
-TEXT_SEPARATOR = " - "
-# Battery texts
-TEXT_BATTERY_BASE = "Battery: "
-TEXT_CHARGE_ENERGY = f"{TEXT_SEPARATOR}charge energy"
-TEXT_DISCHARGE_ENERGY = f"{TEXT_SEPARATOR}discharge energy"
-TEXT_SOC = f"{TEXT_SEPARATOR}SoC"
-TEXT_SOC_CONSTRAINT = f"{TEXT_SOC} Constraint"
-TEXT_CHARGE_COMPLETION = f"{TEXT_SEPARATOR}charge completion"
-TEXT_CHARGE_START = f"{TEXT_SEPARATOR}charge start time"
-TEXT_IS_CHARGING = f"{TEXT_SEPARATOR}is charging"
-TEXT_IS_DISCHARGING = f"{TEXT_SEPARATOR}is discharging"
-TEXT_ENFORCE_CHARGING = f"{TEXT_SEPARATOR}enforce charging"
-TEXT_ENFORCE_DISCHARGING = f"{TEXT_SEPARATOR}enforce discharging"
-TEXT_ENFORCE_BINARY_POWER = f"{TEXT_SEPARATOR}enforce binary power flow"
-# Minimum charge and discharge power
-TEXT_ENFORCE_MIN_CHARGE_POWER = f"{TEXT_SEPARATOR}enforce min charge power"
-TEXT_ENFORCE_MIN_DISCHARGE_POWER = (
-    f"{TEXT_SEPARATOR}enforce min discharge power"
-)
-# Energy source texts
-TEXT_ENERGY_PROFILE_BASE = "Energy source: "
-TEXT_ENERGY = f"{TEXT_SEPARATOR}energy"
-TEXT_PRICE = f"{TEXT_SEPARATOR}price"
-TEXT_SOURCE_DATA_PRICE_COLUMN = rf"({MODEL_PRICE_BELOW})|({MODEL_PRICE_ABOVE})"
-TEXT_SOURCE_DATA_ENERGY_COLUMN = (
-    rf"({MODEL_POWER_BELOW})|({MODEL_POWER_ABOVE})"
-)
-# Sell profile texts
-TEXT_SELL_PROFILE_BASE = "Sell sink: "
-# Fixed consumption profile texts
-TEXT_CONSUMPTION_PROFILE_BASE = "Fixed consumption: "
-# Energy path texts
-TEXT_ENERGY_PATH_MATRIX = "Energy Matrix"
-TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS = "Energy distribution source constraints"
-TEXT_ENERGY_PATH_SINK_CONSTRAINTS = "Energy distribution target constraints"
-# Objective texts
-TEXT_OBJECTIVE_NAME = "Objective"
 
 
 class Optimizer:
