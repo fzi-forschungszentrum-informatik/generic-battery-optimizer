@@ -1,11 +1,10 @@
-from pydantic import ConfigDict, field_validator, BaseModel, Field
+from pydantic import field_validator, BaseModel, Field
+from battery_optimizer.static.numbers import SECRET_LENGTH
 from datetime import datetime
 from typing import Optional
 from math import isnan
 import secrets
 import logging
-
-SECRET_LENGTH = 8
 
 log = logging.getLogger(__name__)
 
