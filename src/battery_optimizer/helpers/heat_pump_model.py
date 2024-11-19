@@ -261,8 +261,6 @@ def heatpump_block_rule(
 
     # Funktion setzt möglichen Wärmestrom von WP
     def heat_supply_HP_rule(block):
-        print(block.electric_energy_HP.value)
-        print(block.cop_value.value)
         return (
             block.heat_supply_HP == block.electric_energy_HP * block.cop_value
         )
@@ -318,9 +316,20 @@ def heatpump_block_rule(
 
     # Heizbedarf gesamt
     def heat_supply_Demand_total_rule(block):
-        return block.heat_supply_Demand == (
-            block.heat_loss_building + block.heat_warm_water
-        )
+        if block.index() == model.i.last():
+            if block.heat_loss_building + block.heat_warm_water > 0:
+                log.warning(
+                    "Last period has heat loss and warm water demand! "
+                    "The optimization will continue with no heat loss and "
+                    f"warm water demand in the last period ({periode})."
+                    f" The heat loss is {block.heat_loss_building.value} and "
+                    f"the warm water demand is {block.heat_warm_water.value}."
+                )
+            return block.heat_supply_Demand == 0
+        else:
+            return block.heat_supply_Demand == (
+                block.heat_loss_building + block.heat_warm_water
+            )
 
     block.heat_supply_Demand_total_cons = pyo.Constraint(
         rule=heat_supply_Demand_total_rule
