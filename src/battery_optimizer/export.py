@@ -125,8 +125,8 @@ def to_fixed_consumption(model: Model) -> pd.DataFrame:
 def to_battery_soc(optimizer: Optimizer) -> pd.DataFrame:
     """Create a DataFrame with all battery SoC profiles
 
-    Contains the SoC for all batteries at the end of each timestep just before
-    the next timestep starts.
+    Contains the SoC for all batteries at the end of each time step just before
+    the next time step starts.
 
     Variables
     ---------
@@ -283,7 +283,7 @@ def to_excel(model: Model, filename: str) -> None:
             writer.sheets[key].set_column(0, 0, 19)
 
     # print the energy matrix
-    # each timestamp goes to a seperate sheet
+    # each timestamp goes to a separate sheet
     #                        sheet              row      column value
     energy_matrix_dict: dict[pd.Timestamp, dict[str, dict[str, float]]] = {}
     for (timestamp, source, target), value in energy_matrix.iteritems():
@@ -341,7 +341,7 @@ def __ctype_to_dict(
 def __convert_to_power(
     df: pd.DataFrame, keep_column_names_original: bool = False
 ) -> pd.DataFrame:
-    """Converts a dataframe with energy units to power units
+    """Converts a DataFrame with energy units to power units
 
     Power is converted by assuming a constant power between each set of two
     timestamps.
