@@ -35,7 +35,7 @@ from battery_optimizer.static.profiles import REGEX
 from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
-from battery_optimizer.helpers.heat_pump_model import heatpump_block_rule
+from battery_optimizer.helpers.heat_pump_block import heat_pump_block_rule
 from battery_optimizer.helpers.parse_profile_stacks import (
     parse_profiles,
 )
@@ -597,7 +597,7 @@ class Model:
         heatpump_block = self.model.component(component_name)
         heatpump_block.periods = pyo.Block(
             self.model.i,
-            rule=lambda b: heatpump_block_rule(b, heatpump, self.model),
+            rule=lambda b: heat_pump_block_rule(b, heatpump, self.model),
         )
         # Add the power values of the heatpump to the energy sinks
         # We probably need extra variables in the top level of the model

@@ -16,7 +16,7 @@ from battery_optimizer.static.heat_pump import (
 log = logging.getLogger(__name__)
 
 
-def heatpump_block_rule(
+def heat_pump_block_rule(
     block: pyo.Block, heat_pump: HeatPump, model: pyo.ConcreteModel
 ):
     """
@@ -229,7 +229,7 @@ def heatpump_block_rule(
             print(block.y_TES.value)
             return block.cop_value == results["COP"] * block.y_TES
 
-    # block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
+    block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
     def cop_rule3(block):
         if periode in convert_list(
