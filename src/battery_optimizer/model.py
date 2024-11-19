@@ -1,3 +1,4 @@
+from battery_optimizer.static.heat_pump import TEXT_HEAT_PUMP_BASE
 from battery_optimizer.static.model import (
     TEXT_BATTERY_BASE,
     TEXT_CHARGE_ENERGY,
@@ -29,7 +30,9 @@ from battery_optimizer.static.model import (
 from battery_optimizer.static.profiles import REGEX
 from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 from battery_optimizer.profiles.battery_profile import Battery
-from battery_optimizer.profiles.parse_profile_stacks import (
+from battery_optimizer.profiles.heat_pump import HeatPump
+from battery_optimizer.helpers.heat_pump_model import heatpump_block_rule
+from battery_optimizer.helpers.parse_profile_stacks import (
     parse_profiles,
 )
 from battery_optimizer.profiles.profiles import ProfileStack
@@ -58,10 +61,11 @@ class Optimizer:
 
     def __init__(
         self,
-        buy_prices: ProfileStack | None,
-        sell_prices: ProfileStack | None,
-        fixed_consumption: ProfileStack | None,
-        batteries: list[Battery] | None,
+        buy_prices: ProfileStack | None = None,
+        sell_prices: ProfileStack | None = None,
+        fixed_consumption: ProfileStack | None = None,
+        batteries: list[Battery] | None = None,
+        heat_pumps: list[HeatPump] | None = None,
     ) -> None:
         """Format all input data and set up the base model
 
@@ -163,6 +167,13 @@ class Optimizer:
         else:
             self.batteries = []
 
+        log.info("Initializing heat pumps")
+        if heat_pumps is not None:
+            self.heat_pumps = heat_pumps
+            log.debug(self.heat_pumps)
+        else:
+            self.heat_pumps = []
+
         log.info("Initializing model structure")
         self.model = Model(index)
         if log.getEffectiveLevel() <= logging.DEBUG:
@@ -196,6 +207,11 @@ class Optimizer:
         log.info("Adding all batteries to the model")
         for battery in self.batteries:
             self.model.add_battery(battery)
+
+        log.info("Adding all heat pumps to the model")
+        for heatpump in self.heat_pumps:
+            self.model.add_heatpump(heatpump)
+
         # add all paths
         log.info("Generating energy paths")
         self.model.add_energy_paths()
@@ -570,6 +586,182 @@ class Model:
 
         self.batteries.append(base_name)
 
+    def add_heatpump(self, heatpump: HeatPump) -> None:
+        log.exception("Not implemented yet")
+        component_name = f"{TEXT_HEAT_PUMP_BASE}{heatpump.name}"
+        self.model.add_component(name=component_name, val=pyo.Block())
+        heatpump_block = self.model.component(component_name)
+        heatpump_block.periods = pyo.Block(
+            self.model.i,
+            rule=lambda b: heatpump_block_rule(b, heatpump, self.model),
+        )
+        # Add the power values of the heatpump to the energy sinks
+        # We probably need extra variables in the top level of the model
+        # and link them to the heatpump block to use the energy matrix
+        # generator
+        # This would be a TOP_LEVEL_POWER = BLOCK_POWER_VALUE Constraint
+
+        # Funktion verknüpft Wärmeenergie von TES am ende einer Periode t mit
+        # Wärmeenergie von TES am Anfang von Periode t+1, Verlust wird
+        # berücksichtigt mit verändrbarem Parameter
+        def heat_energy_TES_linkin_rule(model, t):
+            if t == self.model.i.first():
+                return (
+                    heatpump_block.periods[t].soc == heatpump.tes_start_value
+                )
+
+            prev_t = self.model.i.prev(t)
+
+            heatpump_block.periods[t].cons1 = pyo.Constraint(
+                expr=(
+                    heatpump_block.periods[t].temp_TES
+                    >= heatpump.charge_tes_off
+                    - heatpump.charge_tes_off
+                    * (1 - heatpump_block.periods[t].y_tes_over_value)
+                )
+            )
+            heatpump_block.periods[t].cons2 = pyo.Constraint(
+                expr=(
+                    heatpump_block.periods[t].temp_TES
+                    <= heatpump.charge_tes_off
+                    + (heatpump.max_temp_tes - heatpump.charge_tes_off)
+                    * heatpump_block.periods[t].y_tes_over_value
+                )
+            )
+
+            heatpump_block.periods[t].cons3 = pyo.Constraint(
+                expr=(
+                    heatpump_block.periods[prev_t].y_TES
+                    + heatpump_block.periods[t].y_tes_over_value
+                    <= 1
+                )
+            )
+
+            heatpump_block.periods[t].cons4 = pyo.Constraint(
+                expr=(
+                    heatpump_block.periods[t].temp_TES
+                    >= heatpump.charge_tes_off
+                    - heatpump.charge_tes_off
+                    * (1 - heatpump_block.periods[t].y_delta_tes_over_value)
+                )
+            )
+            heatpump_block.periods[t].cons5 = pyo.Constraint(
+                expr=(
+                    heatpump_block.periods[t].temp_TES
+                    <= heatpump.charge_tes_off
+                    + (heatpump.max_temp_tes - heatpump.charge_tes_off)
+                    * heatpump_block.periods[t].y_delta_tes_over_value
+                )
+            )
+
+            heatpump_block.periods[t].cons6 = pyo.Constraint(
+                expr=(
+                    heatpump_block.periods[t].y_TES
+                    + heatpump_block.periods[t].y_delta_tes_over_value
+                    <= 1
+                )
+            )
+
+            return (
+                heatpump_block.periods[t].heat_energy_TES
+                == heatpump_block.periods[prev_t].heat_energy_TES
+                + (
+                    heatpump_block.periods[prev_t].heat_supply_hp_tes
+                    + heatpump_block.periods[prev_t].heat_supply_HR
+                    - heatpump_block.periods[prev_t].heat_supply_TES_Demand
+                    - heatpump_block.periods[prev_t].heat_loss_tank
+                )
+                # TODO dynamic time resolution calculation
+                * heatpump.time_resolution
+            )
+
+        heatpump_block.heat_energy_TES = pyo.Constraint(
+            self.model.i, rule=heat_energy_TES_linkin_rule
+        )
+
+        # Restriktion blockt gewisse Stunden, die oben initialisiert werden,
+        # WP läuft in diesen Stunden nicht
+        def blocking_hours_HP_rule(model, blocking_hours):
+            return heatpump_block.periods[blocking_hours].y_HP == 0
+
+        heatpump_block.blocking_hours_HP = pyo.Constraint(
+            heatpump.blocking_hours, rule=blocking_hours_HP_rule
+        )
+
+        # Restriktion blockt gewisse Stunden, die oben initialisiert werden,
+        # HS läuft in diesen Stunden nicht
+        def blocking_hours_HR_rule(model, blocking_hours):
+            return heatpump_block.periods[blocking_hours].y_HR == 0
+
+        heatpump_block.blocking_hours_HR = pyo.Constraint(
+            heatpump.blocking_hours, rule=blocking_hours_HR_rule
+        )
+
+        # Restriktion, beschränkt möglichen Strombezug, da Stromangebot nicht
+        # für volle Auslastung ausreicht
+        # es kann nicht beliebig viel Strom bezogen werden
+        if heatpump.limited_energy_hours:
+
+            def low_electric_energy_rule(model, limited_energy_hours):
+                return (
+                    heatpump_block.periods[
+                        limited_energy_hours
+                    ].electric_energy_HP
+                    + heatpump_block.periods[
+                        limited_energy_hours
+                    ].electric_energy_HR
+                    # TODO This is not calculated from dynamic time periods
+                    <= heatpump.limited_energy_hours[limited_energy_hours]
+                )
+
+            heatpump_block.low_electric_energy = pyo.Constraint(
+                heatpump.limited_energy_hours, rule=low_electric_energy_rule
+            )
+
+        # Energy matrix rules
+        heat_pump_energy_rule = f"{component_name}Heat Pump Energy"
+        heat_recovery_energy_rule = f"{component_name}Heat Recovery Energy"
+
+        self.model.add_component(
+            heat_pump_energy_rule,
+            pyo.Var(
+                self.model.i,
+                domain=pyo.NonNegativeReals,
+            ),
+        )
+        self.model.add_component(
+            heat_recovery_energy_rule,
+            pyo.Var(
+                self.model.i,
+                domain=pyo.NonNegativeReals,
+            ),
+        )
+
+        self.model.add_component(
+            f"{heat_pump_energy_rule} Constraint",
+            pyo.Constraint(
+                self.model.i,
+                rule=lambda model, i: (
+                    heatpump_block.periods[i].electric_energy_HP
+                    == model.component(heat_pump_energy_rule)[i]
+                ),
+            ),
+        )
+        self.model.add_component(
+            f"{heat_recovery_energy_rule} Constraint",
+            pyo.Constraint(
+                self.model.i,
+                rule=lambda model, i: (
+                    heatpump_block.periods[i].electric_energy_HR
+                    == model.component(heat_recovery_energy_rule)[i]
+                ),
+            ),
+        )
+
+        # Add heat pump and heat recovery to energy sinks
+        self.energy_sinks.append(heat_pump_energy_rule)
+        self.energy_sinks.append(heat_recovery_energy_rule)
+
     def add_buy_profile(self, name: str, profile: pd.DataFrame) -> None:
         """Add an energy buy profile to the model"""
         log.info("Adding buy profile %s to model", name)
@@ -745,6 +937,9 @@ class Model:
             elif sink.startswith(TEXT_CONSUMPTION_PROFILE_BASE):
                 log.debug("%s is a consumption profile", sink)
                 component = self.model.component(f"{sink}{TEXT_ENERGY}")
+            elif sink.startswith(TEXT_HEAT_PUMP_BASE):
+                log.debug("%s is a heat pump", sink)
+                component = self.model.component(sink)
             # unknown
             else:
                 raise ValueError(f"{sink} is not a valid energy sink")
@@ -824,7 +1019,7 @@ class Model:
         )
         log.debug(self.model.component(TEXT_OBJECTIVE_NAME))
 
-    def solve(self, tee=False, solver="glpk", result_file: str = ""):
+    def solve(self, tee=False, solver="scip", result_file: str = ""):
         """Solve the model
 
         Variables
