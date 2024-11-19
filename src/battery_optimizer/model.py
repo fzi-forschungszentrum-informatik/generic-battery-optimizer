@@ -591,7 +591,13 @@ class Model:
         self.batteries.append(base_name)
 
     def add_heat_pump(self, heatpump: HeatPump) -> None:
-        log.exception("Not implemented yet")
+        # Check that the time stamps of the index are equidistant
+        index = self.model.i.ordered_data()
+        if pd.infer_freq(index) is None:
+            raise ValueError(
+                "The index must have a fixed frequency to use the heat pump"
+            )
+        # Set up the heat pump block
         component_name = f"{TEXT_HEAT_PUMP_BASE}{heatpump.name}"
         self.model.add_component(name=component_name, val=pyo.Block())
         heatpump_block = self.model.component(component_name)
