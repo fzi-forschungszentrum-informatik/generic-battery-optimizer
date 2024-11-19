@@ -2,9 +2,8 @@ import datetime
 import pandas as pd
 import pyomo.environ as pyo
 import logging
-from battery_optimizer.model import (
-    Model,
-    Optimizer,
+from battery_optimizer.model import Model, Optimizer
+from battery_optimizer.static.model import (
     TEXT_ENERGY_PATH_MATRIX,
     TEXT_SOC,
     TEXT_ENERGY,
@@ -14,6 +13,11 @@ from battery_optimizer.model import (
     TEXT_SELL_PROFILE_BASE,
     TEXT_ENERGY_PROFILE_BASE,
     TEXT_CONSUMPTION_PROFILE_BASE,
+)
+from battery_optimizer.static.heat_pump import (
+    TEXT_HEAT_PUMP_BASE,
+    TEXT_HEATING_ELEMENT_ENERGY_RULE,
+    TEXT_INVERTER_ENERGY_RULE,
 )
 
 log = logging.getLogger(__name__)
@@ -38,7 +42,9 @@ def to_buy(model: Model) -> pd.DataFrame:
     """
     complete_df = to_df(model, True)
     buy_df = complete_df.filter(regex=f"^'{TEXT_ENERGY_PROFILE_BASE}")
-    return __replace_padding_text(buy_df, TEXT_ENERGY_PROFILE_BASE, TEXT_ENERGY)
+    return __replace_padding_text(
+        buy_df, TEXT_ENERGY_PROFILE_BASE, TEXT_ENERGY
+    )
 
 
 def to_sell(model: Model) -> pd.DataFrame:
@@ -82,7 +88,7 @@ def to_battery_power(model: Model) -> pd.DataFrame:
     # Get charge and discharge profiles
     charge_profiles = battery_df.filter(like=TEXT_CHARGE_ENERGY, axis=1)
     discharge_profiles = battery_df.filter(like=TEXT_DISCHARGE_ENERGY, axis=1)
-    # Remove charge nad discharge text from profiles
+    # Remove charge and discharge text from profiles
     charge_profiles = __replace_padding_text(
         charge_profiles, post=TEXT_CHARGE_ENERGY)
     discharge_profiles = __replace_padding_text(
@@ -150,7 +156,38 @@ def to_battery_soc(optimizer: Optimizer) -> pd.DataFrame:
     return cleaned_df
 
 
-def to_df(model: Model, keep_column_names_original: bool = False) -> pd.DataFrame:
+def to_heat_pump_power(model: Model) -> pd.DataFrame:
+    """Create a DataFrame with all heat pump power profiles
+
+    Contains all heat pumps that draw power. Each heat pump has an inverter
+    power and a heating element. Each value represents the total constant
+    power the heat pump consumes during a time period.
+    Indexed by the timestamps from which the specified power should be used by
+    a device.
+
+    Variables
+    ---------
+    model : Model
+        The model that data shall be exported from
+    """
+    # Get Battery power
+    complete_df = to_df(model, True)
+    heat_pump_df = complete_df.filter(regex=f"^'{TEXT_HEAT_PUMP_BASE}")
+    heat_pump_df = __replace_padding_text(heat_pump_df, TEXT_HEAT_PUMP_BASE)
+    # Get inverter and heating element profiles
+    inverter_profiles = heat_pump_df.filter(
+        like=TEXT_INVERTER_ENERGY_RULE, axis=1
+    )
+    heating_element_profiles = heat_pump_df.filter(
+        like=TEXT_HEATING_ELEMENT_ENERGY_RULE, axis=1
+    )
+    # Combine profiles to one column
+    return pd.concat([inverter_profiles, heating_element_profiles], axis=1)
+
+
+def to_df(
+    model: Model, keep_column_names_original: bool = False
+) -> pd.DataFrame:
     """Create a DataFrame from the model
 
     Contains all devices that draw power as columns. Each value represents the
@@ -163,9 +200,9 @@ def to_df(model: Model, keep_column_names_original: bool = False) -> pd.DataFram
     model : Model
         The model that data shall be exported from
     keep_column_names_original : bool
-        If True the original column names will be kept. If False all occurrences
-        of energy will be replaced by power as the resulting DataFrame provides
-        power values.
+        If True the original column names will be kept. If False all
+        occurrences of energy will be replaced by power as the resulting
+        DataFrame provides power values.
     """
     variables: dict[str, dict[pd.Timestamp, float]] = {}
     for component in model.model.component_objects(pyo.Var):
@@ -279,6 +316,9 @@ def __ctype_to_dict(
     items: dict[str, dict[pd.Timestamp, float]] = {}
     log.debug("Generating dictionary from %s", ctype.name)
     for index, value in ctype.items():
+        # Do not add the sub components of blocks
+        if ".periods" in ctype.name:
+            continue
         # Do not add parameters that are not indexed
         if index is None:
             log.warning("%s has no timestamp", value)

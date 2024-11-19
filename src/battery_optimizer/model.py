@@ -1,4 +1,8 @@
-from battery_optimizer.static.heat_pump import TEXT_HEAT_PUMP_BASE
+from battery_optimizer.static.heat_pump import (
+    TEXT_HEAT_PUMP_BASE,
+    TEXT_HEATING_ELEMENT_ENERGY_RULE,
+    TEXT_INVERTER_ENERGY_RULE,
+)
 from battery_optimizer.static.model import (
     TEXT_BATTERY_BASE,
     TEXT_CHARGE_ENERGY,
@@ -210,7 +214,7 @@ class Optimizer:
 
         log.info("Adding all heat pumps to the model")
         for heatpump in self.heat_pumps:
-            self.model.add_heatpump(heatpump)
+            self.model.add_heat_pump(heatpump)
 
         # add all paths
         log.info("Generating energy paths")
@@ -586,7 +590,7 @@ class Model:
 
         self.batteries.append(base_name)
 
-    def add_heatpump(self, heatpump: HeatPump) -> None:
+    def add_heat_pump(self, heatpump: HeatPump) -> None:
         log.exception("Not implemented yet")
         component_name = f"{TEXT_HEAT_PUMP_BASE}{heatpump.name}"
         self.model.add_component(name=component_name, val=pyo.Block())
@@ -719,8 +723,10 @@ class Model:
             )
 
         # Energy matrix rules
-        heat_pump_energy_rule = f"{component_name}Heat Pump Energy"
-        heat_recovery_energy_rule = f"{component_name}Heat Recovery Energy"
+        heat_pump_energy_rule = (
+            f"{component_name}{TEXT_SEPARATOR}{TEXT_INVERTER_ENERGY_RULE}"
+        )
+        heat_recovery_energy_rule = f"{component_name}{TEXT_SEPARATOR}{TEXT_HEATING_ELEMENT_ENERGY_RULE}"
 
         self.model.add_component(
             heat_pump_energy_rule,
