@@ -210,10 +210,8 @@ def heat_pump_block_rule(
                 t_amb=(block.outdoor_temperature - C_TO_K),
                 mode=1,
             )
-            print('(block.cop_value - results["COP"]) == 0')
             return block.cop_value == results["COP"]
         if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
-            print("block.cop_value == heat_pump.cop_air")
             return block.cop_value == heat_pump.cop_air
         else:
             results = hpl_heat_pump.simulate(
@@ -222,12 +220,7 @@ def heat_pump_block_rule(
                 t_amb=(block.outdoor_temperature - C_TO_K),
                 mode=1,
             )
-            print('(block.cop_value - results["COP"]) * block.y_TES == 0')
-            print(block.cop_value.value)
-            print(results)
-            print(results["COP"])
-            print(block.y_TES.value)
-            return block.cop_value == results["COP"] * block.y_TES
+            return (block.cop_value - results["COP"]) * block.y_TES == 0
 
     block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
