@@ -75,7 +75,7 @@ class HeatPump(BaseModel):
     p_th: Optional[float]
 
     # hpl does not implement Air/Air heat pumps. This value will be used
-    # instead
+    # instead and must be provided when the type is Air/Air
     cop_air: Optional[str] = None
 
     @field_validator("cop_air")
@@ -95,6 +95,7 @@ class HeatPump(BaseModel):
     limited_energy_hours: Optional[List[str]]
     # List with values that represent periods. Periods are '"Date" - "Date"'
     # (e.g. "2020-12-04 11:00:00 - 2020-12-04 15:00:00")
+    # TODO add the start and end values to the model index
     warm_water_periods: List[
         str
     ]  # use ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) to convert
@@ -143,9 +144,6 @@ class HeatPump(BaseModel):
             raise ValueError("All datetime keys must be timezone aware")
         return pd.Series(v)
 
-    # TODO This must be auto generated
-    time_resolution: float
-
     # Computed fields
     @computed_field
     @property
@@ -162,6 +160,7 @@ class HeatPump(BaseModel):
     def tank_radius_o(self) -> float:
         return tank_dimensions((self.tank_mass / 1000))[1]
 
+    # The maximum energy that can be stored in the TES
     @computed_field
     @property
     def max_heat_energy_tes(self) -> float:

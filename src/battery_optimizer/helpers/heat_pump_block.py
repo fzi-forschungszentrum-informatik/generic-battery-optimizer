@@ -2,6 +2,7 @@ import pyomo.environ as pyo
 import hplib.hplib as hpl
 from battery_optimizer.helpers.heat_pump_profile import (
     convert_list,
+    get_period_length,
     heat_loss_building,
     heat_loss_tank,
 )
@@ -24,6 +25,11 @@ def heat_pump_block_rule(
     """
 
     periode = block.index()
+
+    period_length, period_conversion_factor = get_period_length(
+        periode, model.i
+    )
+    print(periode, period_length, period_conversion_factor)
 
     # HPL Heat Pump
     if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
@@ -201,9 +207,7 @@ def heat_pump_block_rule(
     # wenn TES aufgeladen wird, Temperatur von WP = MAX_TEMP_HP
     # wenn TES nicht aufgeladen wird, dann Temperatur von WP = TEMP_SUPPLY_DEMAND
     def cop_rule1(block):
-        if periode in convert_list(
-            heat_pump.warm_water_periods, heat_pump.time_resolution
-        ):
+        if periode in convert_list(heat_pump.warm_water_periods, model.i):
             results = hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
                 t_in_secondary=((heat_pump.max_temp_hp - 5) - C_TO_K),
@@ -225,9 +229,7 @@ def heat_pump_block_rule(
     block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
     def cop_rule3(block):
-        if periode in convert_list(
-            heat_pump.warm_water_periods, heat_pump.time_resolution
-        ):
+        if periode in convert_list(heat_pump.warm_water_periods, model.i):
             return pyo.Constraint.Skip
         if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
             return block.cop_value == heat_pump.cop_air
@@ -340,13 +342,14 @@ def heat_pump_block_rule(
     )
 
     # obere Schranke
+    # Maximum possible energy that can be supplied by the heat pump, electric
+    # heater and TES
     def heat_supply_demand_ub_rule(block):
         return (
             block.heat_supply_Demand
             <= heat_pump.max_heat_supply_hp
             + heat_pump.max_electric_consumption_hr
-            # TODO time resolution is not dynamic
-            + (heat_pump.max_heat_energy_tes / heat_pump.time_resolution)
+            + (heat_pump.max_heat_energy_tes / period_conversion_factor)
         )
 
     block.heat_supply_demand_ub = pyo.Constraint(
@@ -359,8 +362,7 @@ def heat_pump_block_rule(
     def heat_energy_TES_heat_flow_TES_rule(block):
         return (
             block.heat_energy_TES
-            # TODO time resolution is not dynamic
-            >= (block.heat_supply_TES_Demand) * heat_pump.time_resolution
+            >= (block.heat_supply_TES_Demand) * period_conversion_factor
         )
 
     block.heat_energy_TES_heat_flow_TES = pyo.Constraint(
@@ -445,9 +447,7 @@ def heat_pump_block_rule(
     # #Funktion so geschrieben, dass zu einer bestimmten Periode eine Notfallreserve im Speicher ist,
     # #welche dann in nächster Periode zur Verfügung steht
     def min_tes_heat_energy_rule(block):
-        if periode in convert_list(
-            heat_pump.tank_rest_hours, heat_pump.time_resolution
-        ):
+        if periode in convert_list(heat_pump.tank_rest_hours, model.i):
             return block.soc >= heat_pump.tank_rest
         else:
             return pyo.Constraint.Skip
@@ -460,9 +460,9 @@ def heat_pump_block_rule(
     def ww_during_blocking_hours_rule(block):
         if heat_pump.warm_water_periods:
             if periode in convert_list(
-                heat_pump.blocking_hours, heat_pump.time_resolution
+                heat_pump.blocking_hours, model.i
             ) and periode in convert_list(
-                heat_pump.warm_water_periods, heat_pump.time_resolution
+                heat_pump.warm_water_periods, model.i
             ):
                 return block.temp_TES >= TES_BLOCK_TEMP_WITH_WARM_WATER_DEMAND
         return pyo.Constraint.Skip

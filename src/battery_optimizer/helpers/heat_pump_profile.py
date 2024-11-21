@@ -150,40 +150,52 @@ def heat_loss_building(
 
 
 def convert_list(
-    list: list, Zeitskalierung: int | float, format: str | None = None
+    list: list, model_index: pd.DatetimeIndex, format: str | None = None
 ):
     """
-    Funktion, welche aus einer Liste mit Datumswerten als strings eine Liste mit den zugehörigen Zeitabschnitten erzeugt.
-    Die Datumswerte in der Liste geben die Block-Perioden an, in welchen keine elektrische Leistung bezogen werden kann.
+    Funktion, welche aus einer Liste mit Datumswerten als strings eine Liste
+    mit den zugehörigen Zeitabschnitten erzeugt.
+    Die Datumswerte in der Liste geben die Block-Perioden an, in welchen keine
+    elektrische Leistung bezogen werden kann.
     Die zurückgebene Liste enthält dann die Datumswerte als datetime-Objekte
 
-    list:           list, mit Datumswerten oder einem Zeitabschnitt in Form eines strings
-    Zeitskalierung: int/float, Periodendauer, der Perioden die simuliert werden sollen
+    list:           list, mit Datumswerten oder einem Zeitabschnitt in Form
+                    eines strings
+    model_index:    The DatetimeIndex of the model
     format:         string, welcher Format der Datumswerte enthält
 
-    Rückgabe:       list, welche Datumswerte als datetime-Objekte enthält
+    Rückgabe:       list with all date time objects from the model index that
+                    are within the lists times
     """
 
+    ranges = []
     block_list = []
 
-    if len(list) > 0:
+    # Return all time stamps from the models index that are within the lists
+    # times
 
-        if len(str(list[0])) < 26:
-            date_frame = pd.to_datetime(list, format=format)
-            start = date_frame[0]
-            end = date_frame[-1] + pd.Timedelta(hours=Zeitskalierung)
-            res = reverse_resolution(Zeitskalierung)
-            timeframe = TimeFrame(start, end, res)
-            block_list.extend(timeframe.index)
+    if len(list) == 0:
+        return block_list
 
-        else:
-            for date in list:
-                dates = date.split(" - ")
-                start = pd.to_datetime(dates[0], format=format)
-                end = pd.to_datetime(dates[1], format=format)
-                res = reverse_resolution(Zeitskalierung)
-                timeframe = TimeFrame(start, end, res)
-                block_list.extend(timeframe.index)
+    if len(str(list[0])) < 26:
+        date_frame = pd.to_datetime(list, format=format)
+        ranges.append({"start": date_frame[0], "end": date_frame[-1]})
+
+    else:
+        for date in list:
+            dates = date.split(" - ")
+            ranges.append(
+                {
+                    "start": pd.to_datetime(dates[0], format=format),
+                    "end": pd.to_datetime(dates[1], format=format),
+                }
+            )
+
+    for range in ranges:
+        for i in model_index:
+            if range["start"] <= i <= range["end"]:
+                block_list.append(i)
+    block_list.sort()
 
     return block_list
 
@@ -280,3 +292,28 @@ def reverse_resolution(scale: int | float):
     value_Min = int(scale * 60)
     res_string = f"{value_Min}Min"
     return res_string
+
+
+def get_period_length(period: pd.Timestamp, index: pd.DatetimeIndex):
+    """Gets duration of models period
+
+    Arguments:
+    ----------
+        period: pd.Timestamp
+            The period to get the duration of
+        index: pd.DatetimeIndex
+            The index of the model
+    Returns:
+    --------
+        period_length: pd.Timedelta
+            The duration of the period
+        period_conversion_factor: float
+            The conversion factor of the period to hours
+    """
+    if period == index.last():
+        period_length = 0
+        period_conversion_factor = 1
+    else:
+        period_length = index.next(period) - period
+        period_conversion_factor = period_length.total_seconds() / 3600
+    return period_length, period_conversion_factor

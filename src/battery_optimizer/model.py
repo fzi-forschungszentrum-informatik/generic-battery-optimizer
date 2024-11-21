@@ -1,3 +1,4 @@
+from battery_optimizer.helpers.heat_pump_profile import get_period_length
 from battery_optimizer.static.heat_pump import (
     TEXT_HEAT_PUMP_BASE,
     TEXT_HEATING_ELEMENT_ENERGY_RULE,
@@ -682,7 +683,7 @@ class Model:
                     - heatpump_block.periods[prev_t].heat_loss_tank
                 )
                 # TODO dynamic time resolution calculation
-                * heatpump.time_resolution
+                * get_period_length(t, self.model.i)[1]
             )
 
         heatpump_block.heat_energy_TES = pyo.Constraint(
