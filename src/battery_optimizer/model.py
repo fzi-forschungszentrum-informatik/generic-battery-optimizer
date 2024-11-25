@@ -682,7 +682,6 @@ class Model:
                     - heatpump_block.periods[prev_t].heat_supply_TES_Demand
                     - heatpump_block.periods[prev_t].heat_loss_tank
                 )
-                # TODO dynamic time resolution calculation
                 * get_period_length(t, self.model.i)[1]
             )
 

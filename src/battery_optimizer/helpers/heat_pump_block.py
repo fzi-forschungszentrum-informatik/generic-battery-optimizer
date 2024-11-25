@@ -29,11 +29,10 @@ def heat_pump_block_rule(
     period_length, period_conversion_factor = get_period_length(
         periode, model.i
     )
-    print(periode, period_length, period_conversion_factor)
 
     # HPL Heat Pump
     if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
-        log.error("L/L-WP")
+        log.warning("L/L-WP")
     elif heat_pump.type == "Generic":
         parameters = hpl.get_parameters(
             model=heat_pump.type,
@@ -57,7 +56,7 @@ def heat_pump_block_rule(
 
     # setzt Wärmebedarf für warmwassererzeugung
     def heat_warm_water_rule(block):
-        if periode in heat_pump.warm_water_periods:
+        if periode in convert_list(heat_pump.warm_water_periods, model.i):
             # TODO Do we have multiple warm water periods?
             # TODO Because time steps are not constant we need to multiply with the time resolution
             return heat_pump.warm_water_heat_flow
@@ -77,13 +76,6 @@ def heat_pump_block_rule(
         )
 
     block.heat_loss_building = pyo.Param(rule=heat_loss_building_rule)
-
-    # TODO This must be handled in the full model and the objective function
-    # Kosten der aktuellen Periode
-    # def cost_rule(block):
-    #     return model.electric_cost[periode]
-
-    # block.electric_cost = pyo.Param(rule=cost_rule)
 
     # Quellentemperatur der aktuellen Periode, nicht verwendet
     def source_temp_rule(block):
