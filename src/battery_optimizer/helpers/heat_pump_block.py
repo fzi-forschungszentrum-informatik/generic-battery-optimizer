@@ -144,7 +144,7 @@ def heat_pump_block_rule(
     block.y_tes_over_value = pyo.Var(within=pyo.Binary)
     block.y_delta_tes_over_value = pyo.Var(within=pyo.Binary)
 
-    block.cop_value = pyo.Var(domain=pyo.NonNegativeReals)
+    block.cop_value = pyo.Var(domain=pyo.NonNegativeReals, bounds=(None, 10))
 
     """
         in diesem modell HR in TES, und HR trägt direkt zur Erwärmung/Aufladung von TES bei
@@ -235,12 +235,6 @@ def heat_pump_block_rule(
             return (block.cop_value - results["COP"]) * (1 - block.y_TES) == 0
 
     block.cop_cons3 = pyo.Constraint(rule=cop_rule3)
-
-    # obere Schrank COP
-    def cop_ub_rule(block):
-        return block.cop_value <= 10.0
-
-    block.cop_ub = pyo.Constraint(rule=cop_ub_rule)
 
     # Wärmeströme
 
