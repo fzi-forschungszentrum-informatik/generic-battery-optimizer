@@ -5,6 +5,7 @@ from battery_optimizer.helpers.heat_pump_profile import (
     get_period_length,
     heat_loss_building,
     heat_loss_tank,
+    warm_water_heat_flow,
 )
 from battery_optimizer.profiles.heat_pump import HeatPump
 import logging
@@ -57,9 +58,21 @@ def heat_pump_block_rule(
     # setzt Wärmebedarf für warmwassererzeugung
     def heat_warm_water_rule(block):
         if periode in convert_list(heat_pump.warm_water_periods, model.i):
-            # TODO Do we have multiple warm water periods?
-            # TODO Because time steps are not constant we need to multiply with the time resolution
-            return heat_pump.warm_water_heat_flow
+            heat_flow = warm_water_heat_flow(
+                heat_pump.surface_building,
+                heat_pump.warm_water_periods,
+                start=periode,
+                end=(
+                    model.i.next(periode)
+                    if periode != model.i.last()
+                    else periode
+                ),
+            )
+            log.debug(
+                f"Period {periode} is a warm water period. "
+                f"Thermal energy for warm drinking water: {heat_flow} kWh."
+            )
+            return heat_flow
         else:
             return 0.0
 

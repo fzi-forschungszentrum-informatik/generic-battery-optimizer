@@ -203,12 +203,3 @@ class HeatPump(BaseModel):
     # statisy specific criteria
     # They must be added to the index list and in these ranges the
     # necessary constraints are added
-
-    @computed_field
-    @property
-    def warm_water_heat_flow(self) -> float:
-        return warm_water_heat_flow(
-            self.surface_building,
-            self.warm_water_periods,
-            self.time_resolution,
-        )

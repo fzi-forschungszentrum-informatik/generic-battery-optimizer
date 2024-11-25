@@ -34,32 +34,55 @@ def tank_dimensions(volume: int | float):
 
 
 def warm_water_heat_flow(
-    surface: int | float, ww_period: int | float, time_res: int | float
+    living_area: int | float,
+    ww_period: int | float,
+    start: datetime.datetime,
+    end: datetime.datetime,
 ):
     """
+    Auf die warm water period(s) des Tages wird der TWE Bedarf gleichmäßig aufgeteilt
+    Gibt die Wärmeenergie zurück, die für die TWE in einer Periode benötigt wird.
+    Errechnet sich aus der anteiligen Zeit der Periode aus der Tagesmenge an warmen Wasser
+
     Funktion ermittelt aus der Anzahl der Perioden der TWE und dem
     Energieverbrauch für die TWE, den Wärmsetrom der TWE in einer Periode.
     Dabei wird der Tagesverbrauch gleichmäßig auf die Perioden aufgeteilt.
 
-    surface:        int/float, welche die Wohnfläche des Gebäudes enthält, um
-                    Energieverbrauch für die TWE zu errechnen
+    living_area:    int/float, welche die Wohnfläche des Gebäudes enthält, um
+                    Energieverbrauch für die TWE zu errechnen in m^2
     ww_period:      int/float, welcher Anzahl der Perioden für TWE enthält
-    tim_res:        int/float, welcher Periodenlänge in h enthält
+    start:          datetime, welcher den Startzeitpunkt der zu simmulierenden
+                    Periode enthält
+    end:            datetime, welcher den Endzeitpunkt der zu simmulierenden
+                    Periode enthält
 
     Rückgabe:
-    int/float, wärmestrom der TWE in einer Periode
+    int/float       wärmemenge der TWE in einer Periode in kWh
     """
-    heat_warm_water_day = _warm_water_energy_day(surface)
-    period_anzahl = _string_in_dates(ww_period, time_res)
-    if period_anzahl != 0:
-        heat_energy_warm_water_hour = heat_warm_water_day / period_anzahl
-    else:
-        heat_energy_warm_water_hour = 0
-    WARM_WATER = heat_energy_warm_water_hour / time_res
-    return WARM_WATER
+    heat_warm_water_per_day = _warm_water_energy_day(living_area)
+    # Share of time  in this period of days warm water period
+    converted_ww_periods = parse_time_string_list(ww_period)
+
+    heat_energy = 0
+    for day in pd.date_range(start=start.date(), end=end.date(), freq="d"):
+        overlapping_time = 0
+        for period in converted_ww_periods:
+            if period["start"].date() <= day.date() <= period["end"].date():
+                overlap_start = max(period["start"], start)
+                overlap_end = min(period["end"], end)
+                if overlap_start < overlap_end:
+                    overlapping_time += (
+                        overlap_end - overlap_start
+                    ).total_seconds()
+
+        heat_energy += (overlapping_time / 3600) * (
+            heat_warm_water_per_day / 24
+        )
+
+    return heat_energy
 
 
-def _warm_water_energy_day(surface_building: int | float):
+def _warm_water_energy_day(living_area: int | float):
     """
     Funktion liefert den Energiebedarf für die TWE des Gebäude für einen Tag.
     Zusätzlich zu errechneten Energiebedarf werden Verluste in Höhe von
@@ -67,19 +90,19 @@ def _warm_water_energy_day(surface_building: int | float):
     Ist der Energiebedarf pro m^2 pro Jahr < 7 kWh/(m^2*a), wird der
     Energiebedarf auf 7 kWh/(m^2*a) gesetzt
 
-    surface_building:       int/float, welche die Wohnfläche des Gebäudes
+    living_area:       int/float, welche die Wohnfläche des Gebäudes
                             enthält
 
     Rückgabe:
     int/float, welche den täglichen Energiebedarf der TWE für das Gebäude
-        enthält
+        enthält in kWh/Tag
     """
-    coeff = _warm_water_energy_coeff(surface_building)
+    coeff = _warm_water_energy_coeff(living_area)
 
     if coeff > 7:
-        return ((coeff + 10) * surface_building) / (365)
+        return ((coeff + 10) * living_area) / (365)
     else:
-        return ((7 + 10) * surface_building) / (365)
+        return ((7 + 10) * living_area) / (365)
 
 
 def _warm_water_energy_coeff(surface_building: int | float = 0):
@@ -95,31 +118,6 @@ def _warm_water_energy_coeff(surface_building: int | float = 0):
     """
 
     return 15 - surface_building * 0.04
-
-
-def _string_in_dates(ww_list: list[str], freq: int | float):
-    """
-    Funktion bestimmt aus einer Liste von Datumswerten, welche als strings
-    gespeichert sind, die Anzahl der Perioden, in denen Energie für TWE
-    benötigt wird
-
-    ww_list:        list, welche die Informationen für die Perioden für die
-                    TWE enthält
-    freq:           int/float, Periodendauer ber Zeitabschnitte bei der
-                    Simulation
-
-    Rückgabe:
-    int, welcher die Anzahl der Perioden enthält in denen Energie für die TWE
-        benötigt wird
-    """
-    ww_time = 0
-    for date in ww_list:
-        dates = date.split(" - ")
-        start = datetime.strptime(dates[0], "%Y-%m-%d %H:%M:%S")
-        end = datetime.strptime(dates[1], "%Y-%m-%d %H:%M:%S")
-        differenz = (end - start).total_seconds() / (freq * 3600)
-        ww_time = ww_time + differenz
-    return ww_time
 
 
 def heat_loss_building(
@@ -149,8 +147,49 @@ def heat_loss_building(
     return loss
 
 
+def parse_time_string_list(
+    date_list: list[str], format: str | None = None
+) -> list:
+    """Parses time strings in the list to datetime objects
+
+
+
+    Arguments:
+    ----------
+        date_list: list[str]
+            List of date string ranges. The strings should be in the format:
+            '2020-12-04 8:00:00+00:00 - 2020-12-04 15:00:00+00:00'
+        format: str
+            A special format parser for pandas to_datetime function
+
+    Returns:
+    --------
+        ranges: list
+            List of dictionaries with start and end keys containing the
+            datetime objects of the periods
+    """
+    ranges = []
+    if len(date_list) == 0:
+        return ranges
+
+    if len(str(date_list[0])) < 26:
+        date_frame = pd.to_datetime(date_list, format=format)
+        ranges.append({"start": date_frame[0], "end": date_frame[-1]})
+
+    else:
+        for date in date_list:
+            dates = date.split(" - ")
+            ranges.append(
+                {
+                    "start": pd.to_datetime(dates[0], format=format),
+                    "end": pd.to_datetime(dates[1], format=format),
+                }
+            )
+    return ranges
+
+
 def convert_list(
-    list: list, model_index: pd.DatetimeIndex, format: str | None = None
+    date_list: list, model_index: pd.DatetimeIndex, format: str | None = None
 ):
     """
     Funktion, welche aus einer Liste mit Datumswerten als strings eine Liste
@@ -159,7 +198,7 @@ def convert_list(
     elektrische Leistung bezogen werden kann.
     Die zurückgebene Liste enthält dann die Datumswerte als datetime-Objekte
 
-    list:           list, mit Datumswerten oder einem Zeitabschnitt in Form
+    date_list:      list, mit Datumswerten oder einem Zeitabschnitt in Form
                     eines strings
     model_index:    The DatetimeIndex of the model
     format:         string, welcher Format der Datumswerte enthält
@@ -168,28 +207,11 @@ def convert_list(
                     are within the lists times
     """
 
-    ranges = []
+    ranges = parse_time_string_list(date_list, format)
     block_list = []
 
     # Return all time stamps from the models index that are within the lists
     # times
-
-    if len(list) == 0:
-        return block_list
-
-    if len(str(list[0])) < 26:
-        date_frame = pd.to_datetime(list, format=format)
-        ranges.append({"start": date_frame[0], "end": date_frame[-1]})
-
-    else:
-        for date in list:
-            dates = date.split(" - ")
-            ranges.append(
-                {
-                    "start": pd.to_datetime(dates[0], format=format),
-                    "end": pd.to_datetime(dates[1], format=format),
-                }
-            )
 
     for range in ranges:
         for i in model_index:
