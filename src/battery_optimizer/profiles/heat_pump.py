@@ -88,9 +88,11 @@ class HeatPump(BaseModel):
 
     """The next values"""
     timezone: str
-    # TODO The blocking hours just specify the indices to block. This should be ranges
+    # TODO check that the strings have the correct length
+    # '2020-12-04 8:00:00+00:00 - 2020-12-04 15:00:00+00:00'
+    # and that they are timezone aware. If not force timezone to be UTC
     blocking_hours: List[
-        datetime.datetime
+        str
     ]  # Currently a list of time steps. They are checked against, use ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) to convert
     limited_energy_hours: Optional[List[str]]
     # List with values that represent periods. Periods are '"Date" - "Date"'
