@@ -77,16 +77,6 @@ def heat_pump_cop(heat_pump: str, model: pyo.ConcreteModel):
     )
 
 
-def electric_energy_usage(heat_pump: str, model: pyo.ConcreteModel):
-    electric_energy_HP = _get_component_series_from_block(
-        TEXT_HEAT_PUMP_BASE + heat_pump, "electric_energy_HP", model
-    )
-    electric_energy_HR = _get_component_series_from_block(
-        TEXT_HEAT_PUMP_BASE + heat_pump, "electric_energy_HR", model
-    )
-    return pd.concat([electric_energy_HP, electric_energy_HR], axis=1)
-
-
 def heat_energy_usage(heat_pump: str, model: pyo.ConcreteModel):
     heat_energy_TES = _get_component_series_from_block(
         TEXT_HEAT_PUMP_BASE + heat_pump, "heat_energy_TES", model
