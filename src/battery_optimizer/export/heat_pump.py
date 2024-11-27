@@ -1,0 +1,151 @@
+import pyomo.environ as pyo
+import pandas as pd
+
+from battery_optimizer.static.heat_pump import C_TO_K, TEXT_HEAT_PUMP_BASE
+
+
+def _get_component_series_from_block(
+    block: str, component: str, model: pyo.ConcreteModel
+) -> pd.Series:
+    data = {}
+    model_block = model.component(block)
+    if model is None:
+        raise ValueError(f"{block} is not a valid component of the model!")
+    for period in model_block.periods:
+        data[period] = (
+            model.component(block).periods[period].component(component).value
+        )
+    return pd.Series(data, name=component)
+
+
+def binary_values(heat_pump: str, model: pyo.ConcreteModel):
+    y_HP = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "y_HP", model
+    )
+    y_HR = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "y_HR", model
+    )
+    y_TES = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "y_TES", model
+    )
+    y_delta_tes_over_value = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "y_delta_tes_over_value", model
+    )
+    y_tes_over_value = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "y_tes_over_value", model
+    )
+    df = pd.concat(
+        [y_HP, y_HR, y_TES, y_delta_tes_over_value, y_tes_over_value], axis=1
+    )
+    df.fillna(0, inplace=True)
+    return df.astype(int)
+
+
+def tank_soc(heat_pump: str, model: pyo.ConcreteModel):
+    return _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "soc", model
+    )
+
+
+def parameters(heat_pump: str, model: pyo.ConcreteModel):
+    heat_loss_building = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_loss_building", model
+    )
+    heat_warm_water = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_warm_water", model
+    )
+    outdoor_temperature = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "outdoor_temperature", model
+    )
+    source_temp = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "source_temp", model
+    )
+    return pd.concat(
+        [
+            heat_loss_building,
+            heat_warm_water,
+            outdoor_temperature,
+            source_temp,
+        ],
+        axis=1,
+    )
+
+
+def heat_pump_cop(heat_pump: str, model: pyo.ConcreteModel):
+    return _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "cop_value", model
+    )
+
+
+def electric_energy_usage(heat_pump: str, model: pyo.ConcreteModel):
+    electric_energy_HP = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "electric_energy_HP", model
+    )
+    electric_energy_HR = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "electric_energy_HR", model
+    )
+    return pd.concat([electric_energy_HP, electric_energy_HR], axis=1)
+
+
+def heat_energy_usage(heat_pump: str, model: pyo.ConcreteModel):
+    heat_energy_TES = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_energy_TES", model
+    )
+    heat_loss_tank = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_loss_tank", model
+    )
+    heat_supply_Demand = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_Demand", model
+    )
+    heat_supply_HP = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_HP", model
+    )
+    heat_supply_HR = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_HR", model
+    )
+    heat_supply_TES_Demand = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_TES_Demand", model
+    )
+    heat_supply_hp_demand = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_hp_demand", model
+    )
+    heat_supply_hp_tes = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_hp_tes", model
+    )
+    return pd.concat(
+        [
+            heat_energy_TES,
+            heat_loss_tank,
+            heat_supply_Demand,
+            heat_supply_HP,
+            heat_supply_HR,
+            heat_supply_HR,
+            heat_supply_TES_Demand,
+            heat_supply_hp_demand,
+            heat_supply_hp_tes,
+        ],
+        axis=1,
+    )
+
+
+def tes_temperature(heat_pump: str, model: pyo.ConcreteModel):
+    """Get temperature energy storage temperature of heat pump
+
+    Arguments:
+    ----------
+        heat_pump: str
+            The heat pump's name to get the temperature of
+        model: pyo.ConcreteModel
+            The optimized optimizer model
+
+    Returns:
+    --------
+        pd.Series
+            The temperature energy storage temperature over the optimization
+            period in °C
+    """
+    temp_tes = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "temp_TES", model
+    )
+    temp_tes = temp_tes - C_TO_K
+    return temp_tes
