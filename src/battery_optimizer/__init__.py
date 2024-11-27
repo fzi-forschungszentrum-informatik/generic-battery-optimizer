@@ -1,7 +1,7 @@
 import pandas as pd
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.model import Optimizer
-from battery_optimizer.export import (
+from battery_optimizer.export.model import (
     to_buy,
     to_sell,
     to_battery_soc,
