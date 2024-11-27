@@ -22,9 +22,6 @@ from battery_optimizer.static.heat_pump import (
 
 log = logging.getLogger(__name__)
 
-# Nanoseconds to hours
-NS_TO_HOURS = 3.6e12
-
 
 def to_buy(model: Model) -> pd.DataFrame:
     """Create a DataFrame with all buy power profiles
