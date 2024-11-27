@@ -2,6 +2,11 @@ import datetime
 import numpy as np
 import pandas as pd
 import pytz
+import logging
+
+from battery_optimizer.static.heat_pump import LOG_ERROR_TEMPERATURE_TOO_HIGH
+
+log = logging.getLogger(__name__)
 
 
 def tank_dimensions(volume: int | float):
@@ -136,6 +141,16 @@ def heat_loss_building(
     """
 
     loss = 0
+    if temp_comfort > 100:
+        log.warning(
+            f"Comfort temperature is {temp_comfort}°C. "
+            + LOG_ERROR_TEMPERATURE_TOO_HIGH
+        )
+    if temp_outdoor > 100:
+        log.warning(
+            f"Outdoor temperature is {temp_outdoor}°C. "
+            + LOG_ERROR_TEMPERATURE_TOO_HIGH
+        )
     for key in surface_U_value.keys():
         values = surface_U_value[key]
         if temp_outdoor <= temp_comfort:
