@@ -122,7 +122,8 @@ class Optimizer:
                     temp_index.append(timestamp)
         if temp_index == []:
             raise ValueError(
-                "At least one of [buy_prices, sell_prices, fixed_consumption] must contain values"
+                "At least one of [buy_prices, sell_prices, fixed_consumption] "
+                "must contain values"
             )
 
         if batteries is not None:
@@ -217,8 +218,8 @@ class Optimizer:
             self.model.add_battery(battery)
 
         log.info("Adding all heat pumps to the model")
-        for heatpump in self.heat_pumps:
-            self.model.add_heat_pump(heatpump)
+        for heat_pump in self.heat_pumps:
+            self.model.add_heat_pump(heat_pump)
 
         # add all paths
         log.info("Generating energy paths")
@@ -737,7 +738,9 @@ class Model:
         heat_pump_energy_rule = (
             f"{component_name}{TEXT_SEPARATOR}{TEXT_INVERTER_ENERGY_RULE}"
         )
-        heat_recovery_energy_rule = f"{component_name}{TEXT_SEPARATOR}{TEXT_HEATING_ELEMENT_ENERGY_RULE}"
+        heat_recovery_energy_rule = (
+            component_name + TEXT_SEPARATOR + TEXT_HEATING_ELEMENT_ENERGY_RULE
+        )
 
         self.model.add_component(
             heat_pump_energy_rule,
@@ -927,14 +930,23 @@ class Model:
                 )
 
             self.model.add_component(
-                f"{TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS}{TEXT_SEPARATOR}{source}",
+                (
+                    TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS
+                    + TEXT_SEPARATOR
+                    + source
+                ),
                 pyo.Constraint(
-                    self.model.i, expr=energy_path_source_constraint),
+                    self.model.i, expr=energy_path_source_constraint
+                ),
             )
             log.debug("Constraint:")
             log.debug(
                 self.model.component(
-                    f"{TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS}{TEXT_SEPARATOR}{source}"
+                    (
+                        TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS
+                        + TEXT_SEPARATOR
+                        + source
+                    )
                 )
             )
         # for each column add a constraint limiting the charge/feed in energy
@@ -982,7 +994,7 @@ class Model:
             log.debug("Constraint:")
             log.debug(
                 self.model.component(
-                    f"{TEXT_ENERGY_PATH_SINK_CONSTRAINTS}{TEXT_SEPARATOR}{sink}"
+                    (TEXT_ENERGY_PATH_SINK_CONSTRAINTS + TEXT_SEPARATOR + sink)
                 )
             )
 
