@@ -594,7 +594,7 @@ class Model:
 
         self.batteries.append(base_name)
 
-    def add_heat_pump(self, heatpump: HeatPump) -> None:
+    def add_heat_pump(self, heat_pump: HeatPump) -> None:
         # Check that the time stamps of the index are equidistant
         index = self.model.i.ordered_data()
         if pd.infer_freq(index) is None:
@@ -602,12 +602,12 @@ class Model:
                 "The index must have a fixed frequency to use the heat pump"
             )
         # Set up the heat pump block
-        component_name = f"{TEXT_HEAT_PUMP_BASE}{heatpump.name}"
+        component_name = f"{TEXT_HEAT_PUMP_BASE}{heat_pump.name}"
         self.model.add_component(name=component_name, val=pyo.Block())
-        heatpump_block = self.model.component(component_name)
-        heatpump_block.periods = pyo.Block(
+        heat_pump_block = self.model.component(component_name)
+        heat_pump_block.periods = pyo.Block(
             self.model.i,
-            rule=lambda b: heat_pump_block_rule(b, heatpump, self.model),
+            rule=lambda b: heat_pump_block_rule(b, heat_pump, self.model),
         )
         # Add the power values of the heatpump to the energy sinks
         # We probably need extra variables in the top level of the model
@@ -621,116 +621,116 @@ class Model:
         def heat_energy_TES_linkin_rule(model, t):
             if t == self.model.i.first():
                 return (
-                    heatpump_block.periods[t].soc == heatpump.tes_start_value
+                    heat_pump_block.periods[t].soc == heat_pump.tes_start_value
                 )
 
             prev_t = self.model.i.prev(t)
 
-            heatpump_block.periods[t].cons1 = pyo.Constraint(
+            heat_pump_block.periods[t].cons1 = pyo.Constraint(
                 expr=(
-                    heatpump_block.periods[t].temp_TES
-                    >= heatpump.charge_tes_off
-                    - heatpump.charge_tes_off
-                    * (1 - heatpump_block.periods[t].y_tes_over_value)
+                    heat_pump_block.periods[t].temp_TES
+                    >= heat_pump.charge_tes_off
+                    - heat_pump.charge_tes_off
+                    * (1 - heat_pump_block.periods[t].y_tes_over_value)
                 )
             )
-            heatpump_block.periods[t].cons2 = pyo.Constraint(
+            heat_pump_block.periods[t].cons2 = pyo.Constraint(
                 expr=(
-                    heatpump_block.periods[t].temp_TES
-                    <= heatpump.charge_tes_off
-                    + (heatpump.max_temp_tes - heatpump.charge_tes_off)
-                    * heatpump_block.periods[t].y_tes_over_value
+                    heat_pump_block.periods[t].temp_TES
+                    <= heat_pump.charge_tes_off
+                    + (heat_pump.max_temp_tes - heat_pump.charge_tes_off)
+                    * heat_pump_block.periods[t].y_tes_over_value
                 )
             )
 
-            heatpump_block.periods[t].cons3 = pyo.Constraint(
+            heat_pump_block.periods[t].cons3 = pyo.Constraint(
                 expr=(
-                    heatpump_block.periods[prev_t].y_TES
-                    + heatpump_block.periods[t].y_tes_over_value
+                    heat_pump_block.periods[prev_t].y_TES
+                    + heat_pump_block.periods[t].y_tes_over_value
                     <= 1
                 )
             )
 
-            heatpump_block.periods[t].cons4 = pyo.Constraint(
+            heat_pump_block.periods[t].cons4 = pyo.Constraint(
                 expr=(
-                    heatpump_block.periods[t].temp_TES
-                    >= heatpump.charge_tes_off
-                    - heatpump.charge_tes_off
-                    * (1 - heatpump_block.periods[t].y_delta_tes_over_value)
+                    heat_pump_block.periods[t].temp_TES
+                    >= heat_pump.charge_tes_off
+                    - heat_pump.charge_tes_off
+                    * (1 - heat_pump_block.periods[t].y_delta_tes_over_value)
                 )
             )
-            heatpump_block.periods[t].cons5 = pyo.Constraint(
+            heat_pump_block.periods[t].cons5 = pyo.Constraint(
                 expr=(
-                    heatpump_block.periods[t].temp_TES
-                    <= heatpump.charge_tes_off
-                    + (heatpump.max_temp_tes - heatpump.charge_tes_off)
-                    * heatpump_block.periods[t].y_delta_tes_over_value
+                    heat_pump_block.periods[t].temp_TES
+                    <= heat_pump.charge_tes_off
+                    + (heat_pump.max_temp_tes - heat_pump.charge_tes_off)
+                    * heat_pump_block.periods[t].y_delta_tes_over_value
                 )
             )
 
-            heatpump_block.periods[t].cons6 = pyo.Constraint(
+            heat_pump_block.periods[t].cons6 = pyo.Constraint(
                 expr=(
-                    heatpump_block.periods[t].y_TES
-                    + heatpump_block.periods[t].y_delta_tes_over_value
+                    heat_pump_block.periods[t].y_TES
+                    + heat_pump_block.periods[t].y_delta_tes_over_value
                     <= 1
                 )
             )
 
             return (
-                heatpump_block.periods[t].heat_energy_TES
-                == heatpump_block.periods[prev_t].heat_energy_TES
+                heat_pump_block.periods[t].heat_energy_TES
+                == heat_pump_block.periods[prev_t].heat_energy_TES
                 + (
-                    heatpump_block.periods[prev_t].heat_supply_hp_tes
-                    + heatpump_block.periods[prev_t].heat_supply_HR
-                    - heatpump_block.periods[prev_t].heat_supply_TES_Demand
-                    - heatpump_block.periods[prev_t].heat_loss_tank
+                    heat_pump_block.periods[prev_t].heat_supply_hp_tes
+                    + heat_pump_block.periods[prev_t].heat_supply_HR
+                    - heat_pump_block.periods[prev_t].heat_supply_TES_Demand
+                    - heat_pump_block.periods[prev_t].heat_loss_tank
                 )
                 * get_period_length(t, self.model.i)[1]
             )
 
-        heatpump_block.heat_energy_TES = pyo.Constraint(
+        heat_pump_block.heat_energy_TES = pyo.Constraint(
             self.model.i, rule=heat_energy_TES_linkin_rule
         )
 
         # Restriktion blockt gewisse Stunden, die oben initialisiert werden,
         # WP läuft in diesen Stunden nicht
         def blocking_hours_HP_rule(model, blocking_hours):
-            return heatpump_block.periods[blocking_hours].y_HP == 0
+            return heat_pump_block.periods[blocking_hours].y_HP == 0
 
-        heatpump_block.blocking_hours_HP = pyo.Constraint(
-            convert_list(heatpump.blocking_hours, self.model.i),
+        heat_pump_block.blocking_hours_HP = pyo.Constraint(
+            convert_list(heat_pump.blocking_hours, self.model.i),
             rule=blocking_hours_HP_rule,
         )
 
         # Restriktion blockt gewisse Stunden, die oben initialisiert werden,
         # HS läuft in diesen Stunden nicht
         def blocking_hours_HR_rule(model, blocking_hours):
-            return heatpump_block.periods[blocking_hours].y_HR == 0
+            return heat_pump_block.periods[blocking_hours].y_HR == 0
 
-        heatpump_block.blocking_hours_HR = pyo.Constraint(
-            convert_list(heatpump.blocking_hours, self.model.i),
+        heat_pump_block.blocking_hours_HR = pyo.Constraint(
+            convert_list(heat_pump.blocking_hours, self.model.i),
             rule=blocking_hours_HR_rule,
         )
 
         # Restriktion, beschränkt möglichen Strombezug, da Stromangebot nicht
         # für volle Auslastung ausreicht
         # es kann nicht beliebig viel Strom bezogen werden
-        if heatpump.limited_energy_hours:
+        if heat_pump.limited_energy_hours:
 
             def low_electric_energy_rule(model, limited_energy_hours):
                 return (
-                    heatpump_block.periods[
+                    heat_pump_block.periods[
                         limited_energy_hours
                     ].electric_energy_HP
-                    + heatpump_block.periods[
+                    + heat_pump_block.periods[
                         limited_energy_hours
                     ].electric_energy_HR
                     # TODO This is not calculated from dynamic time periods
-                    <= heatpump.limited_energy_hours[limited_energy_hours]
+                    <= heat_pump.limited_energy_hours[limited_energy_hours]
                 )
 
-            heatpump_block.low_electric_energy = pyo.Constraint(
-                heatpump.limited_energy_hours, rule=low_electric_energy_rule
+            heat_pump_block.low_electric_energy = pyo.Constraint(
+                heat_pump.limited_energy_hours, rule=low_electric_energy_rule
             )
 
         # Energy matrix rules
@@ -759,7 +759,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heatpump_block.periods[i].electric_energy_HP
+                    heat_pump_block.periods[i].electric_energy_HP
                     == model.component(heat_pump_energy_rule)[i]
                 ),
             ),
@@ -769,7 +769,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heatpump_block.periods[i].electric_energy_HR
+                    heat_pump_block.periods[i].electric_energy_HR
                     == model.component(heat_recovery_energy_rule)[i]
                 ),
             ),
