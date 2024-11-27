@@ -80,15 +80,16 @@ def heat_pump_block_rule(
 
     # Funktion für Wärmeverlust durch Gebäudehülle, in Abhängigkeit der Außentemperatur
     def heat_loss_building_rule(block):
-        # TODO This will be dynamic if periods are not equal
-        # TODO outside temperature is not constant
         return heat_loss_building(
             heat_pump.u_values_building.model_dump(),
             pyo.value(block.outdoor_temperature),
-            heat_pump.temp_room,
+            heat_pump.temp_room - C_TO_K,
         )
 
-    block.heat_loss_building = pyo.Param(rule=heat_loss_building_rule)
+    block.heat_loss_building = pyo.Param(
+        rule=heat_loss_building_rule,
+        doc="Constant building heat loss in kW for this period",
+    )
 
     # Quellentemperatur der aktuellen Periode, nicht verwendet
     def source_temp_rule(block):
