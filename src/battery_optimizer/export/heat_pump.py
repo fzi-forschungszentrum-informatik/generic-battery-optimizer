@@ -139,3 +139,21 @@ def tes_temperature(heat_pump: str, model: pyo.ConcreteModel):
     )
     temp_tes = temp_tes - C_TO_K
     return temp_tes
+
+
+def heat_energy_demand(
+    heat_pump: str, model: pyo.ConcreteModel
+) -> pd.DataFrame:
+    heat_supply_demand = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_demand", model
+    )
+    heat_loss_building = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_loss_building", model
+    )
+    heat_warm_water = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_warm_water", model
+    )
+
+    return pd.concat(
+        [heat_supply_demand, heat_loss_building, heat_warm_water], axis=1
+    )

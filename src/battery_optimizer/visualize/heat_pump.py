@@ -1,4 +1,5 @@
 from battery_optimizer.export.heat_pump import (
+    heat_energy_demand,
     tank_soc,
     binary_values,
     parameters,
@@ -132,6 +133,44 @@ def plot_tes_temperature(
     return fig
 
 
+def plot_heat_energy_demand(
+    heat_pump: str,
+    model: pyo.ConcreteModel,
+    figsize: tuple[int, int] = (10, 6),
+) -> plt.Figure:
+    energy_demand = heat_energy_demand(heat_pump, model)
 
+    # All values in last row are zero (limitation of variable time intervals)
+    index = energy_demand.index
+    energy_demand = energy_demand[:-1]
 
+    # Create the plot
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.stairs(
+        energy_demand["heat_loss_building"],
+        index,
+        fill=True,
+        label="Building heat loss",
+    )
+    ax.stairs(
+        energy_demand["heat_warm_water"] + energy_demand["heat_loss_building"],
+        index,
+        baseline=energy_demand["heat_loss_building"],
+        fill=True,
+        label="Warm water heat demand",
+    )
 
+    ax.stairs(
+        energy_demand["heat_supply_demand"],
+        index,
+        label="Total heat demand",
+    )
+    ax = apply_design(
+        ax=ax,
+        index=index,
+        title=f"Heat Energy Demand for {heat_pump}",
+        xlabel="Time",
+        ylabel="Energy (kWh)",
+    )
+
+    return fig
