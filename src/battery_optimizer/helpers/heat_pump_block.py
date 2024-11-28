@@ -25,10 +25,10 @@ def heat_pump_block_rule(
     Gestaltung einer Periode im Modell
     """
 
-    periode = block.index()
+    period = block.index()
 
     period_length, period_conversion_factor = get_period_length(
-        periode, model.i
+        period, model.i
     )
 
     # HPL Heat Pump
@@ -51,25 +51,25 @@ def heat_pump_block_rule(
 
     # Außentemperatur der aktuellen Periode
     def temp_outdoor_profile_rule(block):
-        return heat_pump.outdoor_temperature[periode]
+        return heat_pump.outdoor_temperature[period]
 
     block.outdoor_temperature = pyo.Param(rule=temp_outdoor_profile_rule)
 
     # setzt Wärmebedarf für warmwassererzeugung
     def heat_warm_water_rule(block):
-        if periode in convert_list(heat_pump.warm_water_periods, model.i):
+        if period in convert_list(heat_pump.warm_water_periods, model.i):
             heat_flow = warm_water_heat_flow(
                 heat_pump.surface_building,
                 heat_pump.warm_water_periods,
-                start=periode,
+                start=period,
                 end=(
-                    model.i.next(periode)
-                    if periode != model.i.last()
-                    else periode
+                    model.i.next(period)
+                    if period != model.i.last()
+                    else period
                 ),
             )
             log.debug(
-                f"Period {periode} is a warm water period. "
+                f"Period {period} is a warm water period. "
                 f"Thermal energy for warm drinking water: {heat_flow} kWh."
             )
             return heat_flow
@@ -93,7 +93,7 @@ def heat_pump_block_rule(
 
     # Quellentemperatur der aktuellen Periode, nicht verwendet
     def source_temp_rule(block):
-        return heat_pump.heat_source_temperature[periode]
+        return heat_pump.heat_source_temperature[period]
 
     block.source_temp = pyo.Param(rule=source_temp_rule)
 
@@ -213,7 +213,7 @@ def heat_pump_block_rule(
     # wenn TES aufgeladen wird, Temperatur von WP = MAX_TEMP_HP
     # wenn TES nicht aufgeladen wird, dann Temperatur von WP = TEMP_SUPPLY_DEMAND
     def cop_rule1(block):
-        if periode in convert_list(heat_pump.warm_water_periods, model.i):
+        if period in convert_list(heat_pump.warm_water_periods, model.i):
             results = hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
                 t_in_secondary=((heat_pump.max_temp_hp - 5) - C_TO_K),
@@ -235,7 +235,7 @@ def heat_pump_block_rule(
     block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
     def cop_rule3(block):
-        if periode in convert_list(heat_pump.warm_water_periods, model.i):
+        if period in convert_list(heat_pump.warm_water_periods, model.i):
             return pyo.Constraint.Skip
         if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
             return block.cop_value == heat_pump.cop_air
@@ -316,7 +316,7 @@ def heat_pump_block_rule(
                 log.warning(
                     "Last period has heat loss and warm water demand! "
                     "The optimization will continue with no heat loss and "
-                    f"warm water demand in the last period ({periode})."
+                    f"warm water demand in the last period ({period})."
                     f" The heat loss is {block.heat_loss_building.value} and "
                     f"the warm water demand is {block.heat_warm_water.value}."
                 )
@@ -403,7 +403,7 @@ def heat_pump_block_rule(
 
     # TES Temperatur soll immer größer gleich Vorlauftemperatur sein
     def temp_TES_rule(block):
-        if periode == model.i.first():
+        if period == model.i.first():
             return pyo.Constraint.Skip
 
         return block.temp_TES >= heat_pump.temp_supply_demand
@@ -447,7 +447,7 @@ def heat_pump_block_rule(
     # #Funktion so geschrieben, dass zu einer bestimmten Periode eine Notfallreserve im Speicher ist,
     # #welche dann in nächster Periode zur Verfügung steht
     def min_tes_heat_energy_rule(block):
-        if periode in convert_list(heat_pump.tank_rest_hours, model.i):
+        if period in convert_list(heat_pump.tank_rest_hours, model.i):
             return block.soc >= heat_pump.tank_rest
         else:
             return pyo.Constraint.Skip
@@ -459,9 +459,9 @@ def heat_pump_block_rule(
     # Restriktion, die TES auf mind. 50°C aufheizt für die Sperrzeiten, falls es WW Bedarf gibt
     def ww_during_blocking_hours_rule(block):
         if heat_pump.warm_water_periods:
-            if periode in convert_list(
+            if period in convert_list(
                 heat_pump.blocking_hours, model.i
-            ) and periode in convert_list(
+            ) and period in convert_list(
                 heat_pump.warm_water_periods, model.i
             ):
                 return block.temp_TES >= TES_BLOCK_TEMP_WITH_WARM_WATER_DEMAND
