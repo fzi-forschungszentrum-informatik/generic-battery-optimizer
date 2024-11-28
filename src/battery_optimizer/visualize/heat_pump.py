@@ -82,3 +82,49 @@ def plot_heat_pump_cop(
 
     return fig
 
+
+def plot_heat_pump_power(
+    heat_pump: str,
+    model: pyo.ConcreteModel,
+    figsize: tuple[int, int] = (10, 6),
+):
+    # Get the TES temperature data
+    heat_pump_power = to_heat_pump_power(model)
+    # Select all columns that contain the heat pump name
+    heat_pump_power = heat_pump_power.loc[
+        :, heat_pump_power.columns.str.contains(heat_pump)
+    ]
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.plot(heat_pump_power.index, heat_pump_power.values, marker="o")
+
+    # Format the x-axis labels
+    ax.set_xticks(heat_pump_power.index)
+    ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%H:%M"))
+    ax.xaxis.set_minor_formatter(
+        plt.matplotlib.dates.DateFormatter("%d-%m %H:%M")
+    )
+    ax.xaxis.set_minor_locator(plt.matplotlib.dates.HourLocator(interval=1))
+    plt.xticks(rotation=45)
+
+    # Set the y-axis range and labels
+    list_max = max([max(i) for i in heat_pump_power.values])
+    list_min = min([min(i) for i in heat_pump_power.values])
+    if list_max - list_min < 10:
+        ax.set_ylim(
+            max(list_min - 5, 0),
+            list_max + 5,
+        )
+    ax.set_ylabel("Power in W")
+
+    # Add title and labels
+    ax.set_title("Heat Pump Power")
+    ax.set_xlabel("Time")
+
+    # Show the plot
+    ax.grid(True)
+    plt.tight_layout()
+
+    return fig
+
