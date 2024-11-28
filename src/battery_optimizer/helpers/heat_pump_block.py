@@ -76,19 +76,23 @@ def heat_pump_block_rule(
         else:
             return 0.0
 
-    block.heat_warm_water = pyo.Param(rule=heat_warm_water_rule)
+    block.heat_warm_water = pyo.Param(
+        rule=heat_warm_water_rule,
+        doc="Warm water demand in kWh for this period",
+    )
 
     # Funktion für Wärmeverlust durch Gebäudehülle, in Abhängigkeit der Außentemperatur
     def heat_loss_building_rule(block):
-        return heat_loss_building(
+        heat_loss = heat_loss_building(
             heat_pump.u_values_building.model_dump(),
             pyo.value(block.outdoor_temperature),
             heat_pump.temp_room - C_TO_K,
         )
+        return heat_loss * period_conversion_factor
 
     block.heat_loss_building = pyo.Param(
         rule=heat_loss_building_rule,
-        doc="Constant building heat loss in kW for this period",
+        doc="Building heat loss in kWh for this period",
     )
 
     # Quellentemperatur der aktuellen Periode, nicht verwendet
