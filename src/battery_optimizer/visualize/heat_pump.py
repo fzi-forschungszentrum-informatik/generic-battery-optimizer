@@ -101,7 +101,7 @@ def plot_heat_pump_power(
 
     ax = apply_design(
         ax,
-        heat_pump_power.index,
+        index,
         title="Heat Pump Power in W",
         xlabel="Time",
         ylabel="Power (W)",
