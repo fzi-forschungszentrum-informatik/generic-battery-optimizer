@@ -145,7 +145,7 @@ def heat_pump_block_rule(
         bounds=(heat_pump.min_heat_supply_hp, heat_pump.max_heat_supply_tes)
     )
 
-    block.heat_supply_Demand = pyo.Var(domain=pyo.NonNegativeReals)
+    block.heat_supply_demand = pyo.Var(domain=pyo.NonNegativeReals)
 
     # Temp
     # TODO If room temperature changes, this must be dynamic
@@ -325,20 +325,20 @@ def heat_pump_block_rule(
                     f" The heat loss is {block.heat_loss_building.value} and "
                     f"the warm water demand is {block.heat_warm_water.value}."
                 )
-            return block.heat_supply_Demand == 0
+            return block.heat_supply_demand == 0
         else:
-            return block.heat_supply_Demand == (
+            return block.heat_supply_demand == (
                 block.heat_loss_building + block.heat_warm_water
             )
 
-    block.heat_supply_Demand_total_cons = pyo.Constraint(
+    block.heat_supply_demand_total_cons = pyo.Constraint(
         rule=heat_supply_Demand_total_rule
     )
 
     # Aufteilung Heizbedarf
     def heat_flows_TES_hp_Demand_rule(block):
         return (
-            block.heat_supply_Demand
+            block.heat_supply_demand
             == block.heat_supply_hp_demand + block.heat_supply_TES_Demand
         )
 
@@ -349,9 +349,10 @@ def heat_pump_block_rule(
     # obere Schranke
     # Maximum possible energy that can be supplied by the heat pump, electric
     # heater and TES
+    # TODO Convert HP and HR power to energy over period
     def heat_supply_demand_ub_rule(block):
         return (
-            block.heat_supply_Demand
+            block.heat_supply_demand
             <= heat_pump.max_heat_supply_hp
             + heat_pump.max_electric_consumption_hr
             + (heat_pump.max_heat_energy_tes / period_conversion_factor)

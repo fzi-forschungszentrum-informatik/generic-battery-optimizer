@@ -84,8 +84,8 @@ def heat_energy_usage(heat_pump: str, model: pyo.ConcreteModel):
     heat_loss_tank = _get_component_series_from_block(
         TEXT_HEAT_PUMP_BASE + heat_pump, "heat_loss_tank", model
     )
-    heat_supply_Demand = _get_component_series_from_block(
-        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_Demand", model
+    heat_supply_demand = _get_component_series_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_demand", model
     )
     heat_supply_HP = _get_component_series_from_block(
         TEXT_HEAT_PUMP_BASE + heat_pump, "heat_supply_HP", model
@@ -106,7 +106,7 @@ def heat_energy_usage(heat_pump: str, model: pyo.ConcreteModel):
         [
             heat_energy_TES,
             heat_loss_tank,
-            heat_supply_Demand,
+            heat_supply_demand,
             heat_supply_HP,
             heat_supply_HR,
             heat_supply_HR,
