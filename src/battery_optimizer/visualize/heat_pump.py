@@ -128,3 +128,37 @@ def plot_heat_pump_power(
 
     return fig
 
+
+def plot_tes_temperature(
+    heat_pump: str, model: pyo.ConcreteModel, figsize=(10, 6)
+):
+    # Get the TES temperature data
+    tes_temp = tes_temperature(heat_pump, model)
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.plot(tes_temp.index, tes_temp.values, marker="o")
+
+    # Format the x-axis labels
+    ax.set_xticks(tes_temp.index)
+    ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%H:%M"))
+    ax.xaxis.set_minor_formatter(
+        plt.matplotlib.dates.DateFormatter("%d-%m %H:%M")
+    )
+    ax.xaxis.set_minor_locator(plt.matplotlib.dates.HourLocator(interval=1))
+    plt.xticks(rotation=45)
+
+    # Set the y-axis range and labels
+    ax.set_ylim(min(tes_temp.values) - 5, max(tes_temp.values) + 5)
+    ax.set_ylabel("Temperature (°C)")
+
+    # Add title and labels
+    ax.set_title("TES temperature in °C")
+    ax.set_xlabel("Time")
+
+    # Show the plot
+    ax.grid(True)
+    plt.tight_layout()
+
+    return fig
+
