@@ -14,6 +14,7 @@ from battery_optimizer.static.heat_pump import (
     C_TO_K,
     TES_BLOCK_TEMP_WITH_WARM_WATER_DEMAND,
 )
+from battery_optimizer.static.numbers import MAX_COP
 
 log = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ def heat_pump_block_rule(
     block.y_tes_over_value = pyo.Var(within=pyo.Binary)
     block.y_delta_tes_over_value = pyo.Var(within=pyo.Binary)
 
-    block.cop_value = pyo.Var(domain=pyo.NonNegativeReals, bounds=(None, 10))
+    block.cop_value = pyo.Var(domain=pyo.NonNegativeReals, bounds=(0, MAX_COP))
 
     """
         in diesem modell HR in TES, und HR trägt direkt zur Erwärmung/Aufladung von TES bei
