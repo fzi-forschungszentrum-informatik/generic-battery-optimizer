@@ -9,13 +9,46 @@ def _get_component_series_from_block(
 ) -> pd.Series:
     data = {}
     model_block = model.component(block)
-    if model is None:
+    if model_block is None:
         raise ValueError(f"{block} is not a valid component of the model!")
     for period in model_block.periods:
         data[period] = (
             model.component(block).periods[period].component(component).value
         )
     return pd.Series(data, name=component)
+
+
+def _get_component_bounds_from_block(
+    block: str, component: str, model: pyo.ConcreteModel
+) -> pd.DataFrame:
+    """Get the bounds of a component of a block
+
+    Returns a DataFrame with the lower and upper bounds of the specified
+    component.
+
+    Arguments
+    ---------
+        block: str
+            The block to get the component from
+        component: str
+            The component to get the bounds from
+        model: pyo.ConcreteModel
+            The model to get the data from
+
+    Returns
+    -------
+        pd.DataFrame
+            The bounds of the component over the optimization period"""
+    data = {}
+    model_block = model.component(block)
+    if model_block is None:
+        raise ValueError(f"{block} is not a valid component of the model!")
+    for period in model_block.periods:
+        min, max = (
+            model.component(block).periods[period].component(component).bounds
+        )
+        data[period] = {"lower": min, "upper": max}
+    return pd.DataFrame.from_dict(data, orient="index")
 
 
 def binary_values(heat_pump: str, model: pyo.ConcreteModel):

@@ -1,4 +1,5 @@
 from battery_optimizer.export.heat_pump import (
+    _get_component_bounds_from_block,
     heat_energy_demand,
     tank_soc,
     binary_values,
@@ -11,6 +12,7 @@ import pyomo.environ as pyo
 import matplotlib.pyplot as plt
 
 from battery_optimizer.export.model import to_heat_pump_power
+from battery_optimizer.static.heat_pump import C_TO_K, TEXT_HEAT_PUMP_BASE
 from battery_optimizer.static.numbers import MAX_COP
 from battery_optimizer.visualize.general import apply_design
 
@@ -114,6 +116,27 @@ def plot_heat_pump_power(
 def plot_tes_temperature(
     heat_pump: str, model: pyo.ConcreteModel, figsize=(10, 6)
 ):
+    """Plot the TES temperature over the optimization period
+
+    The plot has y limits based on the allowed minimum and maximum allowed TES
+    temperature.
+    The temperature change is visualized as a gradual change between the time
+    steps.
+
+    Arguments
+    ---------
+        heat_pump: str
+            The name of the heat pump to plot the TES temperature for
+        model: pyo.ConcreteModel
+            The model to get the data from
+        figsize: tuple[int, int]
+            The size of the plot
+
+    Returns
+    -------
+        plt.Figure
+            The plot of the TES temperature
+    """
     # Get the TES temperature data
     tes_temp = tes_temperature(heat_pump, model)
 
@@ -121,13 +144,18 @@ def plot_tes_temperature(
     fig, ax = plt.subplots(figsize=figsize)
     ax.plot(tes_temp.index, tes_temp.values, marker="o")
 
+    # Get component bounds for ylim
+    bounds = _get_component_bounds_from_block(
+        TEXT_HEAT_PUMP_BASE + heat_pump, "temp_TES", model
+    )
+
     ax = apply_design(
         ax,
         tes_temp.index,
         title="TES temperature in °C",
         xlabel="Time",
         ylabel="Temperature (°C)",
-        ylim=(min(tes_temp.values) - 5, max(tes_temp.values) + 5),
+        ylim=(min(bounds["lower"]) - C_TO_K, max(bounds["upper"]) - C_TO_K),
     )
 
     return fig
