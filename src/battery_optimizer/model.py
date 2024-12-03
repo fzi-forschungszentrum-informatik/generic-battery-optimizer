@@ -762,7 +762,8 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heat_pump_block.periods[i].electric_energy_HP
+                    # Heat pump uses kW, not W
+                    heat_pump_block.periods[i].electric_energy_HP * 1000
                     == model.component(heat_pump_energy_rule)[i]
                 ),
             ),
@@ -772,7 +773,8 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heat_pump_block.periods[i].electric_energy_HR
+                    # Heat pump uses kW, not W
+                    heat_pump_block.periods[i].electric_energy_HR * 1000
                     == model.component(heat_recovery_energy_rule)[i]
                 ),
             ),
