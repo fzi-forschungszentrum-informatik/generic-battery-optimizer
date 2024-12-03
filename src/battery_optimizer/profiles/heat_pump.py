@@ -5,7 +5,6 @@ import pandas as pd
 from pydantic import BaseModel, Field, computed_field, field_validator
 from battery_optimizer.static.numbers import SECRET_LENGTH
 import hplib.hplib as hpl
-import numpy as np
 from battery_optimizer.helpers.heat_pump_profile import (
     tank_dimensions,
     warm_water_heat_flow,
@@ -53,13 +52,10 @@ class HeatPump(BaseModel):
 
     @field_validator("type")
     def validate_type(cls, v):
-        _validate_distinct_item(
-            v,
-            np.union1d(
-                heat_pump_data["Type"].unique(),
-                ["Air/Air", "Luft/Luft", "Generic"],
-            ),
-        )
+        allowed_types = list(heat_pump_data["Type"].unique())
+        allowed_types.extend(list(heat_pump_data["Model"].unique()))
+        allowed_types.extend(["Air/Air", "Luft/Luft", "Generic"])
+        _validate_distinct_item(v, allowed_types)
         return v
 
     id: int  # hpl uses it to return the correct model
