@@ -82,8 +82,6 @@ class HeatPump(BaseModel):
         ], 'This value is only allowed when an "Air/Air"-Heatpump is used'
         return v
 
-    """The next values"""
-    timezone: str
     # TODO check that the strings have the correct length
     # '2020-12-04 8:00:00+00:00 - 2020-12-04 15:00:00+00:00'
     # and that they are timezone aware. If not force timezone to be UTC
