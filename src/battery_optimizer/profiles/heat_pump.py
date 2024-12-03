@@ -124,6 +124,22 @@ class HeatPump(BaseModel):
     charge_tes_off: float
     min_heat_energy_tes: ClassVar[float] = 0.0
 
+    @field_validator(
+        "temp_supply_demand",
+        "temp_room",
+        "max_temp_hp",
+        "max_temp_tes",
+        "charge_tes_off",
+        "temp_hp_out",
+        "bivalent_temp",
+    )
+    def validate_temperatures(cls, v):
+        if v is None:
+            return v
+        if v < 200:
+            raise ValueError("All temperatures must be in Kelvin")
+        return v
+
     # TODO The index must be the same as the rest of the model
     # It would probably be better to just use a list and make sure it has the
     # same length as the index.
@@ -138,6 +154,9 @@ class HeatPump(BaseModel):
             for dt in v.keys()
         ):
             raise ValueError("All datetime keys must be timezone aware")
+        # Values should be in Kelvin
+        if any(temp < 200 for temp in v.values()):
+            raise ValueError("All temperatures must be in Kelvin")
         return pd.Series(v)
 
     # Computed fields
