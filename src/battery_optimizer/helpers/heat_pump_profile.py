@@ -4,7 +4,10 @@ import pandas as pd
 import pytz
 import logging
 
-from battery_optimizer.static.heat_pump import LOG_ERROR_TEMPERATURE_TOO_HIGH
+from battery_optimizer.static.heat_pump import (
+    C_TO_K,
+    LOG_ERROR_TEMPERATURE_TOO_HIGH,
+)
 
 log = logging.getLogger(__name__)
 
@@ -142,15 +145,17 @@ def heat_loss_building(
 
     loss = 0
     if temp_comfort > 100:
-        log.warning(
+        log.debug(
             f"Comfort temperature is {temp_comfort}°C. "
             + LOG_ERROR_TEMPERATURE_TOO_HIGH
         )
+        temp_comfort = temp_comfort - C_TO_K
     if temp_outdoor > 100:
-        log.warning(
-            f"Outdoor temperature is {temp_outdoor}°C. "
+        log.debug(
+            f"Outside temperature is {temp_comfort}°C. "
             + LOG_ERROR_TEMPERATURE_TOO_HIGH
         )
+        temp_outdoor = temp_outdoor - C_TO_K
     for key in surface_U_value.keys():
         values = surface_U_value[key]
         if temp_outdoor <= temp_comfort:
