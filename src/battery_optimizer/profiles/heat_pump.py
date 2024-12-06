@@ -2,12 +2,17 @@ import datetime
 import secrets
 from typing import ClassVar, List, Optional
 import pandas as pd
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 from battery_optimizer.static.numbers import SECRET_LENGTH
 import hplib.hplib as hpl
 from battery_optimizer.helpers.heat_pump_profile import (
     tank_dimensions,
-    warm_water_heat_flow,
 )
 
 heat_pump_data = hpl.load_all_heat_pumps()
@@ -58,17 +63,37 @@ class HeatPump(BaseModel):
         _validate_distinct_item(v, allowed_types)
         return v
 
-    id: int  # hpl uses it to return the correct model
+    """Start of hpl specific data"""
+    id: Optional[int] = None  # hpl uses it to return the correct model
 
     @field_validator("id")
     def validate_id(cls, v):
+        if v is None:
+            return v
         _validate_distinct_item(v, heat_pump_data["Group"].unique())
         return v
 
     # These values are only needed/allowed when the type is Generic
-    t_in: Optional[float]
-    t_out: Optional[float]
-    p_th: Optional[float]
+    t_in: Optional[float] = None
+    t_out: Optional[float] = None
+    p_th: Optional[float] = None
+
+    @field_validator("t_in", "t_out", "p_th")
+    def validate_generic_hp(cls, v):
+        if v is not None and v < 200:
+            raise ValueError("All temperatures must be in Kelvin")
+        return v
+
+    @model_validator(mode="after")
+    def validate_generic_hp_value_existance(cls, values):
+        if values.type == "Generic":
+            if not all([values.id, values.t_in, values.t_out, values.p_th]):
+                raise ValueError(
+                    "All Generic heat pump values must be provided"
+                )
+        return values
+
+    """End of hpl specific data"""
 
     # hpl does not implement Air/Air heat pumps. This value will be used
     # instead and must be provided when the type is Air/Air
