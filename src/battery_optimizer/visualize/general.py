@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 import pandas as pd
 
 
@@ -34,11 +35,17 @@ def apply_design(
     """
     # Format the x-axis labels
     ax.set_xticks(index)
-    ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%H:%M"))
-    ax.xaxis.set_minor_formatter(
-        plt.matplotlib.dates.DateFormatter("%d-%m %H:%M")
+    ax.xaxis.set_major_formatter(
+        plt.matplotlib.dates.DateFormatter("%H:%M", tz=index.tz)
     )
-    ax.xaxis.set_minor_locator(plt.matplotlib.dates.HourLocator(interval=1))
+    ax.xaxis.set_major_locator(
+        plt.matplotlib.dates.HourLocator(interval=1, tz=index.tz)
+    )
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+    # ax.xaxis.set_minor_formatter(
+    #    plt.matplotlib.dates.DateFormatter("%d-%m %H:%M")
+    # )
+    # ax.xaxis.set_minor_locator(plt.matplotlib.dates.HourLocator(interval=1))
     plt.xticks(rotation=45)
 
     # Add title and labels
