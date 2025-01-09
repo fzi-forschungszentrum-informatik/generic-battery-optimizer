@@ -98,34 +98,57 @@ def heat_pump_block_rule(
 
     block.heat_loss_building = pyo.Param(
         rule=heat_loss_building_rule,
-        doc="Building heat loss in kWh for this period",
+        doc=(
+            "Estimated building heat loss in kWh for this period based on the "
+            "buildings U-values"
+        ),
     )
 
-    # Quellentemperatur der aktuellen Periode, nicht verwendet
+    # Quellentemperatur der aktuellen Periode
     def source_temp_rule(block):
         return heat_pump.heat_source_temperature[period]
 
-    block.source_temp = pyo.Param(rule=source_temp_rule)
+    block.source_temp = pyo.Param(
+        rule=source_temp_rule,
+        doc=(
+            "Temperature of heat source in K. e.g. outdoor air, ground water "
+            "or soil temperature."
+        ),
+    )
 
     # Variablen
 
     # Binary
-    block.y_HR = pyo.Var(within=pyo.Binary)
-    block.y_HP = pyo.Var(within=pyo.Binary)
-    block.y_TES = pyo.Var(within=pyo.Binary)
+    block.y_HR = pyo.Var(
+        within=pyo.Binary, doc="Electric heater is on (1) or off (0)"
+    )
+    block.y_HP = pyo.Var(
+        within=pyo.Binary, doc="Heat pump is on (1) or off (0)"
+    )
+    block.y_TES = pyo.Var(
+        within=pyo.Binary, doc="TES is being charged (1) or discharged (0)"
+    )
 
     # electric power
     block.electric_energy_HR = pyo.Var(
         bounds=(
             heat_pump.min_electric_consumption_hr,
             heat_pump.max_electric_consumption_hr,
-        )
+        ),
+        doc=(
+            "Electric energy consumption of the electric heater in kWh during "
+            "this period"
+        ),
     )
     block.electric_energy_HP = pyo.Var(
         bounds=(
             heat_pump.min_electric_consumption_hp,
             heat_pump.max_electric_consumption_hp,
-        )
+        ),
+        doc=(
+            "Electric energy consumption of the heat pump in kWh during this "
+            "period"
+        ),
     )
 
     # heat flows
@@ -153,7 +176,6 @@ def heat_pump_block_rule(
     block.heat_supply_demand = pyo.Var(domain=pyo.NonNegativeReals)
 
     # Temp
-    # TODO If room temperature changes, this must be dynamic
     block.temp_TES = pyo.Var(
         bounds=(heat_pump.temp_room, heat_pump.max_temp_tes)
     )
@@ -341,7 +363,14 @@ def heat_pump_block_rule(
             )
 
     block.heat_supply_demand_total_cons = pyo.Constraint(
-        rule=heat_supply_Demand_total_rule
+        rule=heat_supply_Demand_total_rule,
+        doc=(
+            "Sets the total heat demand in kWh of the building for this "
+            "period. "
+            "If a known heat demand is given, it is used. Otherwise, the heat "
+            "demand is estimated based on the building's U-values and the "
+            "outdoor temperature"
+        ),
     )
 
     # Aufteilung Heizbedarf
@@ -414,7 +443,13 @@ def heat_pump_block_rule(
             (block.temp_TES - heat_pump.temp_room),
         )
 
-    block.heat_loss_tank_cons = pyo.Constraint(rule=heat_loss_tank_rule)
+    block.heat_loss_tank_cons = pyo.Constraint(
+        rule=heat_loss_tank_rule,
+        doc=(
+            "Heat loss of the tank in kWh for this period. "
+            "Estimated based on transmission heat loss."
+        ),
+    )
 
     # TES Temperatur soll immer größer gleich Vorlauftemperatur sein
     def temp_TES_rule(block):
