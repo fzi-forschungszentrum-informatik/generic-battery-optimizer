@@ -132,12 +132,11 @@ class HeatPump(BaseModel):
     max_temp_hp: float
     min_electric_consumption_hp: ClassVar[float] = 0.0
     max_electric_consumption_hp: float
-    mind_electric_consumption_hp: float
+
     min_heat_supply_hp: ClassVar[float] = 0.0
 
     min_electric_consumption_hr: ClassVar[float] = 0.0
     max_electric_consumption_hr: float
-    mind_electric_consumption_hr: float
 
     tank_u_value: ClassVar[float] = 0.6
     tank_mass: float
