@@ -57,7 +57,7 @@ def heat_pump_block_rule(
     block.outdoor_temperature = pyo.Param(rule=temp_outdoor_profile_rule)
 
     # setzt Wärmebedarf für warmwassererzeugung
-    def heat_warm_water_rule(block):
+    def warm_water_demand_rule(block):
         if period in convert_list(heat_pump.warm_water_periods, model.i):
             heat_flow = warm_water_heat_flow(
                 heat_pump.surface_building,
@@ -77,9 +77,13 @@ def heat_pump_block_rule(
         else:
             return 0.0
 
-    block.heat_warm_water = pyo.Param(
-        rule=heat_warm_water_rule,
-        doc="Warm water demand in kWh for this period",
+    block.warm_water_demand = pyo.Param(
+        rule=warm_water_demand_rule,
+        doc=(
+            "Estimated warm water demand in kWh for this period based on the "
+            "building's living area. Warm water usage is distributed equally "
+            "across the warm water periods"
+        ),
     )
 
     # Funktion für Wärmeverlust durch Gebäudehülle, in Abhängigkeit der Außentemperatur
@@ -317,18 +321,18 @@ def heat_pump_block_rule(
     # Heizbedarf gesamt
     def heat_supply_Demand_total_rule(block):
         if block.index() == model.i.last():
-            if block.heat_loss_building + block.heat_warm_water > 0:
+            if block.heat_loss_building + block.warm_water_demand > 0:
                 log.warning(
                     "Last period has heat loss and warm water demand! "
                     "The optimization will continue with no heat loss and "
                     f"warm water demand in the last period ({period})."
                     f" The heat loss is {block.heat_loss_building.value} and "
-                    f"the warm water demand is {block.heat_warm_water.value}."
+                    f"the warm water demand is {block.warm_water_demand.value}."
                 )
             return block.heat_supply_demand == 0
         else:
             return block.heat_supply_demand == (
-                block.heat_loss_building + block.heat_warm_water
+                block.heat_loss_building + block.warm_water_demand
             )
 
     block.heat_supply_demand_total_cons = pyo.Constraint(

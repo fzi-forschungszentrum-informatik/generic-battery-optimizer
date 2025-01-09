@@ -181,7 +181,8 @@ def plot_heat_energy_demand(
         label="Building heat loss",
     )
     ax.stairs(
-        energy_demand["heat_warm_water"] + energy_demand["heat_loss_building"],
+        energy_demand["warm_water_demand"]
+        + energy_demand["heat_loss_building"],
         index,
         baseline=energy_demand["heat_loss_building"],
         fill=True,

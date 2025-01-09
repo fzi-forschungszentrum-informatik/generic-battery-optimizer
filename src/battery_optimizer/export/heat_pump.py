@@ -85,7 +85,7 @@ def parameters(heat_pump: str, model: pyo.ConcreteModel):
         TEXT_HEAT_PUMP_BASE + heat_pump, "heat_loss_building", model
     )
     heat_warm_water = _get_component_series_from_block(
-        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_warm_water", model
+        TEXT_HEAT_PUMP_BASE + heat_pump, "warm_water_demand", model
     )
     outdoor_temperature = _get_component_series_from_block(
         TEXT_HEAT_PUMP_BASE + heat_pump, "outdoor_temperature", model
@@ -184,7 +184,7 @@ def heat_energy_demand(
         TEXT_HEAT_PUMP_BASE + heat_pump, "heat_loss_building", model
     )
     heat_warm_water = _get_component_series_from_block(
-        TEXT_HEAT_PUMP_BASE + heat_pump, "heat_warm_water", model
+        TEXT_HEAT_PUMP_BASE + heat_pump, "warm_water_demand", model
     )
 
     return pd.concat(
