@@ -203,7 +203,7 @@ def heat_pump_block_rule(
     # #minimaler heat Flow von WP
     def hp_lower_bound_rule(block):
         return (
-            heat_pump.mind_electric_consumption_hp * block.y_HP
+            block.electric_energy_HP.bounds[0] * block.y_HP
             <= block.electric_energy_HP
         )
 
@@ -213,7 +213,7 @@ def heat_pump_block_rule(
     def hp_upper_bound_rule(block):
         return (
             block.electric_energy_HP
-            <= heat_pump.max_electric_consumption_hp * block.y_HP
+            <= block.electric_energy_HP.bounds[1] * block.y_HP
         )
 
     block.hp_upper_bound = pyo.Constraint(rule=hp_upper_bound_rule)
