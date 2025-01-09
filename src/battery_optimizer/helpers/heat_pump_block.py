@@ -321,6 +321,10 @@ def heat_pump_block_rule(
 
     # Heizbedarf gesamt
     def heat_supply_Demand_total_rule(block):
+        # Use known heat demand if available
+        if heat_pump.heat_demand is not None:
+            return block.heat_supply_demand == heat_pump.heat_demand[period]
+        # Estimate heat demand based on the building's U-values
         if block.index() == model.i.last():
             if block.heat_loss_building + block.warm_water_demand > 0:
                 log.warning(
