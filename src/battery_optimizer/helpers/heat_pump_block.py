@@ -225,7 +225,7 @@ def heat_pump_block_rule(
     # minimaler heat Flow von HS
     def hr_lower_bound_rule(block):
         return (
-            heat_pump.mind_electric_consumption_hr * block.y_HR
+            heat_pump.min_electric_consumption_hr * block.y_HR
             <= block.electric_energy_HR
         )
 
