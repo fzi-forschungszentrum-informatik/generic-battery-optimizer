@@ -35,6 +35,7 @@ def heat_pump_block_rule(
     # HPL Heat Pump
     if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
         log.warning("L/L-WP")
+        raise NotImplementedError("Air/Air heat pumps are not supported.")
     elif heat_pump.type == "Generic":
         parameters = hpl.get_parameters(
             model=heat_pump.type,
