@@ -42,6 +42,12 @@ def plot_tank_soc(heat_pump: str, model: pyo.ConcreteModel, figsize=(10, 6)):
     return fig
 
 
+def plot_binary_values(heat_pump: str, model: pyo.ConcreteModel):
+    pass
+
+
+def plot_parameters(heat_pump: str, model: pyo.ConcreteModel):
+    pass
 
 
 def plot_heat_pump_cop(
