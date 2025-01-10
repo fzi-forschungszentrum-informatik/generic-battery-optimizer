@@ -232,18 +232,7 @@ class HeatPump(BaseModel):
     def cp(self) -> float:
         return 4186 / 1000
 
-    @computed_field
-    @property
-    def mind_heat_supply_hp(self) -> float:
-        return (
-            (
-                self.tank_mass
-                * ((self.max_temp_tes - self.temp_supply_demand) * 0.1)
-                * 4.186
-            )
-        ) / 3600
-
     # These times are given in time ranges in which the heat pump must
-    # statisy specific criteria
+    # satisfy specific criteria
     # They must be added to the index list and in these ranges the
     # necessary constraints are added
