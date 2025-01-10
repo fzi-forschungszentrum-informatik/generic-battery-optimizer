@@ -132,8 +132,8 @@ def heat_pump_block_rule(
     # electric power
     block.electric_energy_HR = pyo.Var(
         bounds=(
-            heat_pump.min_electric_consumption_hr,
-            heat_pump.max_electric_consumption_hr,
+            heat_pump.min_electric_consumption_hr * period_conversion_factor,
+            heat_pump.max_electric_consumption_hr * period_conversion_factor,
         ),
         doc=(
             "Electric energy consumption of the electric heater in kWh during "
@@ -142,8 +142,8 @@ def heat_pump_block_rule(
     )
     block.electric_energy_HP = pyo.Var(
         bounds=(
-            heat_pump.min_electric_consumption_hp,
-            heat_pump.max_electric_consumption_hp,
+            heat_pump.min_electric_consumption_hp * period_conversion_factor,
+            heat_pump.max_electric_consumption_hp * period_conversion_factor,
         ),
         doc=(
             "Electric energy consumption of the heat pump in kWh during this "
@@ -153,24 +153,36 @@ def heat_pump_block_rule(
 
     # heat flows
     block.heat_supply_HP = pyo.Var(
-        bounds=(heat_pump.min_heat_supply_hp, heat_pump.max_heat_supply_hp)
+        bounds=(
+            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            heat_pump.max_heat_supply_hp * period_conversion_factor,
+        )
     )
     block.heat_supply_hp_demand = pyo.Var(
-        bounds=(heat_pump.min_heat_supply_hp, heat_pump.max_heat_supply_hp)
+        bounds=(
+            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            heat_pump.max_heat_supply_hp * period_conversion_factor,
+        )
     )
     block.heat_supply_hp_tes = pyo.Var(
-        bounds=(heat_pump.min_heat_supply_hp, heat_pump.max_heat_supply_hp)
+        bounds=(
+            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            heat_pump.max_heat_supply_hp * period_conversion_factor,
+        )
     )
 
     block.heat_supply_HR = pyo.Var(
         bounds=(
-            heat_pump.min_electric_consumption_hr,
-            heat_pump.max_electric_consumption_hr,
+            heat_pump.min_electric_consumption_hr * period_conversion_factor,
+            heat_pump.max_electric_consumption_hr * period_conversion_factor,
         )
     )
 
     block.heat_supply_TES_Demand = pyo.Var(
-        bounds=(heat_pump.min_heat_supply_hp, heat_pump.max_heat_supply_tes)
+        bounds=(
+            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            heat_pump.max_heat_supply_tes * period_conversion_factor,
+        )
     )
 
     block.heat_supply_demand = pyo.Var(domain=pyo.NonNegativeReals)
