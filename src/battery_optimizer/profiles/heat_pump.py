@@ -1,6 +1,6 @@
 import datetime
 import secrets
-from typing import ClassVar, List, Optional
+from typing import List, Optional
 import pandas as pd
 from pydantic import (
     BaseModel,
@@ -130,15 +130,15 @@ class HeatPump(BaseModel):
     bivalent_temp: Optional[float]
 
     max_temp_hp: float
-    min_electric_consumption_hp: ClassVar[float] = 0.0
+    min_electric_consumption_hp: Optional[float] = 0.0
     max_electric_consumption_hp: float
 
     min_heat_supply_hp: ClassVar[float] = 0.0
 
-    min_electric_consumption_hr: ClassVar[float] = 0.0
+    min_electric_consumption_hr: Optional[float] = 0.0
     max_electric_consumption_hr: float
 
-    tank_u_value: ClassVar[float] = 0.6
+    tank_u_value: Optional[float] = 0.6
     tank_mass: float
     tes_start_value: float
     tank_rest: float
@@ -146,7 +146,7 @@ class HeatPump(BaseModel):
 
     max_temp_tes: float
     charge_tes_off: float
-    min_heat_energy_tes: ClassVar[float] = 0.0
+    min_heat_energy_tes: Optional[float] = 0.0
 
     @field_validator(
         "temp_supply_demand",
