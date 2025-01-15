@@ -331,13 +331,9 @@ def heat_pump_block_rule(
     block.charge_cons = pyo.Constraint(rule=hp_charge_rule)
 
     def hp_charge_MIND_rule(block):
-        min_electric_consumption = (
-            heat_pump.min_electric_consumption_hp
-            if heat_pump.min_electric_consumption_hp > 0
-            else 0.00000001
-        )
         return (
-            block.y_TES * min_electric_consumption <= block.heat_supply_hp_tes
+            block.y_TES * heat_pump.min_electric_consumption_hp
+            <= block.heat_supply_hp_tes
         )
 
     block.charge_MIND_cons = pyo.Constraint(rule=hp_charge_MIND_rule)
