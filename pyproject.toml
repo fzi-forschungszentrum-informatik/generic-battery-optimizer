@@ -21,6 +21,7 @@ dependencies = [
   "xlsxwriter",
   "pytest",
   "pytest-watch",
+  "hplib",
 ]
 description = "Generic Battery Optimizer"
 readme = "README.md"
