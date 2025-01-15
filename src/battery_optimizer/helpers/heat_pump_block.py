@@ -357,9 +357,9 @@ def heat_pump_block_rule(
     def heat_supply_Demand_total_rule(block):
         # Use known heat demand if available
         if heat_pump.heat_demand is not None:
-            return block.heat_supply_demand == heat_pump.heat_demand[period]
+            heat_supply_demand = heat_pump.heat_demand[period]
         # Estimate heat demand based on the building's U-values
-        if block.index() == model.i.last():
+        elif block.index() == model.i.last():
             if block.heat_loss_building + block.warm_water_demand > 0:
                 log.warning(
                     "Last period has heat loss and warm water demand! "
@@ -368,11 +368,22 @@ def heat_pump_block_rule(
                     f" The heat loss is {block.heat_loss_building.value} and "
                     f"the warm water demand is {block.warm_water_demand.value}."
                 )
-            return block.heat_supply_demand == 0
+            heat_supply_demand = 0
         else:
-            return block.heat_supply_demand == (
+            heat_supply_demand = (
                 block.heat_loss_building + block.warm_water_demand
             )
+
+        # Check that last period has no demand
+        if block.index() == model.i.last() and heat_supply_demand > 0:
+            log.warning(
+                "Last period has heat demand! "
+                f"Provided heat demand: {heat_pump.heat_demand[period]} "
+                "The optimization will continue with no heat demand in "
+                f"the last period ({period})."
+            )
+            return block.heat_supply_demand == 0
+        return block.heat_supply_demand == heat_supply_demand
 
     block.heat_supply_demand_total_cons = pyo.Constraint(
         rule=heat_supply_Demand_total_rule,
