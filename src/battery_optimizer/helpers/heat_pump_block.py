@@ -132,7 +132,7 @@ def heat_pump_block_rule(
     # electric power
     block.electric_energy_HR = pyo.Var(
         bounds=(
-            heat_pump.min_electric_consumption_hr * period_conversion_factor,
+            0,
             heat_pump.max_electric_consumption_hr,
         ),
         doc=(
@@ -142,7 +142,7 @@ def heat_pump_block_rule(
     )
     block.electric_energy_HP = pyo.Var(
         bounds=(
-            heat_pump.min_electric_consumption_hp * period_conversion_factor,
+            0,
             heat_pump.max_electric_consumption_hp,
         ),
         doc=(
@@ -154,33 +154,33 @@ def heat_pump_block_rule(
     # heat flows
     block.heat_supply_HP = pyo.Var(
         bounds=(
-            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            0,
             heat_pump.max_heat_supply_hp,
         )
     )
     block.heat_supply_hp_demand = pyo.Var(
         bounds=(
-            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            0,
             heat_pump.max_heat_supply_hp,
         )
     )
     block.heat_supply_hp_tes = pyo.Var(
         bounds=(
-            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            0,
             heat_pump.max_heat_supply_hp,
         )
     )
 
     block.heat_supply_HR = pyo.Var(
         bounds=(
-            heat_pump.min_electric_consumption_hr * period_conversion_factor,
+            0,
             heat_pump.max_electric_consumption_hr,
         )
     )
 
     block.heat_supply_TES_Demand = pyo.Var(
         bounds=(
-            heat_pump.min_heat_supply_hp * period_conversion_factor,
+            0,
             heat_pump.max_heat_supply_tes,
         )
     )
@@ -215,7 +215,7 @@ def heat_pump_block_rule(
     # #minimaler heat Flow von WP
     def hp_lower_bound_rule(block):
         return (
-            block.electric_energy_HP.bounds[0] * block.y_HP
+            heat_pump.min_electric_consumption_hp * block.y_HP
             <= block.electric_energy_HP
         )
 
@@ -331,12 +331,14 @@ def heat_pump_block_rule(
     block.charge_cons = pyo.Constraint(rule=hp_charge_rule)
 
     def hp_charge_MIND_rule(block):
-        min_heat_supply_hp = (
-            heat_pump.min_heat_supply_hp
-            if heat_pump.min_heat_supply_hp > 0
+        min_electric_consumption = (
+            heat_pump.min_electric_consumption_hp
+            if heat_pump.min_electric_consumption_hp > 0
             else 0.00000001
         )
-        return block.y_TES * (min_heat_supply_hp) <= block.heat_supply_hp_tes
+        return (
+            block.y_TES * min_electric_consumption <= block.heat_supply_hp_tes
+        )
 
     block.charge_MIND_cons = pyo.Constraint(rule=hp_charge_MIND_rule)
 
