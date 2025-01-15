@@ -6,3 +6,4 @@ pyomo
 xlsxwriter
 pytest
 pytest-watch
+hplib
