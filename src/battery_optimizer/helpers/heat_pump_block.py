@@ -459,6 +459,8 @@ def heat_pump_block_rule(
 
     # #Energieverlust von Tank
     def heat_loss_tank_rule(block):
+        if not heat_pump.predict_tank_loss:
+            return block.heat_loss_tank == 0
         return block.heat_loss_tank == heat_loss_tank(
             heat_pump.tank_height,
             heat_pump.tank_radius_o,
@@ -485,6 +487,8 @@ def heat_pump_block_rule(
 
     # obere Schranke für Tankverluste
     def heat_loss_tank_ub_rule(block):
+        if not heat_pump.predict_tank_loss:
+            return block.heat_loss_tank <= 0
         return block.heat_loss_tank <= heat_loss_tank(
             heat_pump.tank_height,
             heat_pump.tank_radius_o,
