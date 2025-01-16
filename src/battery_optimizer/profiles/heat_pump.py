@@ -45,15 +45,33 @@ class _U_Values_Building(BaseModel):
 
 
 class HeatPump(BaseModel):
-    # The heatpump's name used in the model. This must be unique and
-    # is generated automatically if not supplied. A uniqueness check is
-    # not performed.
-    name: str = secrets.token_hex(SECRET_LENGTH)
+    name: str = Field(
+        default=secrets.token_hex(SECRET_LENGTH),
+        title="Heat pump name",
+        description=(
+            "The heat pump's name used in the model. This must be unique and "
+            "is generated automatically if not supplied. A uniqueness check is"
+            "not performed."
+        ),
+    )
 
-    """ Required Data for hpl """
-    # Can be ["Air/Air", "Luft/Luft", "Generic",
-    # "All other hpl heat pump types available"]
-    type: str
+    """ Required Data for hplib """
+    type: str = Field(
+        title="hplib heat pump type",
+        description=(
+            "Heat pump model type for the heat pump simulation. The heat pump "
+            "simulation uses [hplib](https://github.com/FZJ-IEK3-VSA/hplib) "
+            "to estimate heat pump behavior. Many commercial heat pumps can "
+            "be simulated or custom heat pumps can be specified. hplib "
+            "supports Air/Water, Water/Water and Brine/Water heat pumps. "
+            "Air/Air heat pumps are not supported by hplib and can only be "
+            "modeled with a constant CoP (see cop_air field)."
+            'Can be ["Air/Air", "Luft/Luft", "Generic"'
+            '"All other [hplib](https://github.com/FZJ-IEK3-VSA/hplib) heat '
+            'pump types available"]'
+        ),
+        examples=["AE050RXYDEG/EU & AE200RNWMEG/EU", "Air/Air", "Generic"],
+    )
 
     @field_validator("type")
     def validate_type(cls, v):
@@ -63,8 +81,21 @@ class HeatPump(BaseModel):
         _validate_distinct_item(v, allowed_types)
         return v
 
-    """Start of hpl specific data"""
-    id: Optional[int] = None  # hpl uses it to return the correct model
+    """Start of hplib specific data"""
+    id: Optional[int] = Field(
+        default=None,
+        title="hplib Group ID",
+        description=(
+            'Only needed when hplib heat pump type is "Generic"!'
+            "[hplib](https://github.com/FZJ-IEK3-VSA/hplib#heat-pump-models-"
+            "and-group-ids) uses it to return the correct model."
+            "Available heat pump types are "
+            "[1]: Air/Water regulated, [4]: Air/Water on-off, "
+            "[2]: Brine/Water regulated, [5]: Brine/Water on-off, "
+            "[3]: Water/Water regulated and [6]: Water/Water on-off."
+        ),
+        examples=[1, 2, 3, 4, 5, 6],
+    )
 
     @field_validator("id")
     def validate_id(cls, v):
@@ -74,11 +105,35 @@ class HeatPump(BaseModel):
         return v
 
     # These values are only needed/allowed when the type is Generic
-    t_in: Optional[float] = None
-    t_out: Optional[float] = None
-    p_th: Optional[float] = None
+    t_in: Optional[float] = Field(
+        default=None,
+        title="hplib heat pump temperature cool side (outdoors)",
+        description=(
+            'Only needed when hplib heat pump type is "Generic"!'
+            "Temperature in K on the low temperature side of the heat pump. "
+            "Usually the outside atmosphere."
+        ),
+    )
+    t_out: Optional[float] = Field(
+        default=None,
+        title="hplib heat pump temperature hot side (indoors)",
+        description=(
+            'Only needed when hplib heat pump type is "Generic"!'
+            "Temperature in K on the warm temperature side of the heat pump. "
+            "Usually the heat water output of the heat pump."
+        ),
+    )
+    p_th: Optional[float] = Field(
+        default=None,
+        title="hplib heat pump thermal output power",
+        description=(
+            'Only needed when hplib heat pump type is "Generic"!'
+            "Thermal output power at setpoint t_in, t_out "
+            "(and for water/water, brine/water heat pumps t_amb = -7°C). [W]"
+        ),
+    )
 
-    @field_validator("t_in", "t_out", "p_th")
+    @field_validator("t_in", "t_out")
     def validate_generic_hp(cls, v):
         if v is not None and v < 200:
             raise ValueError("All temperatures must be in Kelvin")
@@ -93,11 +148,17 @@ class HeatPump(BaseModel):
                 )
         return values
 
-    """End of hpl specific data"""
-
-    # hpl does not implement Air/Air heat pumps. This value will be used
-    # instead and must be provided when the type is Air/Air
-    cop_air: Optional[str] = None
+    """End of hplib specific data"""
+    cop_air: Optional[float] = Field(
+        default=None,
+        title="CoP for Air/Air heat pump",
+        description=(
+            "hplib does not implement Air/Air heat pumps. "
+            "This value will be used instead and must be provided when the "
+            "type is Air/Air"
+        ),
+        examples=[1.0, 2.3, 3.1],
+    )
 
     @field_validator("cop_air")
     def validate_cop_air(cls, v):
