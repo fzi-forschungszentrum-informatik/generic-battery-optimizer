@@ -193,9 +193,7 @@ def heat_pump_block_rule(
     )
 
     # Tank
-    block.heat_energy_TES = pyo.Var(
-        bounds=(heat_pump.min_heat_energy_tes, heat_pump.max_heat_energy_tes)
-    )
+    block.heat_energy_TES = pyo.Var(bounds=(0, heat_pump.max_heat_energy_tes))
     block.soc = pyo.Var(bounds=(0, 1))
     block.heat_loss_tank = pyo.Var(domain=pyo.NonNegativeReals)
 

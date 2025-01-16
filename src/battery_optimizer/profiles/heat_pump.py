@@ -206,7 +206,6 @@ class HeatPump(BaseModel):
 
     max_temp_tes: float
     charge_tes_off: float
-    min_heat_energy_tes: Optional[float] = 0.0
 
     @field_validator(
         "temp_supply_demand",
