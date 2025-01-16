@@ -113,7 +113,7 @@ class Optimizer:
         """
         log.info("Initializing Optimizer")
         # get all timestamps (build index)
-        log.info("Generating model index")
+        log.debug("Generating model index")
         temp_index = []
 
         for stack in [buy_prices, sell_prices, fixed_consumption]:
@@ -146,7 +146,7 @@ class Optimizer:
         log.debug(index)
 
         # init optimizer
-        log.info("Initializing buy prices")
+        log.debug("Initializing buy prices")
         if buy_prices is not None:
             self.prices = parse_profiles(
                 buy_prices, index, add_padding_profile=False
@@ -155,35 +155,35 @@ class Optimizer:
         else:
             self.prices = {}
 
-        log.info("Initializing sell prices")
+        log.debug("Initializing sell prices")
         if sell_prices is not None:
             self.sell_prices = parse_profiles(sell_prices, index)
             log.debug(self.sell_prices)
         else:
             self.sell_prices = {}
 
-        log.info("Initializing fixed consumption")
+        log.debug("Initializing fixed consumption")
         if fixed_consumption is not None:
             self.fixed_consumption = parse_profiles(fixed_consumption, index)
             log.debug(self.fixed_consumption)
         else:
             self.fixed_consumption = {}
 
-        log.info("Initializing batteries")
+        log.debug("Initializing batteries")
         if batteries is not None:
             self.batteries = batteries
             log.debug(self.batteries)
         else:
             self.batteries = []
 
-        log.info("Initializing heat pumps")
+        log.debug("Initializing heat pumps")
         if heat_pumps is not None:
             self.heat_pumps = heat_pumps
             log.debug(self.heat_pumps)
         else:
             self.heat_pumps = []
 
-        log.info("Initializing model structure")
+        log.debug("Initializing model structure")
         self.model = Model(index)
         if log.getEffectiveLevel() <= logging.DEBUG:
             self.model.model.display()
@@ -197,35 +197,36 @@ class Optimizer:
 
         The model will be saved to model.log when running in debug mode
         """
+        log.info("Generating model structure")
         # for each profile in prices add it to the model
-        log.info("Adding buy profiles to model")
+        log.debug("Adding buy profiles to model")
         for name, profile in self.prices.items():
             self.model.add_buy_profile(name, profile)
 
         # add all sell prices to the model
-        log.info("Adding sell profiles to model")
+        log.debug("Adding sell profiles to model")
         for name, profile in self.sell_prices.items():
             self.model.add_sell_profile(name, profile)
 
         # add all fixed consumptions
-        log.info("Adding all fixed consumptions to model")
+        log.debug("Adding all fixed consumptions to model")
         for name, profile in self.fixed_consumption.items():
             self.model.add_fixed_consumption(name, profile)
 
         # add each battery to the model
-        log.info("Adding all batteries to the model")
+        log.debug("Adding all batteries to the model")
         for battery in self.batteries:
             self.model.add_battery(battery)
 
-        log.info("Adding all heat pumps to the model")
+        log.debug("Adding all heat pumps to the model")
         for heat_pump in self.heat_pumps:
             self.model.add_heat_pump(heat_pump)
 
         # add all paths
-        log.info("Generating energy paths")
+        log.debug("Generating energy paths")
         self.model.add_energy_paths()
         # generate objective
-        log.info("Generating objective")
+        log.debug("Generating objective")
         self.model.generate_objective()
         # print the model to console
         if log.getEffectiveLevel() <= logging.DEBUG:
@@ -295,7 +296,7 @@ class Model:
         battery : Battery
             The battery to add to the model.
         """
-        log.info("Adding %s to the model", battery.name)
+        log.debug("Adding %s to the model", battery.name)
         log.debug(battery)
         base_name = f"{TEXT_BATTERY_BASE}{battery.name}"
         name_charge_energy = f"{base_name}{TEXT_CHARGE_ENERGY}"
@@ -788,7 +789,7 @@ class Model:
 
     def add_buy_profile(self, name: str, profile: pd.DataFrame) -> None:
         """Add an energy buy profile to the model"""
-        log.info("Adding buy profile %s to model", name)
+        log.debug("Adding buy profile %s to model", name)
         # add a new price profile to the model
         component_name = self.__add_profile(
             base=TEXT_ENERGY_PROFILE_BASE, name=name, profile=profile
@@ -847,7 +848,7 @@ class Model:
 
     def add_sell_profile(self, name: str, profile: pd.DataFrame) -> None:
         """Add an energy sell profile to the model"""
-        log.info("Adding sell profile %s to model", name)
+        log.debug("Adding sell profile %s to model", name)
         # This adds a energy target to the energy matrix and yields revenue in
         # Objective
         self.energy_sinks.append(
@@ -857,7 +858,7 @@ class Model:
 
     def add_fixed_consumption(self, name: str, profile: pd.DataFrame) -> None:
         """Add a fixed energy consumption to the model"""
-        log.info("Adding fixed consumption %s to model", name)
+        log.debug("Adding fixed consumption %s to model", name)
         log.debug(profile)
 
         base_name = f"{TEXT_CONSUMPTION_PROFILE_BASE}{name}"
@@ -891,7 +892,7 @@ class Model:
         been added.
         """
         # Create energy path matrix
-        log.info("Generating energy matrix")
+        log.debug("Generating energy matrix")
         self.model.add_component(
             TEXT_ENERGY_PATH_MATRIX,
             pyo.Var(
@@ -904,7 +905,7 @@ class Model:
         log.debug(self.model.component(TEXT_ENERGY_PATH_MATRIX))
         # for each row add a constraint limiting the energy draw
         for source in self.energy_sources:
-            log.info(f"Generate row {source} constraints for energy matrix")
+            log.debug(f"Generate row {source} constraints for energy matrix")
             # name_discharge_energy
             if source.startswith(TEXT_BATTERY_BASE):
                 log.debug("%s is a battery", source)
@@ -957,7 +958,7 @@ class Model:
         # fixed energy draw needs te satisfy an equality constraint rather
         # than a lesser than constraint
         for sink in self.energy_sinks:
-            log.info(f"Generate column {sink} constraints for energy matrix")
+            log.debug(f"Generate column {sink} constraints for energy matrix")
             # name_charge_energy
             if sink.startswith(TEXT_BATTERY_BASE):
                 log.debug("%s is a battery", sink)
