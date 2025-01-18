@@ -247,8 +247,13 @@ class HeatPump(BaseModel):
         ),
     )
 
-    @field_validator("heat_source_temperature", "outdoor_temperature")
-    def validate_heat_source_temperature(cls, v):
+    # An optional heat demand of the building. If not provided, the heat
+    # demand is calculated from the u-values and the surface of the building
+    # Use df.to_dict() to convert a pandas dataframe to suitable dictionary
+    heat_demand: Optional[dict[datetime.datetime, float]] = None
+
+    @field_validator("outdoor_temperature", "heat_source_temperature")
+    def validate_outdoor_temperature(cls, v):
         if v is None:
             return v
         # Just a float value
@@ -258,27 +263,15 @@ class HeatPump(BaseModel):
             return v
         # A dictionary with datetime keys and float values
         else:
-            for value in v.values():
-                if value < 200:
-                    raise ValueError("All temperatures must be in Kelvin")
-        return v
-
-    # An optional heat demand of the building. If not provided, the heat
-    # demand is calculated from the u-values and the surface of the building
-    # Use df.to_dict() to convert a pandas dataframe to suitable dictionary
-    heat_demand: Optional[dict[datetime.datetime, float]] = None
-
-    @field_validator("outdoor_temperature", "heat_source_temperature")
-    def validate_outdoor_temperature(cls, v):
-        if not all(
-            isinstance(dt, datetime.datetime) and dt.tzinfo is not None
-            for dt in v.keys()
-        ):
-            raise ValueError("All datetime keys must be timezone aware")
-        # Values should be in Kelvin
-        if any(temp < 200 for temp in v.values()):
-            raise ValueError("All temperatures must be in Kelvin")
-        return pd.Series(v)
+            if not all(
+                isinstance(dt, datetime.datetime) and dt.tzinfo is not None
+                for dt in v.keys()
+            ):
+                raise ValueError("All datetime keys must be timezone aware")
+            # Values should be in Kelvin
+            if any(temp < 200 for temp in v.values()):
+                raise ValueError("All temperatures must be in Kelvin")
+            return pd.Series(v)
 
     # Computed fields
     @computed_field
