@@ -223,12 +223,45 @@ class HeatPump(BaseModel):
             raise ValueError("All temperatures must be in Kelvin")
         return v
 
-    # TODO The index must be the same as the rest of the model
-    # It would probably be better to just use a list and make sure it has the
-    # same length as the index.
-    # If we leave it like this, we must merge all the indexes into one
-    outdoor_temperature: dict[datetime.datetime, float]
-    heat_source_temperature: dict[datetime.datetime, float]
+    outdoor_temperature: float | dict[datetime.datetime, float] = Field(
+        title="Outdoor temperature",
+        description=(
+            "The outdoor temperature in Kelvin. This can be a single value "
+            "or a dictionary with datetime keys and float values. "
+            "When a dictionary is used, the keys must be timezone aware. "
+            "When the keys do not match a period start in the model, the "
+            "temperature is linearly interpolated between the two closest "
+            "values."
+        ),
+    )
+    heat_source_temperature: float | dict[datetime.datetime, float] = Field(
+        title="Heat source temperature",
+        description=(
+            "The temperature in Kelvin of the heat source "
+            "(e.g. air or water). This can be a single value "
+            "or a dictionary with datetime keys and float values. "
+            "When a dictionary is used, the keys must be timezone aware. "
+            "When the keys do not match a period start in the model, the "
+            "temperature is linearly interpolated between the two closest "
+            "values."
+        ),
+    )
+
+    @field_validator("heat_source_temperature", "outdoor_temperature")
+    def validate_heat_source_temperature(cls, v):
+        if v is None:
+            return v
+        # Just a float value
+        if isinstance(v, float):
+            if v < 200:
+                raise ValueError("All temperatures must be in Kelvin")
+            return v
+        # A dictionary with datetime keys and float values
+        else:
+            for value in v.values():
+                if value < 200:
+                    raise ValueError("All temperatures must be in Kelvin")
+        return v
 
     # An optional heat demand of the building. If not provided, the heat
     # demand is calculated from the u-values and the surface of the building

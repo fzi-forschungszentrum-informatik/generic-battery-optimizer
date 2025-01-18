@@ -1,3 +1,5 @@
+import datetime
+import pandas as pd
 import pyomo.environ as pyo
 import hplib.hplib as hpl
 from battery_optimizer.helpers.heat_pump_profile import (
@@ -17,6 +19,44 @@ from battery_optimizer.static.heat_pump import (
 from battery_optimizer.static.numbers import MAX_COP
 
 log = logging.getLogger(__name__)
+
+
+def interpolate_temperature(
+    temperature: float | dict[datetime.datetime, float],
+    current_period: datetime.datetime,
+):
+    """Returns the temperature for the current period.
+
+    If the temperature is a float, it is returned as is.
+    If the temperature is a dictionary, the temperature for the current period
+    is returned either by the exact key if available or it is linearly
+    interpolated between the two closest keys.
+
+    ----------
+    Variables:
+
+    temperature: float | dict[datetime.datetime, float]
+        The temperature for the optimization duration
+
+    current_period: datetime.datetime
+        The current period for which the temperature should be returned
+
+    --------
+    Returns:
+
+    temperature: float
+        The temperature for the current period in K"""
+    # Just return the temperature if it is a float
+    if isinstance(temperature, float):
+        return temperature
+    # Return exact temperature if available
+    elif current_period in temperature:
+        return temperature[current_period]
+    # Interpolate temperature if not available
+    else:
+        temperature[current_period] = None
+        series = pd.Series(temperature).sort_index().interpolate(method="time")
+        return series[current_period]
 
 
 def heat_pump_block_rule(
@@ -50,12 +90,12 @@ def heat_pump_block_rule(
         hpl_heat_pump = hpl.HeatPump(parameters)
 
     # Parameter
-
     # Außentemperatur der aktuellen Periode
-    def temp_outdoor_profile_rule(block):
-        return heat_pump.outdoor_temperature[period]
-
-    block.outdoor_temperature = pyo.Param(rule=temp_outdoor_profile_rule)
+    block.outdoor_temperature = pyo.Param(
+        initialize=interpolate_temperature(
+            heat_pump.outdoor_temperature, period
+        )
+    )
 
     # setzt Wärmebedarf für warmwassererzeugung
     def warm_water_demand_rule(block):
@@ -105,11 +145,10 @@ def heat_pump_block_rule(
     )
 
     # Quellentemperatur der aktuellen Periode
-    def source_temp_rule(block):
-        return heat_pump.heat_source_temperature[period]
-
     block.source_temp = pyo.Param(
-        rule=source_temp_rule,
+        initialize=interpolate_temperature(
+            heat_pump.heat_source_temperature, period
+        ),
         doc=(
             "Temperature of heat source in K. e.g. outdoor air, ground water "
             "or soil temperature."
