@@ -168,7 +168,7 @@ def heat_loss_building(
 
 
 def parse_time_string_list(
-    date_list: list[str], format: str | None = None
+    date_list: list[str] | None, format: str | None = None
 ) -> list:
     """Parses time strings in the list to datetime objects
 
@@ -189,6 +189,9 @@ def parse_time_string_list(
             datetime objects of the periods
     """
     ranges = []
+    if date_list is None:
+        return ranges
+
     if len(date_list) == 0:
         return ranges
 
