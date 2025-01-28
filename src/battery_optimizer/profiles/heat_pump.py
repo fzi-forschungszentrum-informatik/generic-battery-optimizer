@@ -244,7 +244,19 @@ class HeatPump(BaseModel):
         ),
         examples=[303.15, 308.15, 313.15, 318.15],
     )
-    temp_room: float
+    temp_room: float | dict[datetime.datetime, float] = Field(
+        default=293.15,
+        title="Room temperature",
+        description=(
+            "The desired room temperature heated by the heating system in "
+            "Kelvin. "
+            "This can be a single value or a dictionary with datetime keys "
+            "and float values. When a dictionary is used, the keys must be "
+            "timezone aware. When the keys do not match a period start in the "
+            "model, the temperature is linearly interpolated between the two "
+            "closest values."
+        ),
+    )
     temp_hp_out: Optional[float]
     bivalent_temp: Optional[float]
 
@@ -267,7 +279,6 @@ class HeatPump(BaseModel):
 
     @field_validator(
         "flow_temperature",
-        "temp_room",
         "max_temp_hp",
         "max_temp_tes",
         "charge_tes_off",
@@ -310,8 +321,10 @@ class HeatPump(BaseModel):
     # Use df.to_dict() to convert a pandas dataframe to suitable dictionary
     heat_demand: Optional[dict[datetime.datetime, float]] = None
 
-    @field_validator("outdoor_temperature", "heat_source_temperature")
-    def validate_outdoor_temperature(cls, v):
+    @field_validator(
+        "outdoor_temperature", "heat_source_temperature", "temp_room"
+    )
+    def validate_temperature_lists(cls, v):
         if v is None:
             return v
         # Just a float value

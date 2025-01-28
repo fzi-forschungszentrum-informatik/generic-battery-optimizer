@@ -72,6 +72,8 @@ def heat_pump_block_rule(
         period, model.i
     )
 
+    temp_room = interpolate_temperature(heat_pump.temp_room, period)
+
     # HPL Heat Pump
     if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
         log.warning("L/L-WP")
@@ -132,7 +134,7 @@ def heat_pump_block_rule(
         heat_loss = heat_loss_building(
             heat_pump.u_values_building.model_dump(),
             pyo.value(block.outdoor_temperature),
-            heat_pump.temp_room - C_TO_K,
+            temp_room - C_TO_K,
         )
         return heat_loss
 
@@ -227,9 +229,7 @@ def heat_pump_block_rule(
     block.heat_supply_demand = pyo.Var(domain=pyo.NonNegativeReals)
 
     # Temp
-    block.temp_TES = pyo.Var(
-        bounds=(heat_pump.temp_room, heat_pump.max_temp_tes)
-    )
+    block.temp_TES = pyo.Var(bounds=(temp_room, heat_pump.max_temp_tes))
 
     # Tank
     block.heat_energy_TES = pyo.Var(bounds=(0, heat_pump.max_heat_energy_tes))
@@ -502,7 +502,7 @@ def heat_pump_block_rule(
             heat_pump.tank_height,
             heat_pump.tank_radius_o,
             heat_pump.tank_u_value,
-            (block.temp_TES - heat_pump.temp_room),
+            (block.temp_TES - temp_room),
         )
 
     block.heat_loss_tank_cons = pyo.Constraint(
@@ -530,7 +530,7 @@ def heat_pump_block_rule(
             heat_pump.tank_height,
             heat_pump.tank_radius_o,
             heat_pump.tank_u_value,
-            (heat_pump.max_temp_tes - heat_pump.temp_room),
+            (heat_pump.max_temp_tes - temp_room),
         )
 
     block.heat_loss_tank_ub = pyo.Constraint(rule=heat_loss_tank_ub_rule)
