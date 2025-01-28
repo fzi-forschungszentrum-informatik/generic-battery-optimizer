@@ -273,56 +273,6 @@ def heat_loss_tank(
     ) / 1000
 
 
-class TimeFrame:
-    def __init__(
-        self, start: datetime.datetime, end: datetime.datetime, resolution: str
-    ):
-        """
-        :param start: time of the start of the simulation/investigation
-        :param end: time of the end of the simulation/investigation
-        :param resolution: string defining the resolution, using pandas offset aliases:
-        https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
-        """
-        self.tz = pytz.timezone("Europe/Berlin")
-        if not start.tzinfo and not end.tzinfo:
-            self.start = self.tz.localize(start)
-            self.end = self.tz.localize(end)
-        else:
-            self.start = start
-            self.end = end
-        self.resolution = resolution
-        self.resolution_influx = self._convert_resolution_to_influx_alias()
-        self.index = self.generate_datetimeindex()
-
-        self.freq = self.generate_freq()
-
-        self.delta = pd.Timedelta(self.resolution)
-
-    def _convert_resolution_to_influx_alias(self):
-        if "min" in self.resolution:
-            return self.resolution.replace("min", "m")
-
-        if "S" in self.resolution:
-            return self.resolution.replace("S", "s")
-
-        else:
-            return self.resolution
-
-    def generate_datetimeindex(self):
-        index = pd.date_range(
-            self.start, self.end, freq=self.resolution, inclusive="left"
-        )
-        return index
-
-    def generate_freq(self):
-        freq_in_timedelta = pd.to_timedelta(self.resolution)
-        freq_in_hours = freq_in_timedelta / pd.Timedelta(hours=1)
-        return freq_in_hours
-
-    def __str__(self):
-        return f"{self.start.isoformat()} - {self.end.isoformat()}"
-
-
 def reverse_resolution(scale: int | float):
     """
     Funktion, welche aus einem int/float Wert, welcher die Periodenlänge in Stunden enthält einen String erzeugt,
