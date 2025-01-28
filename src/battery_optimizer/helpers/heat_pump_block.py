@@ -323,7 +323,7 @@ def heat_pump_block_rule(
         else:
             results = hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=((heat_pump.temp_supply_demand - 5) - C_TO_K),
+                t_in_secondary=((heat_pump.flow_temperature - 5) - C_TO_K),
                 t_amb=(block.outdoor_temperature - C_TO_K),
                 mode=1,
             )
@@ -480,7 +480,7 @@ def heat_pump_block_rule(
             == block.heat_energy_TES
             * 3600
             / (heat_pump.tank_mass * heat_pump.cp)
-            + heat_pump.temp_supply_demand
+            + heat_pump.flow_temperature
         )
 
     block.heat_energy_TES_cons = pyo.Constraint(rule=heat_energy_TES_rule)
@@ -488,8 +488,8 @@ def heat_pump_block_rule(
     # TES Energieinhalt in SOC umwandeln
     def soc_rule(block):
         return block.soc == (
-            (block.temp_TES - heat_pump.temp_supply_demand)
-            / (heat_pump.max_temp_tes - heat_pump.temp_supply_demand)
+            (block.temp_TES - heat_pump.flow_temperature)
+            / (heat_pump.max_temp_tes - heat_pump.flow_temperature)
         )
 
     block.soc_const = pyo.Constraint(rule=soc_rule)
@@ -518,7 +518,7 @@ def heat_pump_block_rule(
         if period == model.i.first():
             return pyo.Constraint.Skip
 
-        return block.temp_TES >= heat_pump.temp_supply_demand
+        return block.temp_TES >= heat_pump.flow_temperature
 
     block.temp_TES_cons = pyo.Constraint(rule=temp_TES_rule)
 

@@ -185,7 +185,15 @@ class HeatPump(BaseModel):
     u_values_building: _U_Values_Building
     surface_building: float
 
-    temp_supply_demand: float
+    flow_temperature: float = Field(
+        title="Flow temperature",
+        description=(
+            "The flow temperature of the heating circuit in Kelvin. "
+            "This is the temperature of the water as it leaves the heat pump/temperature energy storage "
+            "and enters the heating system, such as radiators or underfloor heating."
+        ),
+        examples=[303.15, 308.15, 313.15, 318.15],
+    )
     temp_room: float
     temp_hp_out: Optional[float]
     bivalent_temp: Optional[float]
@@ -208,7 +216,7 @@ class HeatPump(BaseModel):
     charge_tes_off: float
 
     @field_validator(
-        "temp_supply_demand",
+        "flow_temperature",
         "temp_room",
         "max_temp_hp",
         "max_temp_tes",
@@ -295,7 +303,7 @@ class HeatPump(BaseModel):
     def max_heat_energy_tes(self) -> float:
         return (
             (
-                (self.max_temp_tes - self.temp_supply_demand)
+                (self.max_temp_tes - self.flow_temperature)
                 * self.tank_mass
                 * 4186
             )
@@ -308,7 +316,7 @@ class HeatPump(BaseModel):
         return (
             self.tank_mass
             * 4186
-            * (self.max_temp_tes - self.temp_supply_demand)
+            * (self.max_temp_tes - self.flow_temperature)
             / (1000 * 3600)
         )
 
