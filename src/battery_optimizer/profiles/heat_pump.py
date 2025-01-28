@@ -263,7 +263,15 @@ class HeatPump(BaseModel):
         ),
         examples=[268.15, 263.15, 258.15],
     )
-    bivalent_temp: Optional[float]
+    bivalent_temp: Optional[float] = Field(
+        default=None,
+        title="Bivalent temperature",
+        description=(
+            "The outdoor temperature in Kelvin below which the heat pump only "
+            "provides 70% of the building heat demand. The remaining 30% are "
+            "provided by a backup heater."
+        ),
+    )
 
     max_temp_hp: float
     min_electric_consumption_hp: Optional[float] = 0.0
