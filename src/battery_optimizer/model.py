@@ -233,7 +233,13 @@ class Optimizer:
             with open("model.log", "w") as file:
                 self.model.model.pprint(file)
 
-    def solve(self, tee=True, solver="glpk", result_file: str = ""):
+    def solve(
+        self,
+        tee=True,
+        solver="glpk",
+        result_file: str = "",
+        options: dict = None,
+    ):
         """Solve the model
 
         This solves the model. set_up() needs to be called before solving can
@@ -247,11 +253,14 @@ class Optimizer:
             Specify a solver to use. The default is glpk.
         result_file : str
             Write an ILP file to disk. This works with Gurobi.
+        options: dict
+            Additional options to pass to the solver
+            e.g. {"TimeLimit": 60, "MIPGap": 0.01}
         """
         # if !isSetUp
         # set_up()
         return self.model.solve(
-            tee=tee, solver=solver, result_file=result_file
+            tee=tee, solver=solver, result_file=result_file, options=options
         )
 
 
@@ -1053,7 +1062,13 @@ class Model:
         )
         log.debug(self.model.component(TEXT_OBJECTIVE_NAME))
 
-    def solve(self, tee=False, solver="scip", result_file: str = ""):
+    def solve(
+        self,
+        tee=False,
+        solver="scip",
+        result_file: str = "",
+        options: dict = None,
+    ):
         """Solve the model
 
         Variables
@@ -1064,9 +1079,16 @@ class Model:
             Specify a solver to use. The default is glpk.
         result_file : str
             Write an ILP file to disk. This works with Gurobi.
+        options: dict
+            Additional options to pass to the solver
+            e.g. {"TimeLimit": 60, "MIPGap": 0.01}
         """
         log.info("Solving model")
         self.solver = SolverFactory(solver)
+
+        if options:
+            for key, value in options.items():
+                self.solver.options[key] = value
 
         if result_file != "":
             self.solver.options["ResultFile"] = result_file

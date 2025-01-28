@@ -19,6 +19,7 @@ def optimize(
     fixed_consumption: ProfileStack | None = None,
     batteries: list[Battery] | None = None,
     heat_pumps: list[HeatPump] | None = None,
+    **kwargs,
 ) -> tuple[
     pd.DataFrame,
     pd.DataFrame,
@@ -75,7 +76,7 @@ def optimize(
         heat_pumps=heat_pumps,
     )
     opt.set_up()
-    opt.solve()
+    opt.solve(**kwargs)
     return (
         to_buy(opt.model),
         to_sell(opt.model),
