@@ -315,14 +315,26 @@ class HeatPump(BaseModel):
         ),
     )
 
-    tank_u_value: Optional[float] = 0.6
+    max_temp_tes: float = Field(
+        default=363.15,
+        title="Maximum temperature of the TES",
+        description=(
+            "The maximum temperature of the thermal energy storage in Kelvin."
+        ),
+    )
+    tank_u_value: Optional[float] = Field(
+        default=0.6,
+        title="U-Value of the tank",
+        description=(
+            "The U-Value of the tank in W/m²K. This is used to calculate the "
+            "heat losses of the tank."
+        ),
+    )
     tank_mass: float
     tes_start_value: float
     tank_rest: float
     tank_rest_hours: list  # use ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) to convert
     predict_tank_loss: Optional[bool] = True
-
-    max_temp_tes: float
 
     @field_validator(
         "flow_temperature",
