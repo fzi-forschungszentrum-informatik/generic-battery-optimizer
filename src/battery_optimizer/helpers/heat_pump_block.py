@@ -141,8 +141,8 @@ def heat_pump_block_rule(
     block.heat_loss_building = pyo.Param(
         rule=heat_loss_building_rule,
         doc=(
-            "Estimated building heat loss in kWh for this period based on the "
-            "buildings U-values"
+            "Estimated building heat loss/demand in kWh for this period based "
+            "on the buildings U-values"
         ),
     )
 
