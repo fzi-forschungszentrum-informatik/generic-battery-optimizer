@@ -174,7 +174,7 @@ def heat_pump_block_rule(
     block.electric_energy_HR = pyo.Var(
         bounds=(
             0,
-            heat_pump.max_electric_consumption_hr,
+            heat_pump.max_electric_power_hr,
         ),
         doc=(
             "Electric energy consumption of the electric heater in kWh during "
@@ -184,7 +184,7 @@ def heat_pump_block_rule(
     block.electric_energy_HP = pyo.Var(
         bounds=(
             0,
-            heat_pump.max_electric_consumption_hp,
+            heat_pump.max_electric_power_hp,
         ),
         doc=(
             "Electric energy consumption of the heat pump in kWh during this "
@@ -215,7 +215,7 @@ def heat_pump_block_rule(
     block.heat_supply_HR = pyo.Var(
         bounds=(
             0,
-            heat_pump.max_electric_consumption_hr,
+            heat_pump.max_electric_power_hr,
         )
     )
 
@@ -252,7 +252,7 @@ def heat_pump_block_rule(
     # #minimaler heat Flow von WP
     def hp_lower_bound_rule(block):
         return (
-            heat_pump.min_electric_consumption_hp * block.y_HP
+            heat_pump.min_electric_power_hp * block.y_HP
             <= block.electric_energy_HP
         )
 
@@ -274,7 +274,7 @@ def heat_pump_block_rule(
     # minimaler heat Flow von HS
     def hr_lower_bound_rule(block):
         return (
-            heat_pump.min_electric_consumption_hr * block.y_HR
+            heat_pump.min_electric_power_hr * block.y_HR
             <= block.electric_energy_HR
         )
 
@@ -284,7 +284,7 @@ def heat_pump_block_rule(
     def HR_upper_bound_rule(block):
         return (
             block.electric_energy_HR
-            <= heat_pump.max_electric_consumption_hr * block.y_HR
+            <= heat_pump.max_electric_power_hr * block.y_HR
         )
 
     block.HR_upper_bound = pyo.Constraint(rule=HR_upper_bound_rule)
@@ -369,7 +369,7 @@ def heat_pump_block_rule(
 
     def hp_charge_MIND_rule(block):
         return (
-            block.y_TES * heat_pump.min_electric_consumption_hp
+            block.y_TES * heat_pump.min_electric_power_hp
             <= block.heat_supply_hp_tes
         )
 
@@ -452,7 +452,7 @@ def heat_pump_block_rule(
         return (
             block.heat_supply_demand
             <= heat_pump.max_heat_supply_hp
-            + heat_pump.max_electric_consumption_hr
+            + heat_pump.max_electric_power_hr
             + (heat_pump.max_heat_energy_tes / period_conversion_factor)
         )
 
