@@ -169,7 +169,7 @@ def test_scenarios(data):
             max_electric_power_hr=house_data["MAX_ELECTRIC_CONSUMPTION_HR"],
             min_electric_power_hr=house_data["MIND_ELECTRIC_CONSUMPTION_HR"],
             tank_mass=house_data["TANK_MASS"],
-            tes_start_value=house_data["TES_START_VALUE"],
+            tes_start_soc=house_data["TES_START_VALUE"],
             max_temp_tes=house_data["MAX_TEMP_TES"],
             u_values_building=house_data["U_VALUES_BUILDING"],
             outdoor_temperature=outdoor_temperature.to_dict(),
