@@ -538,15 +538,17 @@ def heat_pump_block_rule(
     # #weitere Restriktionen
 
     # Abschaltpunkt für WP
-    def temp_hp_out_rule(block):
-        if heat_pump.temp_hp_out is not None:
+    def hp_switch_off_temperature_rule(block):
+        if heat_pump.hp_switch_off_temperature is not None:
             return (
-                block.outdoor_temperature - heat_pump.temp_hp_out
+                block.outdoor_temperature - heat_pump.hp_switch_off_temperature
             ) * block.y_HP >= 0
         else:
             return pyo.Constraint.Skip
 
-    block.temp_hp_out = pyo.Constraint(rule=temp_hp_out_rule)
+    block.hp_switch_off_temperature = pyo.Constraint(
+        rule=hp_switch_off_temperature_rule
+    )
 
     def bivalent_temp_rule(block):
         if heat_pump.bivalent_temp is not None:

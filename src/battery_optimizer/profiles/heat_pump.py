@@ -253,7 +253,16 @@ class HeatPump(BaseModel):
             "closest values."
         ),
     )
-    temp_hp_out: Optional[float]
+
+    hp_switch_off_temperature: Optional[float] = Field(
+        default=None,
+        title="Outdoor temperature switch off",
+        description=(
+            "The outdoor temperature in Kelvin at which the heat pump is "
+            "switched off. If not provided, the heat pump can always run."
+        ),
+        examples=[268.15, 263.15, 258.15],
+    )
     bivalent_temp: Optional[float]
 
     max_temp_hp: float
@@ -278,7 +287,7 @@ class HeatPump(BaseModel):
         "max_temp_hp",
         "max_temp_tes",
         "charge_tes_off",
-        "temp_hp_out",
+        "hp_switch_off_temperature",
         "bivalent_temp",
     )
     def validate_temperatures(cls, v):
