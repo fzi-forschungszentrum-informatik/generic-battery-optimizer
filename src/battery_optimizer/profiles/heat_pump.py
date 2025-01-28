@@ -273,7 +273,15 @@ class HeatPump(BaseModel):
         ),
     )
 
-    max_temp_hp: float
+    output_temperature: float = Field(
+        title="Heat pump output temperature",
+        description=(
+            "The high side output temperature of the heat pump in Kelvin. "
+            "This is the maximum temperature the heat pump can provide. "
+            "Charging the TES above this temperature must be done by the "
+            "backup heater."
+        ),
+    )
     min_electric_consumption_hp: Optional[float] = 0.0
     max_electric_consumption_hp: float
 
@@ -288,13 +296,11 @@ class HeatPump(BaseModel):
     predict_tank_loss: Optional[bool] = True
 
     max_temp_tes: float
-    charge_tes_off: float
 
     @field_validator(
         "flow_temperature",
-        "max_temp_hp",
+        "output_temperature",
         "max_temp_tes",
-        "charge_tes_off",
         "hp_switch_off_temperature",
         "bivalent_temp",
     )

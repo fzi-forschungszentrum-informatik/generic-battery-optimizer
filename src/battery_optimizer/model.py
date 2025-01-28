@@ -640,16 +640,16 @@ class Model:
             heat_pump_block.periods[t].cons1 = pyo.Constraint(
                 expr=(
                     heat_pump_block.periods[t].temp_TES
-                    >= heat_pump.charge_tes_off
-                    - heat_pump.charge_tes_off
+                    >= heat_pump.output_temperature
+                    - heat_pump.output_temperature
                     * (1 - heat_pump_block.periods[t].y_tes_over_value)
                 )
             )
             heat_pump_block.periods[t].cons2 = pyo.Constraint(
                 expr=(
                     heat_pump_block.periods[t].temp_TES
-                    <= heat_pump.charge_tes_off
-                    + (heat_pump.max_temp_tes - heat_pump.charge_tes_off)
+                    <= heat_pump.output_temperature
+                    + (heat_pump.max_temp_tes - heat_pump.output_temperature)
                     * heat_pump_block.periods[t].y_tes_over_value
                 )
             )
@@ -665,16 +665,16 @@ class Model:
             heat_pump_block.periods[t].cons4 = pyo.Constraint(
                 expr=(
                     heat_pump_block.periods[t].temp_TES
-                    >= heat_pump.charge_tes_off
-                    - heat_pump.charge_tes_off
+                    >= heat_pump.output_temperature
+                    - heat_pump.output_temperature
                     * (1 - heat_pump_block.periods[t].y_delta_tes_over_value)
                 )
             )
             heat_pump_block.periods[t].cons5 = pyo.Constraint(
                 expr=(
                     heat_pump_block.periods[t].temp_TES
-                    <= heat_pump.charge_tes_off
-                    + (heat_pump.max_temp_tes - heat_pump.charge_tes_off)
+                    <= heat_pump.output_temperature
+                    + (heat_pump.max_temp_tes - heat_pump.output_temperature)
                     * heat_pump_block.periods[t].y_delta_tes_over_value
                 )
             )

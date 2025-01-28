@@ -297,7 +297,7 @@ def heat_pump_block_rule(
         if period in convert_list(heat_pump.warm_water_periods, model.i):
             results = hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=((heat_pump.max_temp_hp - 5) - C_TO_K),
+                t_in_secondary=((heat_pump.output_temperature - 5) - C_TO_K),
                 t_amb=(block.outdoor_temperature - C_TO_K),
                 mode=1,
             )
@@ -307,7 +307,7 @@ def heat_pump_block_rule(
         else:
             results = hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=((heat_pump.max_temp_hp - 5) - C_TO_K),
+                t_in_secondary=((heat_pump.output_temperature - 5) - C_TO_K),
                 t_amb=(block.outdoor_temperature - C_TO_K),
                 mode=1,
             )
