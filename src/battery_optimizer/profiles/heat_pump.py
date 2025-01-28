@@ -282,11 +282,38 @@ class HeatPump(BaseModel):
             "backup heater."
         ),
     )
-    min_electric_consumption_hp: Optional[float] = 0.0
-    max_electric_consumption_hp: float
 
-    min_electric_consumption_hr: Optional[float] = 0.0
-    max_electric_consumption_hr: float
+    min_electric_power_hp: Optional[float] = Field(
+        default=0.0,
+        title="Minimum electric consumption heat pump",
+        description=(
+            "The minimum electric consumption of the heat pump in kW. "
+            "The heat pump can either be switched off or - if it is switched "
+            "on - it needs to use at least this much power."
+        ),
+    )
+    max_electric_power_hp: float = Field(
+        title="Maximum electric consumption heat pump",
+        description=(
+            "The maximum electric consumption of the heat pump in kW. "
+        ),
+    )
+
+    min_electric_power_hr: Optional[float] = Field(
+        default=0.0,
+        title="Minimum electric consumption backup heater",
+        description=(
+            "The minimum electric consumption of the backup heater in kW. "
+            "The backup heater can either be switched off or - if it is "
+            "switched on - it needs to use at least this much power."
+        ),
+    )
+    max_electric_power_hr: float = Field(
+        title="Maximum electric consumption backup heater",
+        description=(
+            "The maximum electric consumption of the backup heater in kW. "
+        ),
+    )
 
     tank_u_value: Optional[float] = 0.6
     tank_mass: float
@@ -367,7 +394,7 @@ class HeatPump(BaseModel):
     @computed_field
     @property
     def max_heat_supply_hp(self) -> float:
-        return 10 * self.max_electric_consumption_hp
+        return 10 * self.max_electric_power_hp
 
     @computed_field
     @property
