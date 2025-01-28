@@ -146,7 +146,7 @@ class HeatPump(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_generic_hp_value_existance(cls, values):
+    def validate_generic_hp_value_existence(cls, values):
         if values.type == "Generic":
             if not all([values.id, values.t_in, values.t_out, values.p_th]):
                 raise ValueError(
