@@ -322,12 +322,23 @@ class HeatPump(BaseModel):
             "The maximum temperature of the thermal energy storage in Kelvin."
         ),
     )
+
+    predict_tank_loss: Optional[bool] = Field(
+        default=True,
+        title="Predict tank heat losses",
+        description=(
+            "If enabled, the heat losses of the tank are predicted based on "
+            "its dimensions. If disabled, the heat losses of the tank are not "
+            "being considered in the model."
+        ),
+    )
     tank_u_value: Optional[float] = Field(
         default=0.6,
         title="U-Value of the tank",
         description=(
             "The U-Value of the tank in W/m²K. This is used to calculate the "
-            "heat losses of the tank."
+            "heat losses of the tank. "
+            "If predict_tank_loss is disabled, this value is not used."
         ),
     )
     tank_mass: float
@@ -338,7 +349,6 @@ class HeatPump(BaseModel):
         le=1,
         examples=[0.0, 0.5, 1.0],
     )
-    predict_tank_loss: Optional[bool] = True
 
     @field_validator(
         "flow_temperature",
