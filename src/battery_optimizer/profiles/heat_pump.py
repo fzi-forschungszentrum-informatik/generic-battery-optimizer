@@ -187,6 +187,8 @@ class HeatPump(BaseModel):
     warm_water_periods: List[
         str
     ]  # use ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) to convert
+
+    # Values for estimating the heat demand of the building
     u_values_building: Optional[_U_Values_Building] = Field(
         title="Building U-Values",
         description=(
@@ -204,7 +206,33 @@ class HeatPump(BaseModel):
         },
     )
 
-    surface_building: float
+    living_area: float = Field(
+        title="Living area",
+        description=(
+            "Needed when no heat demand is provided. "
+            "The living area in m² of the building."
+        ),
+        default=None,
+        examples=[100.0, 150.0, 200.0],
+    )
+
+    @model_validator(mode="after")
+    def energy_estimation_or_heat_demand(cls, values):
+        if (
+            not (
+                values.u_values_building
+                or values.living_area
+                or values.warm_water_periods
+            )
+            and not values.heat_demand
+        ):
+            raise ValueError(
+                "Either u_values_building and living_area or heat_demand must "
+                "be provided"
+            )
+        return values
+
+    # End of values for estimating the heat demand of the building
 
     flow_temperature: float = Field(
         title="Flow temperature",
@@ -301,14 +329,6 @@ class HeatPump(BaseModel):
             if any(temp < 200 for temp in v.values()):
                 raise ValueError("All temperatures must be in Kelvin")
             return pd.Series(v)
-
-    @model_validator(mode="after")
-    def validate_u_values_or_heat_demand(cls, values):
-        if not values.u_values_building and not values.heat_demand:
-            raise ValueError(
-                "Either u_values_building or heat_demand must be provided"
-            )
-        return values
 
     # Computed fields
     @computed_field
