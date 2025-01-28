@@ -332,8 +332,6 @@ class HeatPump(BaseModel):
     )
     tank_mass: float
     tes_start_value: float
-    tank_rest: float
-    tank_rest_hours: list  # use ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) to convert
     predict_tank_loss: Optional[bool] = True
 
     @field_validator(

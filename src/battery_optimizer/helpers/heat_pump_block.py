@@ -558,20 +558,6 @@ def heat_pump_block_rule(
 
     block.bivalent_temp = pyo.Constraint(rule=bivalent_temp_rule)
 
-    # #Einführung von Notfallreserve, TES soll Restenergie haben, in bestimmten Perioden
-    # #könnte man auch außerhalb von block machen
-    # #Funktion so geschrieben, dass zu einer bestimmten Periode eine Notfallreserve im Speicher ist,
-    # #welche dann in nächster Periode zur Verfügung steht
-    def min_tes_heat_energy_rule(block):
-        if period in convert_list(heat_pump.tank_rest_hours, model.i):
-            return block.soc >= heat_pump.tank_rest
-        else:
-            return pyo.Constraint.Skip
-
-    block.min_tes_heat_energy_const = pyo.Constraint(
-        rule=min_tes_heat_energy_rule
-    )
-
     # Restriktion, die TES auf mind. 50°C aufheizt für die Sperrzeiten, falls es WW Bedarf gibt
     def ww_during_blocking_hours_rule(block):
         if heat_pump.warm_water_periods:
