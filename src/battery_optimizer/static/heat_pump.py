@@ -8,3 +8,5 @@ LOG_ERROR_TEMPERATURE_TOO_HIGH = (
     "This seems unreasonably high. "
     "Did you forget to convert from K or °F to °C?"
 )
+
+MINIMUM_KELVIN = 200

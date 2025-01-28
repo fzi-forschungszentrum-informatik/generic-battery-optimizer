@@ -9,6 +9,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from battery_optimizer.static.heat_pump import MINIMUM_KELVIN
 from battery_optimizer.static.numbers import SECRET_LENGTH
 import hplib.hplib as hpl
 from battery_optimizer.helpers.heat_pump_profile import (
@@ -119,6 +120,7 @@ class HeatPump(BaseModel):
             "Temperature in K on the low temperature side of the heat pump. "
             "Usually the outside atmosphere."
         ),
+        ge=MINIMUM_KELVIN,
     )
     t_out: Optional[float] = Field(
         default=None,
@@ -128,6 +130,7 @@ class HeatPump(BaseModel):
             "Temperature in K on the warm temperature side of the heat pump. "
             "Usually the heat water output of the heat pump."
         ),
+        ge=MINIMUM_KELVIN,
     )
     p_th: Optional[float] = Field(
         default=None,
@@ -138,12 +141,6 @@ class HeatPump(BaseModel):
             "(and for water/water, brine/water heat pumps t_amb = -7°C). [W]"
         ),
     )
-
-    @field_validator("t_in", "t_out")
-    def validate_generic_hp(cls, v):
-        if v is not None and v < 200:
-            raise ValueError("All temperatures must be in Kelvin")
-        return v
 
     @model_validator(mode="after")
     def validate_generic_hp_value_existence(cls, values):
@@ -238,6 +235,7 @@ class HeatPump(BaseModel):
             "pump/temperature energy storage and enters the heating system, "
             "such as radiators or underfloor heating."
         ),
+        ge=MINIMUM_KELVIN,
         examples=[303.15, 308.15, 313.15, 318.15],
     )
     temp_room: float | dict[datetime.datetime, float] = Field(
@@ -261,6 +259,7 @@ class HeatPump(BaseModel):
             "The outdoor temperature in Kelvin at which the heat pump is "
             "switched off. If not provided, the heat pump can always run."
         ),
+        ge=MINIMUM_KELVIN,
         examples=[268.15, 263.15, 258.15],
     )
     bivalent_temp: Optional[float] = Field(
@@ -271,6 +270,7 @@ class HeatPump(BaseModel):
             "provides 70% of the building heat demand. The remaining 30% are "
             "provided by a backup heater."
         ),
+        ge=MINIMUM_KELVIN,
     )
 
     output_temperature: float = Field(
@@ -281,6 +281,7 @@ class HeatPump(BaseModel):
             "Charging the TES above this temperature must be done by the "
             "backup heater."
         ),
+        ge=MINIMUM_KELVIN,
     )
 
     min_electric_power_hp: Optional[float] = Field(
@@ -321,6 +322,7 @@ class HeatPump(BaseModel):
         description=(
             "The maximum temperature of the thermal energy storage in Kelvin."
         ),
+        ge=MINIMUM_KELVIN,
     )
 
     predict_tank_loss: Optional[bool] = Field(
@@ -349,20 +351,6 @@ class HeatPump(BaseModel):
         le=1,
         examples=[0.0, 0.5, 1.0],
     )
-
-    @field_validator(
-        "flow_temperature",
-        "output_temperature",
-        "max_temp_tes",
-        "hp_switch_off_temperature",
-        "bivalent_temp",
-    )
-    def validate_temperatures(cls, v):
-        if v is None:
-            return v
-        if v < 200:
-            raise ValueError("All temperatures must be in Kelvin")
-        return v
 
     outdoor_temperature: float | dict[datetime.datetime, float] = Field(
         title="Outdoor temperature",
