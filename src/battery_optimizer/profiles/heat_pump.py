@@ -331,7 +331,13 @@ class HeatPump(BaseModel):
         ),
     )
     tank_mass: float
-    tes_start_value: float
+    tes_start_soc: Optional[float] = Field(
+        default=0.0,
+        title="Initial SoC of the TES",
+        ge=0,
+        le=1,
+        examples=[0.0, 0.5, 1.0],
+    )
     predict_tank_loss: Optional[bool] = True
 
     @field_validator(

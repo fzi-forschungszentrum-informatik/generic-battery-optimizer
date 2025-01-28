@@ -632,7 +632,7 @@ class Model:
         def heat_energy_TES_linkin_rule(model, t):
             if t == self.model.i.first():
                 return (
-                    heat_pump_block.periods[t].soc == heat_pump.tes_start_value
+                    heat_pump_block.periods[t].soc == heat_pump.tes_start_soc
                 )
 
             prev_t = self.model.i.prev(t)
