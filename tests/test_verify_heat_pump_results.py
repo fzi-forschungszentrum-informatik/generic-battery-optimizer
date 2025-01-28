@@ -163,7 +163,7 @@ def test_scenarios(data):
             temp_room=house_data["TEMP_ROOM"],
             temp_hp_out=house_data["TEMP_HP_OUT"],
             bivalent_temp=house_data["BIVALENT_TEMP"],
-            max_temp_hp=house_data["TEMP_HP"],
+            output_temperature=house_data["TEMP_HP"],
             max_electric_consumption_hp=house_data[
                 "MAX_ELECTRIC_CONSUMPTION_HP"
             ],
@@ -181,7 +181,6 @@ def test_scenarios(data):
             tank_rest=house_data["TANK_REST"],
             tank_rest_hours=house_data["TANK_REST_HOURS"],
             max_temp_tes=house_data["MAX_TEMP_TES"],
-            charge_tes_off=house_data["CHARGE_TES_OFF"],
             u_values_building=house_data["U_VALUES_BUILDING"],
             outdoor_temperature=outdoor_temperature.to_dict(),
             heat_source_temperature=outdoor_temperature.to_dict(),
