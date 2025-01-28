@@ -39,9 +39,15 @@ def _validate_distinct_item(item, group):
 
 
 class _U_Values_Building(BaseModel):
-    window: list[float] = two_item_list
+    """Building U-Values for the heat pump model
+
+    The U-Values are used to calculate the heat demand of the building.
+    The first number in each list is the surface area of the building's
+    component in m². The second number is the U-Value in W/m²K.
+    """
+    wall: list[float] = two_item_list
     roof: list[float] = two_item_list
-    wand: list[float] = two_item_list
+    window: list[float] = two_item_list
 
 
 class HeatPump(BaseModel):
@@ -181,8 +187,23 @@ class HeatPump(BaseModel):
     warm_water_periods: List[
         str
     ]  # use ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) to convert
+    u_values_building: Optional[_U_Values_Building] = Field(
+        title="Building U-Values",
+        description=(
+            "Needed when no heat demand is provided. "
+            "Building area and U-Values used to calculate the heat demand of "
+            "the building. The first number in each list is the surface area "
+            "of the building's component in m². The second number is the "
+            "U-Value in W/m²K."
+        ),
+        default=None,
+        example={
+            "wall": [159.4, 0.8],
+            "roof": [100.8, 0.5],
+            "window": [27, 1.3],
+        },
+    )
 
-    u_values_building: _U_Values_Building
     surface_building: float
 
     flow_temperature: float = Field(
@@ -280,6 +301,14 @@ class HeatPump(BaseModel):
             if any(temp < 200 for temp in v.values()):
                 raise ValueError("All temperatures must be in Kelvin")
             return pd.Series(v)
+
+    @model_validator(mode="after")
+    def validate_u_values_or_heat_demand(cls, values):
+        if not values.u_values_building and not values.heat_demand:
+            raise ValueError(
+                "Either u_values_building or heat_demand must be provided"
+            )
+        return values
 
     # Computed fields
     @computed_field
