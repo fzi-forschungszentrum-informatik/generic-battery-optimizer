@@ -238,8 +238,9 @@ class HeatPump(BaseModel):
         title="Flow temperature",
         description=(
             "The flow temperature of the heating circuit in Kelvin. "
-            "This is the temperature of the water as it leaves the heat pump/temperature energy storage "
-            "and enters the heating system, such as radiators or underfloor heating."
+            "This is the temperature of the water as it leaves the heat "
+            "pump/temperature energy storage and enters the heating system, "
+            "such as radiators or underfloor heating."
         ),
         examples=[303.15, 308.15, 313.15, 318.15],
     )
