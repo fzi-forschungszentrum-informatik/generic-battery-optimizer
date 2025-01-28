@@ -171,7 +171,7 @@ class HeatPump(BaseModel):
         assert cls.type in [
             "Air/Air",
             "Luft/Luft",
-        ], 'This value is only allowed when an "Air/Air"-Heatpump is used'
+        ], 'This value is only allowed when an "Air/Air"-Heat pump is used'
         return v
 
     # TODO check that the strings have the correct length
