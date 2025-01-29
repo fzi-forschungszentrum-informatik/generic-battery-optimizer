@@ -366,7 +366,12 @@ class HeatPump(BaseModel):
             "If predict_tank_loss is disabled, this value is not used."
         ),
     )
-    tank_mass: float
+
+    tank_volume: float = Field(
+        title="Mass of the TES [l]",
+        description="The volume of the thermal energy storage in litres.",
+        examples=[200, 250, 300, 500],
+    )
     tes_start_soc: Optional[float] = Field(
         default=0.0,
         title="Initial SoC of the TES",
@@ -446,12 +451,12 @@ class HeatPump(BaseModel):
     @computed_field
     @property
     def tank_height(self) -> float:
-        return tank_dimensions((self.tank_mass / 1000))[0]
+        return tank_dimensions((self.tank_volume / 1000))[0]
 
     @computed_field
     @property
     def tank_radius_o(self) -> float:
-        return tank_dimensions((self.tank_mass / 1000))[1]
+        return tank_dimensions((self.tank_volume / 1000))[1]
 
     # The maximum energy that can be stored in the TES
     @computed_field
@@ -460,7 +465,7 @@ class HeatPump(BaseModel):
         return (
             (
                 (self.max_temp_tes - self.flow_temperature)
-                * self.tank_mass
+                * self.tank_volume
                 * 4186
             )
             / 3600
@@ -470,7 +475,7 @@ class HeatPump(BaseModel):
     @property
     def max_heat_supply_tes(self) -> float:
         return (
-            self.tank_mass
+            self.tank_volume
             * 4186
             * (self.max_temp_tes - self.flow_temperature)
             / (1000 * 3600)
