@@ -19,7 +19,7 @@ from battery_optimizer.helpers.heat_pump_profile import (
 
 heat_pump_data = hpl.load_all_heat_pumps()
 two_item_list = Field(
-    default_factory=lambda: [0.0, 0.0], min_items=2, max_items=2
+    default_factory=lambda: [0.0, 0.0], min_length=2, max_length=2
 )
 
 
