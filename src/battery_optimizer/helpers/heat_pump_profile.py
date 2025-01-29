@@ -13,31 +13,34 @@ log = logging.getLogger(__name__)
 
 
 def tank_dimensions(volume: int | float):
+    """Calculate height and radius of a tank from the volume
+
+    This function calculates the radius and height of a tank
+    with a given volume based on typical tank dimensions.
+    Warm water tanks usually have a height to diameter ratio of 2:1 to 3:1.
+    The mean diameter is determined by the volume and the height is calculated.
+
+    Arguments
+    ---------
+    volume: int | float
+        The volume of the tank in m^3
+
+    Returns
+    -------
+    radius: float
+        The radius of the tank in m
+    height: float
+        The height of the tank in m
     """
-    Funktion berechnet die Höhe und den Radius für den Tank aus dem
-    angegebenen Volumen.
-    Höhe und Radius sollen in einem Verhältnis zwischen
-    2:1-5:1 liegen.
-    Als Rückgabe wird für die Höhe und den Radius
-    der Mittelwert für die Höhe und den Radius bei dem Verhältnis 2:1 und dem
-    Verhältnis 5:1 genommen
+    if volume <= 0:
+        return 0, 0
 
-    berechnet Höhe und Radius aus Volumen, Höhe Radius stehen im Verhältnis
-    2:1-5:1
+    h2r = (volume / (4 * np.pi)) ** (1 / 3)
+    h3r = (volume / (6 * np.pi)) ** (1 / 3)
 
-    volume: int/float, welcher Volumen des Tanks übergibt
+    radius = (h2r + h3r) / 2
 
-    Rückgabe:
-    radius, height: int/float, welche den Radius und die Höhe des Tanks
-        zurückgeben
-    """
-    radius1 = (volume / (5 * np.pi)) ** (1 / 3)
-    radius2 = (volume / (2 * np.pi)) ** (1 / 3)
-
-    radius = ((radius1 + 0.05) + (radius2 + 0.05)) / 2
-
-    height = volume / (np.pi * radius)
-
+    height = volume / (np.pi * radius**2)
     return radius, height
 
 
@@ -245,31 +248,39 @@ def convert_list(
     return block_list
 
 
-# Wärmeverlust von Tank/Zylinder
-# U-Werte zwischen 0,3-0,7 W/(m^2*K)
-# Dämmdicke 50mm
 def heat_loss_tank(
     height: int | float,
     radius: int | float,
-    U_value_material: int | float,
-    tempretaure_diff: int | float,
-):
-    """
-    Funktion berechnet die Energieverluste des Tanks über die Transmissionswärmeverluste des Tanks aufgrund
-    der Temperaturunterschiede zwischen Tank und Raumtemperatur
+    u_value_material: int | float,
+    tempretaure_difference: int | float,
+) -> float:
+    """Transmission heat losses of the tank
 
-    height:     int/float, welcher Höhe des Tanks angibt
-    radius:     int/float, welcher Radius des Tanks enthält
-    U_value_material:       int/float, welcher U-Wert des Isolationsmaterial des Tanks enthält
-    tempretaure_diff:       int/float, welche den Temperaturunterschied zwischen Tank- und Raumtemperatur enthält
+    Calculates the transmission heat losses of the tank based on the
+    temperature difference between the tank inside and outside.
 
-    Rückgabe
-    int/float, Verlustwärmestrom des Tanks in einer Periode
+    Arguments
+    ---------
+    height: int | float
+        The height of the tank in m
+    radius: int | float
+        The radius of the tank in m
+    u_value_material: int | float
+        The U-value of the insulation material of the tank in W/(m^2*K)
+        This is usually between 0.3 and 0.7 W/(m^2*K)
+    tempretaure_difference: int | float
+        The temperature difference between the tank and the room temperature
+        in K
+
+    Returns
+    -------
+    float
+        The heat loss of the tank in kW
     """
     return (
         (2 * np.pi * radius * (radius + height))
-        * U_value_material
-        * tempretaure_diff
+        * u_value_material
+        * tempretaure_difference
     ) / 1000
 
 

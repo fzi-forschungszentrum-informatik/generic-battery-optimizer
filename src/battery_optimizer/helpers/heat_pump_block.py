@@ -478,8 +478,11 @@ def heat_pump_block_rule(
         return (
             block.temp_TES
             == block.heat_energy_TES
-            * 3600
-            / (heat_pump.tank_mass * heat_pump.cp)
+            * 3600  # conversion seconds to hours (J (Ws) -> Wh)
+            / (
+                heat_pump.tank_volume
+                * 4.186  # Heat capacity of water in kWh/kgK
+            )
             + heat_pump.flow_temperature
         )
 
@@ -500,7 +503,7 @@ def heat_pump_block_rule(
             return block.heat_loss_tank == 0
         return block.heat_loss_tank == heat_loss_tank(
             heat_pump.tank_height,
-            heat_pump.tank_radius_o,
+            heat_pump.tank_radius,
             heat_pump.tank_u_value,
             (block.temp_TES - temp_room),
         )
@@ -528,7 +531,7 @@ def heat_pump_block_rule(
             return block.heat_loss_tank <= 0
         return block.heat_loss_tank <= heat_loss_tank(
             heat_pump.tank_height,
-            heat_pump.tank_radius_o,
+            heat_pump.tank_radius,
             heat_pump.tank_u_value,
             (heat_pump.max_temp_tes - temp_room),
         )

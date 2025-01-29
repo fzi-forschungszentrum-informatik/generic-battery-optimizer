@@ -365,6 +365,7 @@ class HeatPump(BaseModel):
             "heat losses of the tank. "
             "If predict_tank_loss is disabled, this value is not used."
         ),
+        examples=[0.3, 0.5, 0.7],
     )
 
     tank_volume: float = Field(
@@ -451,12 +452,12 @@ class HeatPump(BaseModel):
     @computed_field
     @property
     def tank_height(self) -> float:
-        return tank_dimensions((self.tank_volume / 1000))[0]
+        return tank_dimensions((self.tank_volume / 1000))[1]
 
     @computed_field
     @property
-    def tank_radius_o(self) -> float:
-        return tank_dimensions((self.tank_volume / 1000))[1]
+    def tank_radius(self) -> float:
+        return tank_dimensions((self.tank_volume / 1000))[0]
 
     # The maximum energy that can be stored in the TES
     @computed_field
@@ -480,13 +481,3 @@ class HeatPump(BaseModel):
             * (self.max_temp_tes - self.flow_temperature)
             / (1000 * 3600)
         )
-
-    @computed_field
-    @property
-    def cp(self) -> float:
-        return 4186 / 1000
-
-    # These times are given in time ranges in which the heat pump must
-    # satisfy specific criteria
-    # They must be added to the index list and in these ranges the
-    # necessary constraints are added
