@@ -4,6 +4,7 @@ from typing import List, Optional
 import pandas as pd
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     computed_field,
     field_validator,
@@ -52,6 +53,8 @@ class _U_Values_Building(BaseModel):
 
 
 class HeatPump(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(
         default=secrets.token_hex(SECRET_LENGTH),
         title="Heat pump name",
