@@ -82,9 +82,9 @@ def heat_pump_block_rule(
         parameters = hpl.get_parameters(
             model=heat_pump.type,
             group_id=heat_pump.id,
-            t_in=heat_pump.t_in,
-            t_out=heat_pump.t_out,
-            p_th=heat_pump.p_th,
+            t_in=heat_pump.t_in - C_TO_K,
+            t_out=heat_pump.t_out - C_TO_K,
+            p_th=heat_pump.p_th / 1000,
         )
         hpl_heat_pump = hpl.HeatPump(parameters)
     else:
