@@ -219,11 +219,13 @@ class HeatPump(BaseModel):
             "U-Value in W/m²K."
         ),
         default=None,
-        example={
-            "wall": [159.4, 0.8],
-            "roof": [100.8, 0.5],
-            "window": [27, 1.3],
-        },
+        examples=[
+            {
+                "wall": [159.4, 0.8],
+                "roof": [100.8, 0.5],
+                "window": [27, 1.3],
+            }
+        ],
     )
 
     living_area: float = Field(
