@@ -96,6 +96,12 @@ testdata = [
 
 @pytest.mark.parametrize("data", testdata)
 def test_scenarios(data):
+    if os.getenv("CI_JOB_TOKEN"):
+        pytest.skip(
+            "Skipping test in GitLab CI environment "
+            "due to Gurobi license issue"
+        )
+
     # Expected Results
     expected_results = pd.read_csv(
         f"{base}{data['path']}results.csv", index_col=0, parse_dates=True
