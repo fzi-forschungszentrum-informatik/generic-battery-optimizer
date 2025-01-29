@@ -31,7 +31,7 @@ test:
   stage: test
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
-    - pip install pytest pytest-cov
+    - pip install -r requirements.txt
     - pip install dist/*.whl
     - export PYTHONPATH=src
     - pytest --cov-report term-missing --cov=src tests/
