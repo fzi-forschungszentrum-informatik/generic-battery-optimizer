@@ -396,10 +396,20 @@ class HeatPump(BaseModel):
         ),
     )
 
-    # An optional heat demand of the building. If not provided, the heat
-    # demand is calculated from the u-values and the surface of the building
-    # Use df.to_dict() to convert a pandas dataframe to suitable dictionary
-    heat_demand: Optional[dict[datetime.datetime, float]] = None
+    heat_demand: Optional[dict[datetime.datetime, float]] = Field(
+        default=None,
+        title="Heat demand of the building [kW]",
+        description=(
+            "An optional heat demand of the building in kW. "
+            "Heat demand is assumed to be constant during each period. "
+            "If not provided, the heat demand is calculated from the U-values "
+            "and wall, roof and window surface of the building."
+            "The heat demand is not interpolated if the keys from this heat "
+            "demand do not match the optimization time steps."
+            "Use df.to_dict() to convert a pandas dataframe to a suitable "
+            "pydantic dictionary."
+        ),
+    )
 
     @field_validator(
         "outdoor_temperature", "heat_source_temperature", "temp_room"
