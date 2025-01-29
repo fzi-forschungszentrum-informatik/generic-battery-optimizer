@@ -19,8 +19,6 @@ dependencies = [
   "pydantic >= 2",
   "pyomo",
   "xlsxwriter",
-  "pytest",
-  "pytest-watch",
   "hplib",
 ]
 description = "Generic Battery Optimizer"

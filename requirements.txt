@@ -5,6 +5,7 @@ pydantic>=2
 pyomo
 xlsxwriter
 pytest
+pytest-cov
 pytest-watch
 hplib
 pyyaml
