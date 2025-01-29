@@ -114,7 +114,7 @@ class HeatPump(BaseModel):
     # These values are only needed/allowed when the type is Generic
     t_in: Optional[float] = Field(
         default=None,
-        title="hplib heat pump temperature cool side (outdoors)",
+        title="hplib heat pump temperature cool side (outdoors) [K]",
         description=(
             'Only needed when hplib heat pump type is "Generic"!'
             "Temperature in K on the low temperature side of the heat pump. "
@@ -124,7 +124,7 @@ class HeatPump(BaseModel):
     )
     t_out: Optional[float] = Field(
         default=None,
-        title="hplib heat pump temperature hot side (indoors)",
+        title="hplib heat pump temperature hot side (indoors) [K]",
         description=(
             'Only needed when hplib heat pump type is "Generic"!'
             "Temperature in K on the warm temperature side of the heat pump. "
@@ -134,11 +134,11 @@ class HeatPump(BaseModel):
     )
     p_th: Optional[float] = Field(
         default=None,
-        title="hplib heat pump thermal output power",
+        title="hplib heat pump thermal output power [kW]",
         description=(
             'Only needed when hplib heat pump type is "Generic"!'
-            "Thermal output power at setpoint t_in, t_out "
-            "(and for water/water, brine/water heat pumps t_amb = -7°C). [W]"
+            "Thermal output power at set point t_in, t_out "
+            "(and for water/water, brine/water heat pumps t_amb = -7°C)."
         ),
     )
 
@@ -224,7 +224,7 @@ class HeatPump(BaseModel):
     )
 
     living_area: float = Field(
-        title="Living area",
+        title="Living area [m²]",
         description=(
             "Needed when no heat demand is provided. "
             "The living area in m² of the building."
@@ -248,7 +248,7 @@ class HeatPump(BaseModel):
     # End of values for estimating the heat demand of the building
 
     flow_temperature: float = Field(
-        title="Flow temperature",
+        title="Flow temperature [K]",
         description=(
             "The flow temperature of the heating circuit in Kelvin. "
             "This is the temperature of the water as it leaves the heat "
@@ -260,7 +260,7 @@ class HeatPump(BaseModel):
     )
     temp_room: float | dict[datetime.datetime, float] = Field(
         default=293.15,
-        title="Room temperature",
+        title="Room temperature [K]",
         description=(
             "The desired room temperature heated by the heating system in "
             "Kelvin. "
@@ -274,7 +274,7 @@ class HeatPump(BaseModel):
 
     hp_switch_off_temperature: Optional[float] = Field(
         default=None,
-        title="Outdoor temperature switch off",
+        title="Outdoor temperature switch off [K]",
         description=(
             "The outdoor temperature in Kelvin at which the heat pump is "
             "switched off. If not provided, the heat pump can always run."
@@ -284,7 +284,7 @@ class HeatPump(BaseModel):
     )
     bivalent_temp: Optional[float] = Field(
         default=None,
-        title="Bivalent temperature",
+        title="Bivalent temperature [K]",
         description=(
             "The outdoor temperature in Kelvin below which the heat pump only "
             "provides 70% of the building heat demand. The remaining 30% are "
@@ -294,7 +294,7 @@ class HeatPump(BaseModel):
     )
 
     output_temperature: float = Field(
-        title="Heat pump output temperature",
+        title="Heat pump output temperature [K]",
         description=(
             "The high side output temperature of the heat pump in Kelvin. "
             "This is the maximum temperature the heat pump can provide. "
@@ -306,7 +306,7 @@ class HeatPump(BaseModel):
 
     min_electric_power_hp: Optional[float] = Field(
         default=0.0,
-        title="Minimum electric consumption heat pump",
+        title="Minimum electric consumption heat pump [kW]",
         description=(
             "The minimum electric consumption of the heat pump in kW. "
             "The heat pump can either be switched off or - if it is switched "
@@ -314,7 +314,7 @@ class HeatPump(BaseModel):
         ),
     )
     max_electric_power_hp: float = Field(
-        title="Maximum electric consumption heat pump",
+        title="Maximum electric consumption heat pump [kW]",
         description=(
             "The maximum electric consumption of the heat pump in kW. "
         ),
@@ -322,7 +322,7 @@ class HeatPump(BaseModel):
 
     min_electric_power_hr: Optional[float] = Field(
         default=0.0,
-        title="Minimum electric consumption backup heater",
+        title="Minimum electric consumption backup heater [kW]",
         description=(
             "The minimum electric consumption of the backup heater in kW. "
             "The backup heater can either be switched off or - if it is "
@@ -330,7 +330,7 @@ class HeatPump(BaseModel):
         ),
     )
     max_electric_power_hr: float = Field(
-        title="Maximum electric consumption backup heater",
+        title="Maximum electric consumption backup heater [kW]",
         description=(
             "The maximum electric consumption of the backup heater in kW. "
         ),
@@ -338,7 +338,7 @@ class HeatPump(BaseModel):
 
     max_temp_tes: float = Field(
         default=363.15,
-        title="Maximum temperature of the TES",
+        title="Maximum temperature of the TES [K]",
         description=(
             "The maximum temperature of the thermal energy storage in Kelvin."
         ),
@@ -373,7 +373,7 @@ class HeatPump(BaseModel):
     )
 
     outdoor_temperature: float | dict[datetime.datetime, float] = Field(
-        title="Outdoor temperature",
+        title="Outdoor temperature [K]",
         description=(
             "The outdoor temperature in Kelvin. This can be a single value "
             "or a dictionary with datetime keys and float values. "
@@ -384,7 +384,7 @@ class HeatPump(BaseModel):
         ),
     )
     heat_source_temperature: float | dict[datetime.datetime, float] = Field(
-        title="Heat source temperature",
+        title="Heat source temperature [K]",
         description=(
             "The temperature in Kelvin of the heat source "
             "(e.g. air or water). This can be a single value "

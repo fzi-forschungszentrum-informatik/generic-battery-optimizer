@@ -145,7 +145,7 @@ def test_scenarios(data):
             input_data[data["weather_column"]].astype(float) + C_TO_K
         ).round(2)
 
-        # Constant power in W -> kWh in period
+        # Constant power in W -> kW in period
         heat_demand = input_data[data["heat_column"]] / 1000
 
         # Heat pump
