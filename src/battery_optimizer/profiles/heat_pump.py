@@ -47,6 +47,7 @@ class _U_Values_Building(BaseModel):
     The first number in each list is the surface area of the building's
     component in m². The second number is the U-Value in W/m²K.
     """
+    model_config = ConfigDict(extra="forbid")
     wall: list[float] = two_item_list
     roof: list[float] = two_item_list
     window: list[float] = two_item_list
