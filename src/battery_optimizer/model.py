@@ -1095,10 +1095,6 @@ class Model:
                 self.model.pprint(f)
             self.solver.options["ResultFile"] = result_file
 
-        # Suppress pyomo output from the solver
-        # if log.getEffectiveLevel() > logging.DEBUG:
-        #    logging.getLogger('pyomo.core').setLevel(logging.ERROR)
-
         result = self.solver.solve(
             self.model, tee=tee, symbolic_solver_labels=True)
 
