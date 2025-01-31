@@ -448,6 +448,19 @@ class HeatPump(BaseModel):
                 raise ValueError("All temperatures must be in Kelvin")
             return pd.Series(v)
 
+    enforce_end_soc: Optional[bool] = Field(
+        default=False,
+        title="Enforce end SoC to be equal to start SoC",
+        description=(
+            "If enabled, the SoC of the TES at the end of the optimization "
+            "period is enforced to be equal to the SoC at the beginning of "
+            "the optimization period."
+            "If disabled the optimizer will naturally use the 'free' energy "
+            "in the TES and the SoC at the end of the optimization period "
+            "will be 0."
+        ),
+    )
+
     # Computed fields
     @computed_field
     @property

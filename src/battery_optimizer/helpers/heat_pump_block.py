@@ -576,6 +576,15 @@ def heat_pump_block_rule(
         rule=ww_during_blocking_hours_rule
     )
 
+    # Force SoC to be the same at start and end of optimization
+    def soc_end_rule(block):
+        if period == model.i.last():
+            return block.soc == heat_pump.tes_start_soc
+        return pyo.Constraint.Skip
+
+    if heat_pump.enforce_end_soc:
+        block.soc_end = pyo.Constraint(rule=soc_end_rule)
+
     # #Wärmestrom Demand
 
     # #Restriktion, die sicherstellt, dass immer genügend Wärmeenergie erzeugt wieder pro Periode
