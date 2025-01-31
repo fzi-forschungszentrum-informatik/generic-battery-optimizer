@@ -1091,6 +1091,8 @@ class Model:
                 self.solver.options[key] = value
 
         if result_file != "":
+            with open(result_file.replace(".ilp", "_model.txt"), "w") as f:
+                self.model.pprint(f)
             self.solver.options["ResultFile"] = result_file
 
         # Suppress pyomo output from the solver
