@@ -17,7 +17,7 @@ from battery_optimizer.helpers.heat_pump_profile import (
     tank_dimensions,
 )
 
-heat_pump_data = hpl.load_all_heat_pumps()
+heat_pump_data = hpl.load_database()
 two_item_list = Field(
     default_factory=lambda: [0.0, 0.0], min_length=2, max_length=2
 )
@@ -86,6 +86,8 @@ class HeatPump(BaseModel):
     @field_validator("type")
     def validate_type(cls, v):
         allowed_types = list(heat_pump_data["Type"].unique())
+        if "Titel" in heat_pump_data.columns:
+            allowed_types.extend(list(heat_pump_data["Titel"].unique()))
         allowed_types.extend(list(heat_pump_data["Model"].unique()))
         allowed_types.extend(["Air/Air", "Luft/Luft", "Generic"])
         _validate_distinct_item(v, allowed_types)
