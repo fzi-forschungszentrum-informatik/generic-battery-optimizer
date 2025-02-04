@@ -96,7 +96,8 @@ def heat_pump_block_rule(
     block.outdoor_temperature = pyo.Param(
         initialize=interpolate_temperature(
             heat_pump.outdoor_temperature, period
-        )
+        ),
+        within=pyo.NonNegativeReals,
     )
 
     # setzt Wärmebedarf für warmwassererzeugung
@@ -122,6 +123,7 @@ def heat_pump_block_rule(
 
     block.warm_water_demand = pyo.Param(
         rule=warm_water_demand_rule,
+        within=pyo.NonNegativeReals,
         doc=(
             "Estimated warm water demand in kWh for this period based on the "
             "building's living area. Warm water usage is distributed equally "
@@ -140,6 +142,7 @@ def heat_pump_block_rule(
 
     block.heat_loss_building = pyo.Param(
         rule=heat_loss_building_rule,
+        within=pyo.NonNegativeReals,
         doc=(
             "Estimated building heat loss/demand in kWh for this period based "
             "on the buildings U-values"
@@ -151,6 +154,7 @@ def heat_pump_block_rule(
         initialize=interpolate_temperature(
             heat_pump.heat_source_temperature, period
         ),
+        within=pyo.NonNegativeReals,
         doc=(
             "Temperature of heat source in K. e.g. outdoor air, ground water "
             "or soil temperature."
