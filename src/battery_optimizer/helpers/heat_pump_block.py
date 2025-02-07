@@ -446,7 +446,7 @@ def heat_pump_block_rule(
     block.heat_supply_demand_total_cons = pyo.Constraint(
         rule=heat_supply_Demand_total_rule,
         doc=(
-            "Sets the total heat demand in kWh of the building for this "
+            "Sets the total heat demand in kW of the building for this "
             "period. "
             "If a known heat demand is given, it is used. Otherwise, the heat "
             "demand is estimated based on the building's U-values and the "
@@ -532,7 +532,7 @@ def heat_pump_block_rule(
     block.heat_loss_tank_cons = pyo.Constraint(
         rule=heat_loss_tank_rule,
         doc=(
-            "Heat loss of the tank in kWh for this period. "
+            "Heat loss of the tank in kW for this period. "
             "Estimated based on transmission heat loss."
         ),
     )
