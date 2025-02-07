@@ -102,6 +102,8 @@ def heat_pump_block_rule(
 
     # setzt Wärmebedarf für warmwassererzeugung
     def warm_water_demand_rule(block):
+        if "heat_demand" in heat_pump.__dict__:
+            return 0.0
         if period in convert_list(heat_pump.warm_water_periods, model.i):
             heat_flow = warm_water_heat_flow(
                 heat_pump.living_area,
@@ -133,6 +135,8 @@ def heat_pump_block_rule(
 
     # Funktion für Wärmeverlust durch Gebäudehülle, in Abhängigkeit der Außentemperatur
     def heat_loss_building_rule(block):
+        if "heat_demand" in heat_pump.__dict__:
+            return 0
         heat_loss = heat_loss_building(
             heat_pump.u_values_building.model_dump(),
             pyo.value(block.outdoor_temperature),
