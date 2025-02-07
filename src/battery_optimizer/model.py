@@ -691,7 +691,7 @@ class Model:
                 heat_pump_block.periods[t].heat_energy_TES
                 == heat_pump_block.periods[prev_t].heat_energy_TES
                 + (
-                    heat_pump_block.periods[prev_t].heat_supply_hp_tes
+                    heat_pump_block.periods[prev_t].heat_supply_hp_to_tes
                     + heat_pump_block.periods[prev_t].heat_supply_HR
                     - heat_pump_block.periods[prev_t].heat_supply_TES_Demand
                     - heat_pump_block.periods[prev_t].heat_loss_tank
@@ -732,10 +732,10 @@ class Model:
                 return (
                     heat_pump_block.periods[
                         limited_energy_hours
-                    ].electric_energy_HP
+                    ].electric_power_hp
                     + heat_pump_block.periods[
                         limited_energy_hours
-                    ].electric_energy_HR
+                    ].electric_power_hr
                     # TODO This is not calculated from dynamic time periods
                     <= heat_pump.limited_energy_hours[limited_energy_hours]
                 )
@@ -772,7 +772,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heat_pump_block.periods[i].electric_energy_HP
+                    heat_pump_block.periods[i].electric_power_hp
                     * 1000  # Heat pump uses kW, not W
                     * get_period_length(i, self.model.i)[1]
                     == model.component(heat_pump_energy_rule)[i]
@@ -784,7 +784,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heat_pump_block.periods[i].electric_energy_HR
+                    heat_pump_block.periods[i].electric_power_hr
                     * 1000  # Heat pump uses kW, not W
                     * get_period_length(i, self.model.i)[1]
                     == model.component(heat_recovery_energy_rule)[i]

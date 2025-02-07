@@ -179,7 +179,7 @@ def heat_pump_block_rule(
     )
 
     # electric power
-    block.electric_energy_HR = pyo.Var(
+    block.electric_power_hr = pyo.Var(
         bounds=(
             0,
             heat_pump.max_electric_power_hr,
@@ -189,7 +189,7 @@ def heat_pump_block_rule(
             "this period"
         ),
     )
-    block.electric_energy_HP = pyo.Var(
+    block.electric_power_hp = pyo.Var(
         bounds=(
             0,
             heat_pump.max_electric_power_hp,
@@ -201,7 +201,7 @@ def heat_pump_block_rule(
     )
 
     # heat flows
-    block.heat_supply_HP = pyo.Var(
+    block.heat_supply_hp_total = pyo.Var(
         bounds=(
             0,
             heat_pump.max_heat_supply_hp,
@@ -212,7 +212,7 @@ def heat_pump_block_rule(
             "heat_supply_hp_to_demand and heat_supply_hp_to_tes."
         ),
     )
-    block.heat_supply_hp_demand = pyo.Var(
+    block.heat_supply_hp_to_demand = pyo.Var(
         bounds=(
             0,
             heat_pump.max_heat_supply_hp,
@@ -222,7 +222,7 @@ def heat_pump_block_rule(
             "during this period"
         ),
     )
-    block.heat_supply_hp_tes = pyo.Var(
+    block.heat_supply_hp_to_tes = pyo.Var(
         bounds=(
             0,
             heat_pump.max_heat_supply_hp,
@@ -274,7 +274,7 @@ def heat_pump_block_rule(
     def hp_lower_bound_rule(block):
         return (
             heat_pump.min_electric_power_hp * block.y_HP
-            <= block.electric_energy_HP
+            <= block.electric_power_hp
         )
 
     block.hp_lower_bound_rule = pyo.Constraint(rule=hp_lower_bound_rule)
@@ -282,8 +282,8 @@ def heat_pump_block_rule(
     # maximaler Heat flow von WP
     def hp_upper_bound_rule(block):
         return (
-            block.electric_energy_HP
-            <= block.electric_energy_HP.bounds[1] * block.y_HP
+            block.electric_power_hp
+            <= block.electric_power_hp.bounds[1] * block.y_HP
         )
 
     block.hp_upper_bound = pyo.Constraint(rule=hp_upper_bound_rule)
@@ -296,7 +296,7 @@ def heat_pump_block_rule(
     def hr_lower_bound_rule(block):
         return (
             heat_pump.min_electric_power_hr * block.y_HR
-            <= block.electric_energy_HR
+            <= block.electric_power_hr
         )
 
     block.hr_lower_bound_rule = pyo.Constraint(rule=hr_lower_bound_rule)
@@ -304,7 +304,7 @@ def heat_pump_block_rule(
     # maximaler heat Flow von HS
     def HR_upper_bound_rule(block):
         return (
-            block.electric_energy_HR
+            block.electric_power_hr
             <= heat_pump.max_electric_power_hr * block.y_HR
         )
 
@@ -357,24 +357,27 @@ def heat_pump_block_rule(
     # Wärmeströme WP
 
     # Funktion setzt möglichen Wärmestrom von WP
-    def heat_supply_HP_rule(block):
+    def heat_supply_hp_total_rule(block):
         return (
-            block.heat_supply_HP == block.electric_energy_HP * block.cop_value
+            block.heat_supply_hp_total
+            == block.electric_power_hp * block.cop_value
         )
 
-    block.heat_supply_HP_cons = pyo.Constraint(rule=heat_supply_HP_rule)
+    block.heat_supply_hp_total_cons = pyo.Constraint(
+        rule=heat_supply_hp_total_rule
+    )
 
     def heat_flow_HP_rule(block):
         return (
-            block.heat_supply_HP
-            == block.heat_supply_hp_demand + block.heat_supply_hp_tes
+            block.heat_supply_hp_total
+            == block.heat_supply_hp_to_demand + block.heat_supply_hp_to_tes
         )
 
     block.heat_flow_HP = pyo.Constraint(rule=heat_flow_HP_rule)
 
     # möglicher Wärmestrom Heizstab
     def heat_flow_HR_rule(block):
-        return block.heat_supply_HR == block.electric_energy_HR
+        return block.heat_supply_HR == block.electric_power_hr
 
     block.heat_flow_HR = pyo.Constraint(rule=heat_flow_HR_rule)
 
@@ -383,7 +386,7 @@ def heat_pump_block_rule(
     def hp_charge_rule(block):
         return (
             block.y_TES * heat_pump.max_heat_supply_hp
-            >= block.heat_supply_hp_tes
+            >= block.heat_supply_hp_to_tes
         )
 
     block.charge_cons = pyo.Constraint(rule=hp_charge_rule)
@@ -391,7 +394,7 @@ def heat_pump_block_rule(
     def hp_charge_MIND_rule(block):
         return (
             block.y_TES * heat_pump.min_electric_power_hp
-            <= block.heat_supply_hp_tes
+            <= block.heat_supply_hp_to_tes
         )
 
     block.charge_MIND_cons = pyo.Constraint(rule=hp_charge_MIND_rule)
@@ -458,7 +461,7 @@ def heat_pump_block_rule(
     def heat_flows_TES_hp_Demand_rule(block):
         return (
             block.heat_supply_demand
-            == block.heat_supply_hp_demand + block.heat_supply_TES_Demand
+            == block.heat_supply_hp_to_demand + block.heat_supply_TES_Demand
         )
 
     block.heat_flows_TES_hp_Demand = pyo.Constraint(
@@ -577,7 +580,7 @@ def heat_pump_block_rule(
     def bivalent_temp_rule(block):
         if heat_pump.bivalent_temp is not None:
             if heat_pump.bivalent_temp >= block.outdoor_temperature:
-                return block.heat_supply_HP <= (block.heat_demand) * 0.7
+                return block.heat_supply_hp_total <= (block.heat_demand) * 0.7
         return pyo.Constraint.Skip
 
     block.bivalent_temp = pyo.Constraint(rule=bivalent_temp_rule)
@@ -610,12 +613,12 @@ def heat_pump_block_rule(
 
     # #Restriktion, die sicherstellt, dass immer genügend Wärmeenergie erzeugt wieder pro Periode
     # def heat_flows_TES_hp_Demand_rule2(block):
-    #     return block.heat_supply_Demand + block.heat_loss_tank <= block.heat_supply_hp_demand + block.heat_supply_hp_tes + block.heat_supply_HR + block.heat_energy_TES/TIME_RESOLUTION #* (1-block.y_TES)
+    #     return block.heat_supply_Demand + block.heat_loss_tank <= block.heat_supply_hp_to_demand + block.heat_supply_hp_to_tes + block.heat_supply_HR + block.heat_energy_TES/TIME_RESOLUTION #* (1-block.y_TES)
     # block.heat_flows_TES_HP_Demand2 = pyo.Constraint(rule=heat_flows_TES_HP_Demand_rule2)
 
     # #Wärmespeicher
 
     # #Wärmespeicher muss genügend Energie haben um Wärmestrom in Periode decken zu können
     # def heat_energy_TES_heat_flow_TES_rule(block):
-    #     return block.heat_energy_TES + (block.heat_supply_HR + block.heat_supply_hp_tes) * TIME_RESOLUTION  >= (block.heat_supply_TES_Demand + block.heat_loss_tank) * TIME_RESOLUTION
+    #     return block.heat_energy_TES + (block.heat_supply_HR + block.heat_supply_hp_to_tes) * TIME_RESOLUTION  >= (block.heat_supply_TES_Demand + block.heat_loss_tank) * TIME_RESOLUTION
     # block.heat_energy_TES_heat_flow_TES = pyo.Constraint(rule=heat_energy_TES_heat_flow_TES_rule)
