@@ -115,7 +115,7 @@ def heat_pump_block_rule(
             )
             log.debug(
                 f"Period {period} is a warm water period. "
-                f"Thermal energy for warm drinking water: {heat_flow} kWh."
+                f"Thermal energy for warm drinking water: {heat_flow} kW."
             )
             return heat_flow
         else:
@@ -125,7 +125,7 @@ def heat_pump_block_rule(
         rule=warm_water_demand_rule,
         within=pyo.NonNegativeReals,
         doc=(
-            "Estimated warm water demand in kWh for this period based on the "
+            "Estimated warm water demand in kW for this period based on the "
             "building's living area. Warm water usage is distributed equally "
             "across the warm water periods"
         ),
@@ -144,7 +144,7 @@ def heat_pump_block_rule(
         rule=heat_loss_building_rule,
         within=pyo.NonNegativeReals,
         doc=(
-            "Estimated building heat loss/demand in kWh for this period based "
+            "Estimated building heat loss/demand in kW for this period based "
             "on the buildings U-values"
         ),
     )
@@ -181,7 +181,7 @@ def heat_pump_block_rule(
             heat_pump.max_electric_power_hr,
         ),
         doc=(
-            "Electric energy consumption of the electric heater in kWh during "
+            "Electric energy consumption of the electric heater in kW during "
             "this period"
         ),
     )
@@ -191,7 +191,7 @@ def heat_pump_block_rule(
             heat_pump.max_electric_power_hp,
         ),
         doc=(
-            "Electric energy consumption of the heat pump in kWh during this "
+            "Electric energy consumption of the heat pump in kW during this "
             "period"
         ),
     )
