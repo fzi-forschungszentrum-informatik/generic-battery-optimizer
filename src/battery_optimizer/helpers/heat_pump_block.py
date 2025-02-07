@@ -104,7 +104,7 @@ def heat_pump_block_rule(
     def warm_water_demand_rule(block):
         if period in convert_list(heat_pump.warm_water_periods, model.i):
             heat_flow = warm_water_heat_flow(
-                heat_pump.surface_building,
+                heat_pump.living_area,
                 heat_pump.warm_water_periods,
                 start=period,
                 end=(
