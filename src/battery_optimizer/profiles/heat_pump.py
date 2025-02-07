@@ -243,9 +243,9 @@ class HeatPump(BaseModel):
 
     @model_validator(mode="after")
     def energy_estimation_or_heat_demand(cls, values):
-        if (
-            not (values.u_values_building or values.living_area)
-            and not values.heat_demand
+        if not (
+            (values.u_values_building and values.living_area)
+            or values.heat_demand
         ):
             raise ValueError(
                 "Either u_values_building and living_area or heat_demand must "
