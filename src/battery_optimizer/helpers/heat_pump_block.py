@@ -201,19 +201,32 @@ def heat_pump_block_rule(
         bounds=(
             0,
             heat_pump.max_heat_supply_hp,
-        )
+        ),
+        doc=(
+            "The total heat energy the heat pump supplies in kW in this "
+            "period. This heat energy is shared by "
+            "heat_supply_hp_to_demand and heat_supply_hp_to_tes."
+        ),
     )
     block.heat_supply_hp_demand = pyo.Var(
         bounds=(
             0,
             heat_pump.max_heat_supply_hp,
-        )
+        ),
+        doc=(
+            "The heat energy the heat pump supplies to the demand side in kW "
+            "during this period"
+        ),
     )
     block.heat_supply_hp_tes = pyo.Var(
         bounds=(
             0,
             heat_pump.max_heat_supply_hp,
-        )
+        ),
+        doc=(
+            "The heat energy the heat pump supplies to the TES in kW during "
+            "this period"
+        ),
     )
 
     block.heat_supply_HR = pyo.Var(
