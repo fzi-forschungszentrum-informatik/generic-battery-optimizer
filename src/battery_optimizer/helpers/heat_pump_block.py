@@ -260,7 +260,14 @@ def heat_pump_block_rule(
     block.soc = pyo.Var(bounds=(0, 1))
     block.heat_loss_tank = pyo.Var(domain=pyo.NonNegativeReals)
 
-    block.y_tes_over_value = pyo.Var(within=pyo.Binary)
+    block.y_tes_over_hp_temp = pyo.Var(
+        within=pyo.Binary,
+        doc=(
+            "Defines wether the TES temperature is above the heat pump's "
+            "output temperature (1) or below the heat pump's output "
+            "temperature (0)."
+        ),
+    )
     block.y_delta_tes_over_value = pyo.Var(within=pyo.Binary)
 
     block.cop_value = pyo.Var(domain=pyo.NonNegativeReals, bounds=(0, MAX_COP))

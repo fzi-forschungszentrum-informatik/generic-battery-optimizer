@@ -637,28 +637,47 @@ class Model:
 
             prev_t = self.model.i.prev(t)
 
-            heat_pump_block.periods[t].cons1 = pyo.Constraint(
+            # y_tes_over_hp_temp constraints
+            heat_pump_block.periods[t].y_tes_over_hp_temp_c1 = pyo.Constraint(
                 expr=(
                     heat_pump_block.periods[t].temp_TES
                     >= heat_pump.output_temperature
                     - heat_pump.output_temperature
-                    * (1 - heat_pump_block.periods[t].y_tes_over_value)
-                )
+                    * (1 - heat_pump_block.periods[t].y_tes_over_hp_temp)
+                ),
+                doc=(
+                    "TES temperature must be over the heat pumps output "
+                    "temperature when y_tes_over_hp_temp is 1"
+                ),
             )
-            heat_pump_block.periods[t].cons2 = pyo.Constraint(
+            heat_pump_block.periods[t].y_tes_over_hp_temp_c2 = pyo.Constraint(
                 expr=(
                     heat_pump_block.periods[t].temp_TES
                     <= heat_pump.output_temperature
                     + (heat_pump.max_temp_tes - heat_pump.output_temperature)
-                    * heat_pump_block.periods[t].y_tes_over_value
-                )
+                    * heat_pump_block.periods[t].y_tes_over_hp_temp
+                ),
+                doc=(
+                    "TES temperature must be at or below the heat pump's "
+                    "output temperature if y_tes_over_hp_temp is 0."
+                ),
             )
 
-            heat_pump_block.periods[t].cons3 = pyo.Constraint(
-                expr=(
-                    heat_pump_block.periods[prev_t].y_TES
-                    + heat_pump_block.periods[t].y_tes_over_value
-                    <= 1
+            heat_pump_block.periods[t].tes_temperature_below_hp_output = (
+                pyo.Constraint(
+                    expr=(
+                        heat_pump_block.periods[prev_t].y_TES
+                        + heat_pump_block.periods[t].y_tes_over_hp_temp
+                        <= 1
+                    ),
+                    doc=(
+                        "The TES temperature must be at or below the heat "
+                        "pumps output temperature in any period following a "
+                        "charging of the TES by the heat pump. The TES "
+                        "temperature can not exceed the heat pump output "
+                        "temperature with out being charged by the heating "
+                        "element."
+                    ),
                 )
             )
 
