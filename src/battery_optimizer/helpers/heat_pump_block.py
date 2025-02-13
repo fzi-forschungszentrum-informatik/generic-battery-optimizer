@@ -182,7 +182,6 @@ def heat_pump_block_rule(
             "temperature (0)."
         ),
     )
-    block.y_delta_tes_over_value = pyo.Var(within=pyo.Binary)
 
     block.cop_value = pyo.Var(domain=pyo.NonNegativeReals, bounds=(0, MAX_COP))
 

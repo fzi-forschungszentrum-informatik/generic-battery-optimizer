@@ -669,8 +669,8 @@ class Model:
                     ),
                     doc=(
                         "The TES temperature must be at or below the heat "
-                        "pumps output temperature in any period following a "
-                        "charging of the TES by the heat pump. The TES "
+                        "pumps output temperature in any period **following a "
+                        "charging** of the TES by the heat pump. The TES "
                         "temperature can not exceed the heat pump output "
                         "temperature with out being charged by the heating "
                         "element."
@@ -678,29 +678,46 @@ class Model:
                 )
             )
 
-            heat_pump_block.periods[t].cons4 = pyo.Constraint(
-                expr=(
-                    heat_pump_block.periods[t].temp_TES
-                    >= heat_pump.output_temperature
-                    - heat_pump.output_temperature
-                    * (1 - heat_pump_block.periods[t].y_delta_tes_over_value)
-                )
-            )
-            heat_pump_block.periods[t].cons5 = pyo.Constraint(
-                expr=(
-                    heat_pump_block.periods[t].temp_TES
-                    <= heat_pump.output_temperature
-                    + (heat_pump.max_temp_tes - heat_pump.output_temperature)
-                    * heat_pump_block.periods[t].y_delta_tes_over_value
-                )
-            )
+            # y_delta_tes_over_value constraints
+            # heat_pump_block.periods[t].cons4 = pyo.Constraint(
+            #     expr=(
+            #         heat_pump_block.periods[t].temp_TES
+            #         >= heat_pump.output_temperature
+            #         - heat_pump.output_temperature
+            #         * (1 - heat_pump_block.periods[t].y_delta_tes_over_value)
+            #     ),
+            #     doc=(
+            #         "TES temperature must be over the heat pumps output "
+            #         "temperature when y_delta_tes_over_value is 1"
+            #     ),
+            # )
+            # heat_pump_block.periods[t].cons5 = pyo.Constraint(
+            #     expr=(
+            #         heat_pump_block.periods[t].temp_TES
+            #         <= heat_pump.output_temperature
+            #         + (heat_pump.max_temp_tes - heat_pump.output_temperature)
+            #         * heat_pump_block.periods[t].y_delta_tes_over_value
+            #     ),
+            #     doc=(
+            #         "TES temperature must be at or below the heat pump's "
+            #         "output temperature if y_delta_tes_over_value is 0."
+            #     ),
+            # )
 
             heat_pump_block.periods[t].cons6 = pyo.Constraint(
                 expr=(
                     heat_pump_block.periods[t].y_TES
-                    + heat_pump_block.periods[t].y_delta_tes_over_value
+                    + heat_pump_block.periods[t].y_tes_over_hp_temp
                     <= 1
-                )
+                ),
+                doc=(
+                    "The TES temperature must be at or below the heat "
+                    "pumps output temperature in **any period the TES is "
+                    "charged** by the heat pump. The TES "
+                    "temperature can not exceed the heat pump output "
+                    "temperature with out being charged by the heating "
+                    "element."
+                ),
             )
 
             return (
