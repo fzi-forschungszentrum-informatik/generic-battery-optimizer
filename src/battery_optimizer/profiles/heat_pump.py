@@ -197,18 +197,8 @@ class HeatPump(BaseModel):
             "TODO add the start and end values to the model index"
         ),
     )
-    warm_water_periods: Optional[List[str]] = Field(
-        default=None,
-        description=(
-            "Values for estimating the heat demand of the building"
-            "use ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) "
-            "to convert"
-        ),
-    )
 
-    @field_validator(
-        "blocking_hours", "limited_energy_hours", "warm_water_periods"
-    )
+    @field_validator("blocking_hours", "limited_energy_hours")
     def validate_not_implemented(cls, _):
         raise NotImplementedError("This feature is not implemented yet")
 

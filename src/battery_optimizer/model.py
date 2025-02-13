@@ -1,7 +1,4 @@
-from battery_optimizer.helpers.heat_pump_profile import (
-    convert_list,
-    get_period_length,
-)
+from battery_optimizer.helpers.heat_pump_profile import get_period_length
 from battery_optimizer.static.heat_pump import (
     TEXT_HEAT_PUMP_BASE,
     TEXT_HEATING_ELEMENT_ENERGY_RULE,
@@ -720,26 +717,6 @@ class Model:
 
         heat_pump_block.heat_energy_TES = pyo.Constraint(
             self.model.i, rule=heat_energy_TES_linkin_rule
-        )
-
-        # Restriktion blockt gewisse Stunden, die oben initialisiert werden,
-        # WP läuft in diesen Stunden nicht
-        def blocking_hours_HP_rule(model, blocking_hours):
-            return heat_pump_block.periods[blocking_hours].y_HP == 0
-
-        heat_pump_block.blocking_hours_HP = pyo.Constraint(
-            convert_list(heat_pump.blocking_hours, self.model.i),
-            rule=blocking_hours_HP_rule,
-        )
-
-        # Restriktion blockt gewisse Stunden, die oben initialisiert werden,
-        # HS läuft in diesen Stunden nicht
-        def blocking_hours_HR_rule(model, blocking_hours):
-            return heat_pump_block.periods[blocking_hours].y_HR == 0
-
-        heat_pump_block.blocking_hours_HR = pyo.Constraint(
-            convert_list(heat_pump.blocking_hours, self.model.i),
-            rule=blocking_hours_HR_rule,
         )
 
         # Restriktion, beschränkt möglichen Strombezug, da Stromangebot nicht

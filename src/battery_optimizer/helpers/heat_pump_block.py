@@ -1,21 +1,14 @@
-import datetime
-import pandas as pd
 import pyomo.environ as pyo
 import hplib.hplib as hpl
 from battery_optimizer.helpers.heat_pump_profile import (
-    convert_list,
     get_period_length,
-    heat_loss_building,
     heat_loss_tank,
-    warm_water_heat_flow,
+    interpolate_heat_energy,
 )
 from battery_optimizer.profiles.heat_pump import HeatPump
 import logging
 
-from battery_optimizer.static.heat_pump import (
-    C_TO_K,
-    TES_BLOCK_TEMP_WITH_WARM_WATER_DEMAND,
-)
+from battery_optimizer.static.heat_pump import C_TO_K
 from battery_optimizer.static.numbers import MAX_COP
 
 log = logging.getLogger(__name__)
@@ -91,8 +84,7 @@ def heat_pump_block_rule(
         parameters = hpl.get_parameters(model=heat_pump.type)
         hpl_heat_pump = hpl.HeatPump(parameters)
 
-    # Parameter
-    # Außentemperatur der aktuellen Periode
+    # Parameters
     block.outdoor_temperature = pyo.Param(
         initialize=interpolate_temperature(
             heat_pump.outdoor_temperature, period
@@ -100,60 +92,20 @@ def heat_pump_block_rule(
         within=pyo.NonNegativeReals,
     )
 
-    # setzt Wärmebedarf für warmwassererzeugung
-    def warm_water_demand_rule(block):
-        if "heat_demand" in heat_pump.__dict__:
-            return 0.0
-        if period in convert_list(heat_pump.warm_water_periods, model.i):
-            heat_flow = warm_water_heat_flow(
-                heat_pump.living_area,
-                heat_pump.warm_water_periods,
-                start=period,
-                end=(
-                    model.i.next(period)
-                    if period != model.i.last()
-                    else period
-                ),
-            )
-            log.debug(
-                f"Period {period} is a warm water period. "
-                f"Thermal energy for warm drinking water: {heat_flow} kW."
-            )
-            return heat_flow
-        else:
-            return 0.0
-
     block.warm_water_demand = pyo.Param(
-        rule=warm_water_demand_rule,
-        within=pyo.NonNegativeReals,
-        doc=(
-            "Estimated warm water demand in kW for this period based on the "
-            "building's living area. Warm water usage is distributed equally "
-            "across the warm water periods"
+        initialize=interpolate_heat_energy(
+            heat_pump.warm_water_demand, period
         ),
+        within=pyo.NonNegativeReals,
+        doc="Warm water demand in kW for this period.",
     )
-
-    # Funktion für Wärmeverlust durch Gebäudehülle, in Abhängigkeit der Außentemperatur
-    def heat_loss_building_rule(block):
-        if "heat_demand" in heat_pump.__dict__:
-            return 0
-        heat_loss = heat_loss_building(
-            heat_pump.u_values_building.model_dump(),
-            pyo.value(block.outdoor_temperature),
-            temp_room - C_TO_K,
-        )
-        return heat_loss
 
     block.heat_loss_building = pyo.Param(
-        rule=heat_loss_building_rule,
+        initialize=interpolate_heat_energy(heat_pump.heat_demand, period),
         within=pyo.NonNegativeReals,
-        doc=(
-            "Estimated building heat loss/demand in kW for this period based "
-            "on the buildings U-values"
-        ),
+        doc="Building heat loss/demand in kW for this period.",
     )
 
-    # Quellentemperatur der aktuellen Periode
     block.source_temp = pyo.Param(
         initialize=interpolate_temperature(
             heat_pump.heat_source_temperature, period
@@ -165,8 +117,7 @@ def heat_pump_block_rule(
         ),
     )
 
-    # Variablen
-
+    # Variables
     # Binary
     block.y_HR = pyo.Var(
         within=pyo.Binary, doc="Electric heater is on (1) or off (0)"
@@ -325,7 +276,7 @@ def heat_pump_block_rule(
     # wenn TES aufgeladen wird, Temperatur von WP = MAX_TEMP_HP
     # wenn TES nicht aufgeladen wird, dann Temperatur von WP = TEMP_SUPPLY_DEMAND
     def cop_rule1(block):
-        if period in convert_list(heat_pump.warm_water_periods, model.i):
+        if interpolate_heat_energy(heat_pump.warm_water_demand, period) > 0:
             results = hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
                 t_in_secondary=((heat_pump.output_temperature - 5) - C_TO_K),
@@ -347,7 +298,7 @@ def heat_pump_block_rule(
     block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
     def cop_rule3(block):
-        if period in convert_list(heat_pump.warm_water_periods, model.i):
+        if interpolate_heat_energy(heat_pump.warm_water_demand, period) > 0:
             return pyo.Constraint.Skip
         if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
             return block.cop_value == heat_pump.cop_air
@@ -426,24 +377,8 @@ def heat_pump_block_rule(
 
     # Heizbedarf gesamt
     def heat_supply_Demand_total_rule(block):
-        # Use known heat demand if available
-        if heat_pump.heat_demand is not None:
-            heat_supply_demand = heat_pump.heat_demand[period]
         # Estimate heat demand based on the building's U-values
-        elif block.index() == model.i.last():
-            if block.heat_loss_building + block.warm_water_demand > 0:
-                log.warning(
-                    "Last period has heat loss and warm water demand! "
-                    "The optimization will continue with no heat loss and "
-                    f"warm water demand in the last period ({period})."
-                    f" The heat loss is {block.heat_loss_building.value} and "
-                    f"the warm water demand is {block.warm_water_demand.value}."
-                )
-            heat_supply_demand = 0
-        else:
-            heat_supply_demand = (
-                block.heat_loss_building + block.warm_water_demand
-            )
+        heat_supply_demand = block.heat_loss_building + block.warm_water_demand
 
         # Check that last period has no demand
         if block.index() == model.i.last() and heat_supply_demand > 0:
@@ -594,21 +529,6 @@ def heat_pump_block_rule(
         return pyo.Constraint.Skip
 
     block.bivalent_temp = pyo.Constraint(rule=bivalent_temp_rule)
-
-    # Restriktion, die TES auf mind. 50°C aufheizt für die Sperrzeiten, falls es WW Bedarf gibt
-    def ww_during_blocking_hours_rule(block):
-        if heat_pump.warm_water_periods:
-            if period in convert_list(
-                heat_pump.blocking_hours, model.i
-            ) and period in convert_list(
-                heat_pump.warm_water_periods, model.i
-            ):
-                return block.temp_TES >= TES_BLOCK_TEMP_WITH_WARM_WATER_DEMAND
-        return pyo.Constraint.Skip
-
-    block.ww_during_blocking_hours = pyo.Constraint(
-        rule=ww_during_blocking_hours_rule
-    )
 
     # Force SoC to be the same at start and end of optimization
     def soc_end_rule(block):

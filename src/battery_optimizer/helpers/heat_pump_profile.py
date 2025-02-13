@@ -323,3 +323,24 @@ def get_period_length(period: pd.Timestamp, index: pd.DatetimeIndex):
         period_length = index.next(period) - period
         period_conversion_factor = period_length.total_seconds() / 3600
     return period_length, period_conversion_factor
+
+
+def interpolate_heat_energy(
+    heat_demand: float | dict[datetime.datetime, float],
+    current_period: datetime.datetime,
+) -> float:
+    """Returns the heat energy demand for the current period.
+
+    If the temperature is a float it is assumed to be a constant heat demand
+    in each period in kW.
+    """
+    if not heat_demand:
+        return 0
+    # Just return the heat demand if it is a float
+    elif isinstance(heat_demand, float):
+        return heat_demand
+    # Return exact heat demand if available
+    elif current_period in heat_demand:
+        return heat_demand[current_period]
+    else:
+        raise NotImplementedError("Interpolating heat energy is not supported")
