@@ -406,10 +406,19 @@ class HeatPump(BaseModel):
         description=(
             "An optional heat demand of the building in kW. "
             "Heat demand is assumed to be constant during each period. "
-            "If not provided, the heat demand is calculated from the U-values "
-            "and wall, roof and window surface of the building."
             "The heat demand is not interpolated if the keys from this heat "
             "demand do not match the optimization time steps."
+            "Use df.to_dict() to convert a pandas dataframe to a suitable "
+            "pydantic dictionary."
+        ),
+    )
+
+    warm_water_demand: Optional[dict[datetime.datetime, float]] = Field(
+        default=None,
+        title="Warm water demand [kW]",
+        description=(
+            "An optional warm water demand in kW. "
+            "Warm water demand is assumed to be constant during each period. "
             "Use df.to_dict() to convert a pandas dataframe to a suitable "
             "pydantic dictionary."
         ),
@@ -475,7 +484,7 @@ class HeatPump(BaseModel):
             (
                 (self.max_temp_tes - self.flow_temperature)
                 * self.tank_volume
-                * 4186
+                * 4186  # Heat capacity of water in kWh/kgK
             )
             / 3600
         ) / 1000
