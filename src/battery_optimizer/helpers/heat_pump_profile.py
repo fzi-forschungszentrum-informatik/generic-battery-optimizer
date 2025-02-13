@@ -325,6 +325,44 @@ def get_period_length(period: pd.Timestamp, index: pd.DatetimeIndex):
     return period_length, period_conversion_factor
 
 
+def interpolate_temperature(
+    temperature: float | dict[datetime.datetime, float],
+    current_period: datetime.datetime,
+):
+    """Returns the temperature for the current period.
+
+    If the temperature is a float, it is returned as is.
+    If the temperature is a dictionary, the temperature for the current period
+    is returned either by the exact key if available or it is linearly
+    interpolated between the two closest keys.
+
+    ----------
+    Variables:
+
+    temperature: float | dict[datetime.datetime, float]
+        The temperature for the optimization duration
+
+    current_period: datetime.datetime
+        The current period for which the temperature should be returned
+
+    --------
+    Returns:
+
+    temperature: float
+        The temperature for the current period in K"""
+    # Just return the temperature if it is a float
+    if isinstance(temperature, float):
+        return temperature
+    # Return exact temperature if available
+    elif current_period in temperature:
+        return temperature[current_period]
+    # Interpolate temperature if not available
+    else:
+        temperature[current_period] = None
+        series = pd.Series(temperature).sort_index().interpolate(method="time")
+        return series[current_period]
+
+
 def interpolate_heat_energy(
     heat_demand: float | dict[datetime.datetime, float],
     current_period: datetime.datetime,

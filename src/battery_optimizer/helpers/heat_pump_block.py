@@ -3,6 +3,7 @@ import hplib.hplib as hpl
 from battery_optimizer.helpers.heat_pump_profile import (
     get_period_length,
     heat_loss_tank,
+    interpolate_temperature,
     interpolate_heat_energy,
 )
 from battery_optimizer.profiles.heat_pump import HeatPump
@@ -12,44 +13,6 @@ from battery_optimizer.static.heat_pump import C_TO_K
 from battery_optimizer.static.numbers import MAX_COP
 
 log = logging.getLogger(__name__)
-
-
-def interpolate_temperature(
-    temperature: float | dict[datetime.datetime, float],
-    current_period: datetime.datetime,
-):
-    """Returns the temperature for the current period.
-
-    If the temperature is a float, it is returned as is.
-    If the temperature is a dictionary, the temperature for the current period
-    is returned either by the exact key if available or it is linearly
-    interpolated between the two closest keys.
-
-    ----------
-    Variables:
-
-    temperature: float | dict[datetime.datetime, float]
-        The temperature for the optimization duration
-
-    current_period: datetime.datetime
-        The current period for which the temperature should be returned
-
-    --------
-    Returns:
-
-    temperature: float
-        The temperature for the current period in K"""
-    # Just return the temperature if it is a float
-    if isinstance(temperature, float):
-        return temperature
-    # Return exact temperature if available
-    elif current_period in temperature:
-        return temperature[current_period]
-    # Interpolate temperature if not available
-    else:
-        temperature[current_period] = None
-        series = pd.Series(temperature).sort_index().interpolate(method="time")
-        return series[current_period]
 
 
 def heat_pump_block_rule(
