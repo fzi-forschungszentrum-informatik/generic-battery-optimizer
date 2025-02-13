@@ -334,6 +334,20 @@ class HeatPump(BaseModel):
         ),
     )
 
+    @model_validator(mode="after")
+    def validate_electric_power(cls, values):
+        if values.min_electric_power_hp > values.max_electric_power_hp:
+            raise ValueError(
+                "Minimum electric power for heat pump must be less than or "
+                "equal to maximum electric power for heat pump"
+            )
+        if values.min_electric_power_hr > values.max_electric_power_hr:
+            raise ValueError(
+                "Minimum electric power for backup heater must be less than "
+                "or equal to maximum electric power for backup heater"
+            )
+        return values
+
     max_temp_tes: float = Field(
         default=363.15,
         title="Maximum temperature of the TES [K]",
