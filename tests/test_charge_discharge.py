@@ -1,4 +1,4 @@
-from helpers import get_profiles
+from helpers import find_solver, get_profiles
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer import optimize
 from datetime import datetime
@@ -66,6 +66,7 @@ class TestChargeDischarge:
             sell_prices=get_profiles(time_series, sell),
             fixed_consumption=get_profiles(time_series, fixed_consumption),
             batteries=[battery],
+            solver=find_solver(),
         )
 
         result_batteries = pd.DataFrame(
@@ -175,6 +176,7 @@ class TestChargeDischarge:
             sell_prices=get_profiles(time_series, sell),
             fixed_consumption=get_profiles(time_series, fixed_consumption),
             batteries=[battery],
+            solver=find_solver(),
         )
 
         result_batteries = pd.DataFrame(

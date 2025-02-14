@@ -1,14 +1,15 @@
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.static.heat_pump import C_TO_K
+from helpers import get_profiles, find_solver
 from battery_optimizer import optimize
-from helpers import get_profiles
 import pandas as pd
 import datetime
 import pytest
 import yaml
-import os
 
 base = "data/tests/"
+
+solver = find_solver("gurobi")
 
 testdata = [
     {
@@ -96,10 +97,11 @@ testdata = [
 
 @pytest.mark.parametrize("data", testdata)
 def test_scenarios(data):
-    if os.getenv("SKIP_LICENSED_TESTS"):
+    # This test relies on hplib v1.9
+    # newer versions of hplib yield different results
+    if solver != "gurobi":
         pytest.skip(
-            "Skipping test in GitLab CI environment "
-            "due to Gurobi license issue"
+            "Skipping this test as it requires the Gurobi solver to run"
         )
 
     # Expected Results
@@ -185,7 +187,7 @@ def test_scenarios(data):
         result = optimize(
             buy_prices=get_profiles(input_data.index, buy_price_profile),
             heat_pumps=[hp],
-            solver="gurobi",
+            solver=solver,
         )
 
         # Evaluate
