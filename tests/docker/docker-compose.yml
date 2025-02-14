@@ -1,0 +1,10 @@
+services:
+  optimizer:
+    image: optimizer
+    build:
+      context: ../../
+      dockerfile: ./tests/docker/Dockerfile
+    volumes:
+      - ../../:/app
+      - ../../gurobi.lic:/opt/gurobi/gurobi.lic:ro
+    init: true
