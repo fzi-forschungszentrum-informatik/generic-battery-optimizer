@@ -27,10 +27,10 @@ build:
     paths:
       - dist/
 
-test:
+glpk:
   stage: test
   variables:
-    SKIP_LICENSED_TESTS: true
+    SOLVER: glpk
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - pip install -r requirements.txt
@@ -38,11 +38,13 @@ test:
     - export PYTHONPATH=src
     - pytest --cov-report term-missing --cov=src tests/
 
-test_gurobi:
+gurobi:
   image: gurobi/python
   stage: test
+  variables:
+    SOLVER: gurobi
   script:
-    - apt-get update && apt-get install -y --no-install-recommends glpk-utils curl && rm -rf /var/lib/apt/lists/*
+    - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - pip install -r requirements.txt
