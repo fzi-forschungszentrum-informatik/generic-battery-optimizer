@@ -96,7 +96,7 @@ testdata = [
 
 @pytest.mark.parametrize("data", testdata)
 def test_scenarios(data):
-    if os.getenv("CI_JOB_TOKEN"):
+    if os.getenv("SKIP_LICENSED_TESTS"):
         pytest.skip(
             "Skipping test in GitLab CI environment "
             "due to Gurobi license issue"
