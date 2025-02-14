@@ -44,12 +44,9 @@ test_gurobi:
   script:
     - apt-get update && apt-get install -y --no-install-recommends glpk-utils curl && rm -rf /var/lib/apt/lists/*
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - pip install -r requirements.txt
     - pip install dist/*.whl
-    - ls .secure_files
-    - cat .secure_files/gurobi.lic
-    - pwd
-    - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - export PYTHONPATH=src
     - pytest --cov-report term-missing --cov=src tests/
 
