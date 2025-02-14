@@ -29,6 +29,8 @@ build:
 
 test:
   stage: test
+  variables:
+    SKIP_LICENSED_TESTS: true
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - pip install -r requirements.txt
