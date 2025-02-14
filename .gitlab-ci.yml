@@ -48,7 +48,7 @@ test_gurobi:
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - pip install -r requirements.txt
     - pip install dist/*.whl
-    - ls /opt/gurobi/gurobi.lic
+    - ls /opt/gurobi/
     - cat /opt/gurobi/gurobi.lic
     - export GRB_LICENSE_FILE=/opt/gurobi/gurobi.lic
     - export PYTHONPATH=src
