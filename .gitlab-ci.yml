@@ -29,6 +29,8 @@ build:
 
 test:
   stage: test
+  variables:
+    SKIP_LICENSED_TESTS: true
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - pip install -r requirements.txt
@@ -39,11 +41,10 @@ test:
 test_gurobi:
   image: gurobi/python
   stage: test
-  variables:
-    SECURE_FILES_DOWNLOAD_PATH: '/opt/gurobi/'
   script:
     - apt-get update && apt-get install -y --no-install-recommends glpk-utils curl && rm -rf /var/lib/apt/lists/*
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - pip install -r requirements.txt
     - pip install dist/*.whl
     - export PYTHONPATH=src
