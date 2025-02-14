@@ -11,7 +11,6 @@ default:
 stages:
   - build
   - test
-  - test_gurobi
   - publish
 
 variables:
@@ -38,12 +37,13 @@ test:
     - pytest --cov-report term-missing --cov=src tests/
 
 test_gurobi:
-  stage: test_gurobi
+  image: gurobi/python
+  stage: test
   variables:
-    SECURE_FILES_DOWNLOAD_PATH: './'
+    SECURE_FILES_DOWNLOAD_PATH: '/opt/gurobi/'
   script:
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
-    - docker compose -f tests/docker/docker-compose.yml up --build
+    - pytest --cov-report term-missing --cov=src tests/
 
 
 publish:
