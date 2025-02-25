@@ -47,7 +47,7 @@ def apply_design(
     #    plt.matplotlib.dates.DateFormatter("%d-%m %H:%M")
     # )
     # ax.xaxis.set_minor_locator(plt.matplotlib.dates.HourLocator(interval=1))
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=45 if len(index) > 25 else 0)
 
     # Add title and labels
     ax.set_title(title)
