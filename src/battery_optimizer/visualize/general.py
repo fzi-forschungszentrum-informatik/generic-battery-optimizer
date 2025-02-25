@@ -1,5 +1,4 @@
 from matplotlib import pyplot as plt
-from matplotlib.ticker import AutoMinorLocator, MaxNLocator
 import pandas as pd
 
 
@@ -39,9 +38,11 @@ def apply_design(
         plt.matplotlib.dates.DateFormatter("%H:%M", tz=index.tz)
     )
     ax.xaxis.set_major_locator(
+        plt.matplotlib.dates.HourLocator(interval=3, tz=index.tz)
+    )
+    ax.xaxis.set_minor_locator(
         plt.matplotlib.dates.HourLocator(interval=1, tz=index.tz)
     )
-    ax.xaxis.set_minor_locator(AutoMinorLocator())
     # ax.xaxis.set_minor_formatter(
     #    plt.matplotlib.dates.DateFormatter("%d-%m %H:%M")
     # )
@@ -59,7 +60,7 @@ def apply_design(
     ax.set_xlim(index[0], index[-1])
 
     # Show the plot
-    ax.grid(True)
+    ax.grid(True, which="both")
     ax.legend()
     plt.tight_layout()
     return ax
