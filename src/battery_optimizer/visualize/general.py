@@ -59,6 +59,9 @@ def apply_design(
     # Remove empty white area at left and right of the plot
     ax.set_xlim(index[0], index[-1])
 
+    # Center the x-ticks
+    plt.xticks(ha="center")
+
     # Show the plot
     ax.grid(True, which="both")
     ax.legend()
