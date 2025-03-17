@@ -736,27 +736,6 @@ class Model:
             self.model.i, rule=heat_energy_TES_linkin_rule
         )
 
-        # Restriktion, beschränkt möglichen Strombezug, da Stromangebot nicht
-        # für volle Auslastung ausreicht
-        # es kann nicht beliebig viel Strom bezogen werden
-        if heat_pump.limited_energy_hours:
-
-            def low_electric_energy_rule(model, limited_energy_hours):
-                return (
-                    heat_pump_block.periods[
-                        limited_energy_hours
-                    ].electric_power_hp
-                    + heat_pump_block.periods[
-                        limited_energy_hours
-                    ].electric_power_hr
-                    # TODO This is not calculated from dynamic time periods
-                    <= heat_pump.limited_energy_hours[limited_energy_hours]
-                )
-
-            heat_pump_block.low_electric_energy = pyo.Constraint(
-                heat_pump.limited_energy_hours, rule=low_electric_energy_rule
-            )
-
         # Energy matrix rules
         heat_pump_energy_rule = (
             f"{component_name}{TEXT_SEPARATOR}{TEXT_INVERTER_ENERGY_RULE}"

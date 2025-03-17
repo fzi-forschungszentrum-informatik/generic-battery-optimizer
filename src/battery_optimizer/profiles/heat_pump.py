@@ -177,31 +177,6 @@ class HeatPump(BaseModel):
         ], 'This value is only allowed when an "Air/Air"-Heat pump is used'
         return v
 
-    # Not fully implemented features
-    blocking_hours: Optional[List[str]] = Field(
-        default=None,
-        description=(
-            "Currently a list of time steps. They are checked against, use "
-            "ufunc.convert_list(BLOCKING_HOURS, TIME_RESOLUTION) to convert"
-            "TODO check that the strings have the correct length"
-            "'2020-12-04 8:00:00+00:00 - 2020-12-04 15:00:00+00:00'"
-            "and that they are timezone aware. If not force timezone to be UTC"
-        ),
-    )
-    limited_energy_hours: Optional[List[str]] = Field(
-        default=None,
-        description=(
-            "List with values that represent periods. Periods are "
-            "'Date - Date' with the format"
-            '(e.g. "2020-12-04 11:00:00 - 2020-12-04 15:00:00")'
-            "TODO add the start and end values to the model index"
-        ),
-    )
-
-    @field_validator("blocking_hours", "limited_energy_hours")
-    def validate_not_implemented(cls, _):
-        raise NotImplementedError("This feature is not implemented yet")
-
     u_values_building: Optional[_U_Values_Building] = Field(
         title="Building U-Values",
         description=(
