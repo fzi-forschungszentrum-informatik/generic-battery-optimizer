@@ -64,10 +64,10 @@ class ModelDataframe:
         used by a device.
         Buy profiles have positive power when they consume power.
 
-        Variables
-        ---------
-        model : Model
-            The model that data shall be exported from
+        Returns
+        -------
+        pd.DataFrame
+            The power in W of each buy profile.
         """
         buy_df = self._df.filter(regex=f"^'{TEXT_ENERGY_PROFILE_BASE}")
         return ModelDataframe._replace_padding_text(
@@ -83,10 +83,10 @@ class ModelDataframe:
         used by a device.
         Feed-in profiles have a positive power when they feed in power.
 
-        Variables
-        ---------
-        model : Model
-            The model that data shall be exported from
+        Returns
+        -------
+        pd.DataFrame
+            The power in W of each sell profile.
         """
         sell_df = self._df.filter(regex=f"^'{TEXT_SELL_PROFILE_BASE}")
         return ModelDataframe._replace_padding_text(
@@ -104,10 +104,10 @@ class ModelDataframe:
         Batteries have positive power when they are charged and negative power
         when they are discharged.
 
-        Variables
-        ---------
-        model : Model
-            The model that data shall be exported from
+        Returns
+        -------
+        pd.DataFrame
+            The power in W of each battery.
         """
         # Get Battery power
         battery_df = self._df.filter(regex=f"^'{TEXT_BATTERY_BASE}")
@@ -142,10 +142,10 @@ class ModelDataframe:
         time period. Indexed by the timestamps from which the specified power
         should be used by a device.
 
-        Variables
-        ---------
-        model : Model
-            The model that data shall be exported from
+        Returns
+        -------
+        pd.DataFrame
+            The power in W of each fixed consumption profile.
         """
         fixed_consumption_df = self._df.filter(
             regex=f"^'{TEXT_CONSUMPTION_PROFILE_BASE}"
@@ -163,10 +163,10 @@ class ModelDataframe:
         Indexed by the timestamps from which the specified power should be
         used by a device.
 
-        Variables
-        ---------
-        model : Model
-            The model that data shall be exported from
+        Returns
+        -------
+        pd.DataFrame
+            The power in W of each heat pump profile.
         """
         # Get Battery power
         heat_pump_df = self._df.filter(regex=f"^'{TEXT_HEAT_PUMP_BASE}")
