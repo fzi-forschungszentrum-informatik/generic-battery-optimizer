@@ -221,13 +221,21 @@ class Exporter:
         return items
 
     @staticmethod
-    def __convert_to_power(
-        df: pd.DataFrame, keep_column_names_original: bool = False
-    ) -> pd.DataFrame:
+    def __convert_to_power(df: pd.DataFrame) -> pd.DataFrame:
         """Converts a DataFrame with energy units to power units
 
         Power is converted by assuming a constant power between each set of two
         timestamps.
+
+        Variables
+        ---------
+        df : pd.DataFrame
+            The DataFrame to convert
+
+        Returns
+        -------
+        pd.DataFrame
+            The DataFrame with power values
         """
 
         def calculate_power(column: pd.Series) -> pd.Series:
@@ -252,14 +260,10 @@ class Exporter:
         df = df.apply(calculate_power)
 
         # rename energy to power
-        # TODO remove
-        if keep_column_names_original:
-            return df
-        else:
-            mapper = {}
-            for column in df.columns:
-                mapper[column] = column.replace("energy", "power")
-            return df.rename(columns=mapper)
+        mapper = {}
+        for column in df.columns:
+            mapper[column] = column.replace("energy", "power")
+        return df.rename(columns=mapper)
 
     def __init__(self, model: Model):
         """Create a new model exporter
@@ -271,9 +275,7 @@ class Exporter:
         """
         self._model = model
 
-    def to_df(
-        self, keep_column_names_original: bool = False
-    ) -> ModelDataframe:
+    def to_df(self) -> ModelDataframe:
         """Create a DataFrame from the model
 
         Contains all devices that draw power as columns. Each value represents
@@ -300,7 +302,7 @@ class Exporter:
         df = pd.DataFrame.from_dict(data=variables)
 
         # Contains only energy metrics, no filter needed
-        export_df = Exporter.__convert_to_power(df, keep_column_names_original)
+        export_df = Exporter.__convert_to_power(df)
         return ModelDataframe(export_df)
 
     def write_excel(self, filename: str) -> None:
