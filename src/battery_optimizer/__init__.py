@@ -2,12 +2,8 @@ import pandas as pd
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.model import Optimizer
 from battery_optimizer.export.model import (
-    to_buy,
-    to_sell,
+    Exporter,
     to_battery_soc,
-    to_battery_power,
-    to_fixed_consumption,
-    to_heat_pump_power,
 )
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
@@ -77,11 +73,12 @@ def optimize(
     )
     opt.set_up()
     opt.solve(**kwargs)
+    export = Exporter(opt.model).to_df()
     return (
-        to_buy(opt.model),
-        to_sell(opt.model),
-        to_battery_power(opt.model),
+        export.to_buy(),
+        export.to_sell(),
+        export.to_battery_power(),
         to_battery_soc(opt),
-        to_fixed_consumption(opt.model),
-        to_heat_pump_power(opt.model),
+        export.to_fixed_consumption(),
+        export.to_heat_pump_power(),
     )
