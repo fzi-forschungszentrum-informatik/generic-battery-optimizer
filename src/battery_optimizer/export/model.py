@@ -184,6 +184,24 @@ class ModelDataframe:
         # Combine profiles to one column
         return pd.concat([inverter_profiles, heating_element_profiles], axis=1)
 
+    def to_battery_soc(self) -> pd.DataFrame:
+        """Create a DataFrame with all battery SoC profiles
+
+        Contains all battery SoC profiles. Each value represents the SoC of the
+        battery at the end of each time step just before the next time step
+        starts.
+
+        Returns
+        -------
+        pd.DataFrame
+            The SoC of each battery.
+        """
+        soc_df = self._df.filter(regex=f"^'{TEXT_BATTERY_BASE}")
+        soc_df = self._df.filter(regex=f"{TEXT_SOC}'$")
+        return ModelDataframe._replace_padding_text(
+            soc_df, TEXT_BATTERY_BASE, TEXT_SOC
+        )
+
 
 class Exporter:
     """Export data from a model
@@ -303,7 +321,9 @@ class Exporter:
 
         # Contains only energy metrics, no filter needed
         export_df = Exporter.__convert_to_power(df)
-        return ModelDataframe(export_df)
+        return ModelDataframe(
+            pd.concat([export_df, self._to_battery_soc()], axis=1)
+        )
 
     def write_excel(self, filename: str) -> None:
         """Create an Excel file from the model
@@ -398,39 +418,33 @@ class Exporter:
             )
         writer.close()
 
+    def _to_battery_soc(self) -> pd.DataFrame:
+        """Create a DataFrame with all battery SoC profiles
 
-# TODO Get into df_Exporter
-def to_battery_soc(optimizer: Optimizer) -> pd.DataFrame:
-    """Create a DataFrame with all battery SoC profiles
+        Contains the SoC for all batteries at the end of each time step just before
+        the next time step starts.
 
-    Contains the SoC for all batteries at the end of each time step just before
-    the next time step starts.
+        Returns
+        -------
+        pd.DataFrame
+            The SoC of each battery.
+        """
+        # Get all SoC variables
+        variables: dict[str, dict[pd.Timestamp, float]] = {}
+        for component in self._model.model.component_objects(pyo.Var):
+            if not component.name.endswith(f"{TEXT_SOC}'"):
+                continue
+            variables = variables | Exporter._ctype_to_dict(component)
 
-    Variables
-    ---------
-    optimizer : Optimizer
-        The optimizer containing the model of which the data shall be exported
-        from
-    """
-    # Check type of optimizer
-    if not isinstance(optimizer, Optimizer):
-        raise ValueError("optimizer must be of type Optimizer")
-    # Get all SoC variables
-    variables: dict[str, dict[pd.Timestamp, float]] = {}
-    for component in optimizer.model.model.component_objects(pyo.Var):
-        if not component.name.endswith(f"{TEXT_SOC}'"):
-            continue
-        variables = variables | Exporter._ctype_to_dict(component)
+        soc_df = pd.DataFrame.from_dict(data=variables)
 
-    raw_df = pd.DataFrame.from_dict(data=variables)
+        # soc is the upper limit of "{battery-name} - SoC"
+        for battery in soc_df.columns:
+            battery_component = self._model.model.component(
+                battery.replace("'", "")
+            )
+            capacity = next(battery_component.values()).ub
+            # Convert SoC to %
+            soc_df[battery] = soc_df[battery] / capacity
 
-    # Strip the padding text from the column names
-    cleaned_df = ModelDataframe._replace_padding_text(
-        raw_df, TEXT_BATTERY_BASE, TEXT_SOC
-    )
-
-    for battery in optimizer.batteries:
-        # Convert SoC to %
-        cleaned_df[battery.name] = cleaned_df[battery.name] / battery.capacity
-
-    return cleaned_df
+        return soc_df

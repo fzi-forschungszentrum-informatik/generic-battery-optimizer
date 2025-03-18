@@ -1,10 +1,7 @@
 import pandas as pd
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.model import Optimizer
-from battery_optimizer.export.model import (
-    Exporter,
-    to_battery_soc,
-)
+from battery_optimizer.export.model import Exporter
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
 
@@ -78,7 +75,7 @@ def optimize(
         export.to_buy(),
         export.to_sell(),
         export.to_battery_power(),
-        to_battery_soc(opt),
+        export.to_battery_soc(),
         export.to_fixed_consumption(),
         export.to_heat_pump_power(),
     )

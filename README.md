@@ -158,17 +158,14 @@ in a shell.
 To retrieve the optimized profiles from the model, several methods are available from the battery_optimizer.export module to assist in extracting the data. Import the methods as necessary and pass the model (or for battery soc the optimizer class) to the export methods.
 
 ```python
-from battery_optimizer.export.model import (
-    Exporter,
-    to_battery_soc,
-)
+from battery_optimizer.export.model import Exporter
 
 df_export = Exporter(opt.model).to_df()
 
 df_export.to_buy(),
 df_export.to_sell(),
 df_export.to_battery_power(),
-to_battery_soc(opt),
+df_export.to_battery_soc(),
 df_export.to_fixed_consumption(),
 df_export.to_heat_pump_power(),
 ```
