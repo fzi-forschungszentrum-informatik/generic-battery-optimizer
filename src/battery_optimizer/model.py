@@ -145,12 +145,12 @@ class Optimizer:
         # init optimizer
         log.debug("Initializing buy prices")
         if buy_prices is not None:
-            self.prices = parse_profiles(
+            self.buy_prices = parse_profiles(
                 buy_prices, index, add_padding_profile=False
             )
-            log.debug(self.prices)
+            log.debug(self.buy_prices)
         else:
-            self.prices = {}
+            self.buy_prices = {}
 
         log.debug("Initializing sell prices")
         if sell_prices is not None:
@@ -197,7 +197,7 @@ class Optimizer:
         log.info("Generating model structure")
         # for each profile in prices add it to the model
         log.debug("Adding buy profiles to model")
-        for name, profile in self.prices.items():
+        for name, profile in self.buy_prices.items():
             self.model.add_buy_profile(name, profile)
 
         # add all sell prices to the model
