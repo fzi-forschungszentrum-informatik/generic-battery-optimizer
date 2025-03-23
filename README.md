@@ -162,12 +162,12 @@ from battery_optimizer.export.model import Exporter
 
 df_export = Exporter(opt.model).to_df()
 
-df_export.to_buy(),
-df_export.to_sell(),
-df_export.to_battery_power(),
-df_export.to_battery_soc(),
-df_export.to_fixed_consumption(),
-df_export.to_heat_pump_power(),
+df_export.to_buy()
+df_export.to_sell()
+df_export.to_battery_power()
+df_export.to_battery_soc()
+df_export.to_fixed_consumption()
+df_export.to_heat_pump_power()
 ```
 
 # Tests
