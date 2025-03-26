@@ -1,5 +1,6 @@
 from battery_optimizer.helpers.heat_pump_profile import get_period_length
 from battery_optimizer.static.heat_pump import (
+    C_TO_K,
     TEXT_HEAT_PUMP_BASE,
     TEXT_HEATING_ELEMENT_ENERGY_RULE,
     TEXT_INVERTER_ENERGY_RULE,
@@ -45,6 +46,7 @@ import pyomo.environ as pyo
 from typing import List
 import pandas as pd
 import logging
+import hplib.hplib as hpl
 
 log = logging.getLogger(__name__)
 
@@ -609,13 +611,33 @@ class Model:
             raise ValueError(
                 "The index must have a fixed frequency to use the heat pump"
             )
+
+        # HPL Heat Pump
+        if heat_pump.type == "Luft/Luft" or heat_pump.type == "Air/Air":
+            log.warning("L/L-WP")
+            raise NotImplementedError("Air/Air heat pumps are not supported.")
+        elif heat_pump.type == "Generic":
+            parameters = hpl.get_parameters(
+                model=heat_pump.type,
+                group_id=heat_pump.id,
+                t_in=heat_pump.t_in - C_TO_K,
+                t_out=heat_pump.t_out - C_TO_K,
+                p_th=heat_pump.p_th / 1000,
+            )
+            hpl_heat_pump = hpl.HeatPump(parameters)
+        else:
+            parameters = hpl.get_parameters(model=heat_pump.type)
+            hpl_heat_pump = hpl.HeatPump(parameters)
+
         # Set up the heat pump block
         component_name = f"{TEXT_HEAT_PUMP_BASE}{heat_pump.name}"
         self.model.add_component(name=component_name, val=pyo.Block())
         heat_pump_block = self.model.component(component_name)
         heat_pump_block.periods = pyo.Block(
             self.model.i,
-            rule=lambda b: heat_pump_block_rule(b, heat_pump, self.model),
+            rule=lambda b: heat_pump_block_rule(
+                b, heat_pump, self.model, hpl_heat_pump
+            ),
         )
         # Add the power values of the heatpump to the energy sinks
         # We probably need extra variables in the top level of the model
