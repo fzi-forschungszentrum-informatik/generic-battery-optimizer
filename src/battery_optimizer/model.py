@@ -36,7 +36,7 @@ from battery_optimizer.static.profiles import REGEX
 from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
-from battery_optimizer.helpers.heat_pump_block import heat_pump_block_rule
+from battery_optimizer.blocks.heat_pump import heat_pump_block_rule
 from battery_optimizer.helpers.parse_profile_stacks import (
     parse_profiles,
 )
@@ -64,6 +64,11 @@ class Optimizer:
         All batteries that can be used.
     """
 
+    # TODO Erzeugtes Modell abspeichern können, dann kann man es mit verschiedenen Solvern nutzen
+    # TODO Neuordnen: Instanz Optimizer kapselt nur noch Optimierer.
+    # TODO Wenn optimizer.solve(model) aufgeruft, dann wird modell übergeben und gesolved.
+    # TODO solve() muss in die Optimizer Klasse, dann kann der Optimierer übergeben werden
+    # TODO alles export muss in ne exporter Klasse
     def __init__(
         self,
         buy_prices: ProfileStack | None = None,
@@ -108,6 +113,8 @@ class Optimizer:
         ValueError
             If none of the input stacks contain any data.
         """
+        # TODO Hier noch nichts lösen, nur initialisieren
+        # Lösen dann in set up oder so
         log.info("Initializing Optimizer")
         # get all timestamps (build index)
         log.debug("Generating model index")
@@ -117,6 +124,8 @@ class Optimizer:
             if stack is not None:
                 for timestamp in stack.index.tolist():
                     temp_index.append(timestamp)
+
+        # TODO Refactor to other function and require working indices
         if temp_index == []:
             raise ValueError(
                 "At least one of [buy_prices, sell_prices, fixed_consumption] "
@@ -884,6 +893,10 @@ class Model:
         # add to list of energy sinks
         self.energy_sinks.append(base_name)
 
+    def constraint_device_power(self, a, b, power):
+        pass
+
+    # Die beiden kommen in ne extra Klasse, dann kann man nicht anfangen, erst energypaths zu generieren
     def add_energy_paths(self) -> None:
         """Add all necessary energy paths to the model
 
@@ -1054,6 +1067,7 @@ class Model:
         )
         log.debug(self.model.component(TEXT_OBJECTIVE_NAME))
 
+    # TODO class Solver:
     def solve(
         self,
         tee=False,
