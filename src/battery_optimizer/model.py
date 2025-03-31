@@ -241,8 +241,8 @@ class Optimizer:
 
     def solve(
         self,
-        tee=True,
         solver="glpk",
+        tee=False,
         result_file: str = "",
         options: dict = None,
     ):
