@@ -263,11 +263,44 @@ class Optimizer:
             Additional options to pass to the solver
             e.g. {"TimeLimit": 60, "MIPGap": 0.01}
         """
-        # if !isSetUp
-        # set_up()
-        return self.model.solve(
-            tee=tee, solver=solver, result_file=result_file, options=options
+        log.info("Solving model")
+        self.solver = SolverFactory(solver)
+
+        if options:
+            for key, value in options.items():
+                self.solver.options[key] = value
+
+        if result_file != "":
+            with open(result_file.replace(".ilp", "_model.txt"), "w") as f:
+                self.model.pprint(f)
+            self.solver.options["ResultFile"] = result_file
+
+        result = self.solver.solve(
+            self.model.model, tee=tee, symbolic_solver_labels=True
         )
+
+        # Check if the result has a feasible Solution
+        if (result.solver.status == SolverStatus.ok) and (
+            result.solver.termination_condition == TerminationCondition.optimal
+        ):
+            # The solution is optimal and feasible
+            return result
+        elif (
+            result.solver.termination_condition
+            == TerminationCondition.unbounded
+        ) or (
+            result.solver.termination_condition
+            == TerminationCondition.infeasible
+        ):
+            # Do something when model is infeasible
+            log.error(
+                "The model is infeasible: %s",
+                result.solver.termination_condition,
+            )
+        else:
+            # Something else is wrong
+            log.error("Solver Status: %s", result.solver.status)
+        return None
 
 
 # this houses the model itself
@@ -287,7 +320,6 @@ class Model:
         # Objective, index (initialized as empty), (...)
         # the index must be adjusted when adding new elements
         self.model = pyo.ConcreteModel()
-        self.solver: SolverFactory = None
 
         # store all energy sources, sinks and batteries
         self.energy_sources: list[str] = []
@@ -1066,63 +1098,3 @@ class Model:
             ),
         )
         log.debug(self.model.component(TEXT_OBJECTIVE_NAME))
-
-    # TODO class Solver:
-    def solve(
-        self,
-        tee=False,
-        solver="scip",
-        result_file: str = "",
-        options: dict = None,
-    ):
-        """Solve the model
-
-        Variables
-        ---------
-        tee : bool
-            Print debug information of the solver when set to True.
-        solver : str
-            Specify a solver to use. The default is glpk.
-        result_file : str
-            Write an ILP file to disk. This works with Gurobi.
-        options: dict
-            Additional options to pass to the solver
-            e.g. {"TimeLimit": 60, "MIPGap": 0.01}
-        """
-        log.info("Solving model")
-        self.solver = SolverFactory(solver)
-
-        if options:
-            for key, value in options.items():
-                self.solver.options[key] = value
-
-        if result_file != "":
-            with open(result_file.replace(".ilp", "_model.txt"), "w") as f:
-                self.model.pprint(f)
-            self.solver.options["ResultFile"] = result_file
-
-        result = self.solver.solve(
-            self.model, tee=tee, symbolic_solver_labels=True)
-
-        # Check if the result has a feasible Solution
-        if (result.solver.status == SolverStatus.ok) and (
-            result.solver.termination_condition == TerminationCondition.optimal
-        ):
-            # The solution is optimal and feasible
-            return result
-        elif (
-            result.solver.termination_condition
-            == TerminationCondition.unbounded
-        ) or (
-            result.solver.termination_condition
-            == TerminationCondition.infeasible
-        ):
-            # Do something when model is infeasible
-            log.error(
-                "The model is infeasible: %s",
-                result.solver.termination_condition,
-            )
-        else:
-            # Something else is wrong
-            log.error("Solver Status: %s", result.solver.status)
-        return None
