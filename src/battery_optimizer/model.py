@@ -8,7 +8,6 @@ from battery_optimizer.static.model import (
     TEXT_BATTERY_BASE,
     TEXT_CHARGE_ENERGY,
     TEXT_DISCHARGE_ENERGY,
-    TEXT_SOC,
     TEXT_ENERGY_PROFILE_BASE,
     TEXT_SOURCE_DATA_ENERGY_COLUMN,
     TEXT_SOURCE_DATA_PRICE_COLUMN,
@@ -840,7 +839,7 @@ class Model:
                 - sum(
                     self.model.batteries.component(battery)[
                         self.model.i.at(-1)
-                    ].component(TEXT_SOC)
+                    ].soc
                     * max(
                         self.model.component(f"{source}{TEXT_PRICE}")[
                             self.model.i.at(-1)
