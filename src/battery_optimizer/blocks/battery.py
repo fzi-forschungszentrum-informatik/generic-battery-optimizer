@@ -24,7 +24,6 @@ def battery_block(
     index = model.i
 
     name_soc = TEXT_SOC
-    name_soc_constraint = TEXT_SOC_CONSTRAINT
     name_charge_completion = TEXT_CHARGE_COMPLETION
     # Battery can only charge or discharge
     name_battery_is_charging = TEXT_IS_CHARGING
@@ -93,7 +92,7 @@ def battery_block(
         )
 
     # Discharge energy
-    block.add_component(name_soc_constraint, pyo.Constraint(expr=soc_rule))
+    block.soc_constraint = pyo.Constraint(expr=soc_rule)
 
     # make sure the charging is complete at the required timestamp
     if battery.end_soc_time is not None:
