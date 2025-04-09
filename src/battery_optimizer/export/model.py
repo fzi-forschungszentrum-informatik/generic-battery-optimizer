@@ -439,8 +439,8 @@ class Exporter:
         for battery in batteries:
             battery_name = f"'{battery.local_name}{TEXT_SOC}'"
             variables[battery_name] = {}
-            for period in battery.periods:
-                soc_component = battery.periods[period].component(TEXT_SOC)
+            for period in battery:
+                soc_component = battery[period].component(TEXT_SOC)
                 variables[battery_name][period] = (
                     soc_component.value / soc_component.ub
                 )

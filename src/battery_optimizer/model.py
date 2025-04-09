@@ -338,14 +338,14 @@ class Model:
         log.debug("Adding %s to the model", battery.name)
         log.debug(battery)
         base_name = f"{TEXT_BATTERY_BASE}{battery.name}"
-        self.model.batteries.add_component(name=base_name, val=pyo.Block())
-        block = self.model.batteries.component(base_name)
-
-        # Init battery
-        block.periods = pyo.Block(
-            self.model.i,
-            rule=lambda b: battery_block(b, battery, self.model),
+        self.model.batteries.add_component(
+            name=base_name,
+            val=pyo.Block(
+                self.model.i,
+                rule=lambda b: battery_block(b, battery, self.model),
+            ),
         )
+        block = self.model.batteries.component(base_name)
 
         # Energy matrix rules
         self.model.add_component(
@@ -360,7 +360,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    block.periods[i].energy
+                    block[i].energy
                     == model.component(f"{base_name}{TEXT_CHARGE_ENERGY}")[i]
                 ),
             ),
@@ -379,7 +379,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    block.periods[i].energy_out
+                    block[i].energy_out
                     == model.component(f"{base_name}{TEXT_DISCHARGE_ENERGY}")[
                         i
                     ]
@@ -838,9 +838,9 @@ class Model:
                 )
                 # Value of the energy in the battery
                 - sum(
-                    self.model.batteries.component(battery)
-                    .periods[self.model.i.at(-1)]
-                    .component(TEXT_SOC)
+                    self.model.batteries.component(battery)[
+                        self.model.i.at(-1)
+                    ].component(TEXT_SOC)
                     * max(
                         self.model.component(f"{source}{TEXT_PRICE}")[
                             self.model.i.at(-1)

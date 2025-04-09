@@ -21,7 +21,6 @@ def battery_block(
     block: pyo.Block, battery: Battery, model: pyo.ConcreteModel
 ):
     i = block.index()
-    i_period = block.parent_block().periods[i]
     index = model.i
 
     name_charge_energy = "energy"
@@ -87,22 +86,22 @@ def battery_block(
         """
         # ToDo reference next period from block
         if i == index.at(1):
-            return i_period.component(
+            return block.component(
                 name_soc
-            ) == battery.start_soc * battery.capacity + i_period.component(
+            ) == battery.start_soc * battery.capacity + block.component(
                 name_charge_energy
-            ) * battery.charge_efficiency - i_period.component(
+            ) * battery.charge_efficiency - block.component(
                 name_discharge_energy
             ) * (
                 1 / battery.discharge_efficiency
             )
         else:
-            prev_period = block.parent_block().periods[index.prev(i)]
-            return i_period.component(name_soc) == prev_period.component(
+            prev_period = block.parent_component()[index.prev(i)]
+            return block.component(name_soc) == prev_period.component(
                 name_soc
-            ) + i_period.component(
+            ) + block.component(
                 name_charge_energy
-            ) * battery.charge_efficiency - i_period.component(
+            ) * battery.charge_efficiency - block.component(
                 name_discharge_energy
             ) * (
                 1 / battery.discharge_efficiency
@@ -116,10 +115,10 @@ def battery_block(
 
         def charge_finished(model):
             if i < battery.end_soc_time:
-                return (0, i_period.component(name_soc), battery.capacity)
+                return (0, block.component(name_soc), battery.capacity)
             return (
                 battery.end_soc * battery.capacity,
-                i_period.component(name_soc),
+                block.component(name_soc),
                 # This is needed to make sure the result remains feasible
                 battery.end_soc * battery.capacity + 0.001,
             )
@@ -134,10 +133,10 @@ def battery_block(
         # Prevent charge
         def charge_start(model):
             if i < battery.start_soc_time:
-                return (0, i_period.component(name_charge_energy), 0)
+                return (0, block.component(name_charge_energy), 0)
             return (
                 0,
-                i_period.component(name_charge_energy),
+                block.component(name_charge_energy),
                 battery.max_charge_power,
             )
 
@@ -153,12 +152,12 @@ def battery_block(
                 if i < battery.start_soc_time:
                     return (
                         0,
-                        i_period.component(name_discharge_energy),
+                        block.component(name_discharge_energy),
                         0,
                     )
                 return (
                     0,
-                    i_period.component(name_discharge_energy),
+                    block.component(name_discharge_energy),
                     battery.max_discharge_power,
                 )
 
@@ -192,11 +191,11 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return i_period.component(
+            return block.component(
                 name_charge_energy
             ) <= battery.max_charge_power * (
                 delta / pd.Timedelta("1h")
-            ) * i_period.component(
+            ) * block.component(
                 name_battery_is_charging
             )
 
@@ -221,11 +220,11 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return i_period.component(
+            return block.component(
                 name_discharge_energy
             ) <= battery.max_discharge_power * (
                 delta / pd.Timedelta("1h")
-            ) * i_period.component(
+            ) * block.component(
                 name_battery_is_discharging
             )
 
@@ -237,8 +236,8 @@ def battery_block(
         def enforce_binary_charging_discharging(model):
             """Enforce battery can only charge or discharge"""
             return (
-                i_period.component(name_battery_is_charging)
-                + i_period.component(name_battery_is_discharging)
+                block.component(name_battery_is_charging)
+                + block.component(name_battery_is_discharging)
                 <= 1
             )
 
@@ -259,11 +258,11 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return i_period.component(
+            return block.component(
                 name_charge_energy
             ) >= battery.min_charge_power * (
                 delta / pd.Timedelta("1h")
-            ) * i_period.component(
+            ) * block.component(
                 name_battery_is_charging
             )
 
@@ -284,11 +283,11 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return i_period.component(
+            return block.component(
                 name_discharge_energy
             ) >= battery.min_discharge_power * (
                 delta / pd.Timedelta("1h")
-            ) * i_period.component(
+            ) * block.component(
                 name_battery_is_discharging
             )
 
