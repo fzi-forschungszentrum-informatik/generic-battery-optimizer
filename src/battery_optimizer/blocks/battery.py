@@ -23,7 +23,6 @@ def battery_block(
     i = block.index()
     index = model.i
 
-    name_charge_energy = "energy"
     name_discharge_energy = "energy_out"
     name_soc = TEXT_SOC
     name_soc_constraint = TEXT_SOC_CONSTRAINT
@@ -51,10 +50,7 @@ def battery_block(
         # calculate energy that is allowed
         return (0, battery.max_charge_power * (delta / pd.Timedelta("1h")))
 
-    block.add_component(
-        name_charge_energy,
-        pyo.Var(bounds=max_charge_energy),
-    )
+    block.energy = pyo.Var(bounds=max_charge_energy)
 
     def max_discharge_energy(_):
         """Maximum energy that can be discharged in time period i"""
@@ -88,9 +84,7 @@ def battery_block(
         if i == index.at(1):
             return block.component(
                 name_soc
-            ) == battery.start_soc * battery.capacity + block.component(
-                name_charge_energy
-            ) * battery.charge_efficiency - block.component(
+            ) == battery.start_soc * battery.capacity + block.energy * battery.charge_efficiency - block.component(
                 name_discharge_energy
             ) * (
                 1 / battery.discharge_efficiency
@@ -98,9 +92,7 @@ def battery_block(
         prev_period = block.parent_component()[index.prev(i)]
         return block.component(name_soc) == prev_period.component(
             name_soc
-        ) + block.component(
-            name_charge_energy
-        ) * battery.charge_efficiency - block.component(
+        ) + block.energy * battery.charge_efficiency - block.component(
             name_discharge_energy
         ) * (
             1 / battery.discharge_efficiency
@@ -132,15 +124,15 @@ def battery_block(
         # Prevent charge
         def charge_start(_):
             if i < battery.start_soc_time:
-                return (0, block.component(name_charge_energy), 0)
+                return (0, block.energy, 0)
             return (
                 0,
-                block.component(name_charge_energy),
+                block.energy,
                 battery.max_charge_power,
             )
 
         block.add_component(
-            f"{name_charge_energy}{TEXT_CHARGE_START}",
+            f"energy{TEXT_CHARGE_START}",
             pyo.Constraint(expr=charge_start),
         )
 
@@ -190,13 +182,9 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return block.component(
-                name_charge_energy
-            ) <= battery.max_charge_power * (
+            return block.energy <= battery.max_charge_power * (
                 delta / pd.Timedelta("1h")
-            ) * block.component(
-                name_battery_is_charging
-            )
+            ) * block.component(name_battery_is_charging)
 
         block.add_component(
             name_battery_enforce_charging,
@@ -257,13 +245,9 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return block.component(
-                name_charge_energy
-            ) >= battery.min_charge_power * (
+            return block.energy >= battery.min_charge_power * (
                 delta / pd.Timedelta("1h")
-            ) * block.component(
-                name_battery_is_charging
-            )
+            ) * block.component(name_battery_is_charging)
 
         block.add_component(
             name_min_charge_power,
