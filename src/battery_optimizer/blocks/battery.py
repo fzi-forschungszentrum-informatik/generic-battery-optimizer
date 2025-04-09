@@ -4,7 +4,6 @@ from battery_optimizer.blocks.base import Base
 from battery_optimizer.static.model import (
     TEXT_SOC,
     TEXT_CHARGE_START,
-    TEXT_ENFORCE_BINARY_POWER,
     TEXT_ENFORCE_MIN_CHARGE_POWER,
     TEXT_ENFORCE_MIN_DISCHARGE_POWER,
 )
@@ -19,7 +18,6 @@ def battery_block(
 
     name_soc = TEXT_SOC
 
-    name_battery_enforce_binary_power = TEXT_ENFORCE_BINARY_POWER
     # Min charge and discharge power requirements
     name_min_charge_power = TEXT_ENFORCE_MIN_CHARGE_POWER
     name_min_discharge_power = TEXT_ENFORCE_MIN_DISCHARGE_POWER
@@ -194,9 +192,8 @@ def battery_block(
             """Enforce battery can only charge or discharge"""
             return block.is_charging + block.is_discharging <= 1
 
-        block.add_component(
-            name_battery_enforce_binary_power,
-            pyo.Constraint(rule=enforce_binary_charging_discharging),
+        block.enforce_binary_power = pyo.Constraint(
+            rule=enforce_binary_charging_discharging
         )
 
     if battery.min_charge_power > 0:
