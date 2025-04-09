@@ -2,7 +2,6 @@ import pandas as pd
 import pyomo.environ as pyo
 from battery_optimizer.blocks.base import Base
 from battery_optimizer.static.model import (
-    TEXT_SOC,
     TEXT_CHARGE_START,
 )
 from battery_optimizer.profiles.battery_profile import Battery
@@ -13,8 +12,6 @@ def battery_block(
 ):
     i = block.index()
     index = model.i
-
-    name_soc = TEXT_SOC
 
     def max_charge_energy(_):
         """Maximum energy that can be charged in time period i"""
@@ -44,7 +41,7 @@ def battery_block(
         )
 
     block.energy_out = pyo.Var(bounds=max_discharge_energy)
-    block.add_component(name_soc, pyo.Var(bounds=(0, battery.capacity)))
+    block.soc = pyo.Var(bounds=(0, battery.capacity))
 
     # soc calculation
     def soc_rule(_):
@@ -57,16 +54,18 @@ def battery_block(
         """
         # ToDo reference next period from block
         if i == index.at(1):
-            return block.component(
-                name_soc
-            ) == battery.start_soc * battery.capacity + block.energy * battery.charge_efficiency - block.energy_out * (
-                1 / battery.discharge_efficiency
+            return (
+                block.soc
+                == battery.start_soc * battery.capacity
+                + block.energy * battery.charge_efficiency
+                - block.energy_out * (1 / battery.discharge_efficiency)
             )
         prev_period = block.parent_component()[index.prev(i)]
-        return block.component(name_soc) == prev_period.component(
-            name_soc
-        ) + block.energy * battery.charge_efficiency - block.energy_out * (
-            1 / battery.discharge_efficiency
+        return (
+            block.soc
+            == prev_period.soc
+            + block.energy * battery.charge_efficiency
+            - block.energy_out * (1 / battery.discharge_efficiency)
         )
 
     # Discharge energy
@@ -77,10 +76,10 @@ def battery_block(
 
         def charge_finished(_):
             if i < battery.end_soc_time:
-                return (0, block.component(name_soc), battery.capacity)
+                return (0, block.soc, battery.capacity)
             return (
                 battery.end_soc * battery.capacity,
-                block.component(name_soc),
+                block.soc,
                 # This is needed to make sure the result remains feasible
                 battery.end_soc * battery.capacity + 0.001,
             )
