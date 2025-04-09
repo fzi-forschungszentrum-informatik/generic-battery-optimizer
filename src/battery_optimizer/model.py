@@ -847,7 +847,7 @@ class Model:
                         ]
                         for source in payed_sinks
                     )
-                    for battery in self.batteries
+                    for battery in self.model.batteries.component_map()
                 )
             ),
         )
