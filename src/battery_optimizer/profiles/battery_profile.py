@@ -74,10 +74,10 @@ class Battery(BaseModel):
     max_discharge_power: float = Field(ge=0, default=0)
 
     # Minimum charge power if the battery is charging
-    min_charge_power: Optional[float] = Field(ge=0, default=0)
+    min_charge_power: float = Field(ge=0, default=0)
 
     # Minimum discharge power if the battery is discharging
-    min_discharge_power: Optional[float] = Field(ge=0, default=0)
+    min_discharge_power: float = Field(ge=0, default=0)
 
     # Wirkungsgrad Laden
     charge_efficiency: float = Field(ge=0, le=1, default=1)
