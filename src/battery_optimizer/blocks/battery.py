@@ -3,12 +3,7 @@ import pyomo.environ as pyo
 from battery_optimizer.blocks.base import Base
 from battery_optimizer.static.model import (
     TEXT_SOC,
-    TEXT_SOC_CONSTRAINT,
-    TEXT_CHARGE_COMPLETION,
     TEXT_CHARGE_START,
-    TEXT_IS_CHARGING,
-    TEXT_IS_DISCHARGING,
-    TEXT_ENFORCE_CHARGING,
     TEXT_ENFORCE_DISCHARGING,
     TEXT_ENFORCE_BINARY_POWER,
     TEXT_ENFORCE_MIN_CHARGE_POWER,
@@ -25,7 +20,6 @@ def battery_block(
 
     name_soc = TEXT_SOC
     # Battery can only charge or discharge
-    name_battery_enforce_charging = TEXT_ENFORCE_CHARGING
     name_battery_enforce_discharging = TEXT_ENFORCE_DISCHARGING
 
     name_battery_enforce_binary_power = TEXT_ENFORCE_BINARY_POWER
@@ -173,10 +167,7 @@ def battery_block(
                 * block.is_charging
             )
 
-        block.add_component(
-            name_battery_enforce_charging,
-            pyo.Constraint(rule=enforce_binary_charging),
-        )
+        block.enforce_charging = pyo.Constraint(rule=enforce_binary_charging)
 
         # Discharging
         block.is_discharging = pyo.Var(within=pyo.Binary)
