@@ -1,9 +1,6 @@
 import pandas as pd
 import pyomo.environ as pyo
 from battery_optimizer.blocks.base import Base
-from battery_optimizer.static.model import (
-    TEXT_CHARGE_START,
-)
 from battery_optimizer.profiles.battery_profile import Battery
 
 
@@ -98,10 +95,7 @@ def battery_block(
                 battery.max_charge_power,
             )
 
-        block.add_component(
-            f"energy{TEXT_CHARGE_START}",
-            pyo.Constraint(expr=charge_start),
-        )
+        block.charge_start_time = pyo.Constraint(expr=charge_start)
 
         # Prevent Discharge
         if battery.max_discharge_power > 0:
@@ -119,10 +113,7 @@ def battery_block(
                     battery.max_discharge_power,
                 )
 
-            block.add_component(
-                f"discharge_energy{TEXT_CHARGE_START}",
-                pyo.Constraint(expr=discharge_start),
-            )
+            block.discharge_start_time = pyo.Constraint(expr=discharge_start)
 
     # Enforce that the battery can only charge or discharge
     # We only add this if needed to reduce complexity
