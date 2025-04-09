@@ -25,7 +25,6 @@ def battery_block(
 
     name_soc = TEXT_SOC
     # Battery can only charge or discharge
-    name_battery_is_discharging = TEXT_IS_DISCHARGING
     name_battery_enforce_charging = TEXT_ENFORCE_CHARGING
     name_battery_enforce_discharging = TEXT_ENFORCE_DISCHARGING
 
@@ -180,13 +179,10 @@ def battery_block(
         )
 
         # Discharging
-        block.add_component(
-            name_battery_is_discharging,
-            pyo.Var(within=pyo.Binary),
-        )
+        block.is_discharging = pyo.Var(within=pyo.Binary)
 
         def enforce_binary_discharging(_):
-            """Enforce name_battery_is_discharging to be 1 if
+            """Enforce block.is_discharging to be 1 if
             discharge_power > 0"""
             # Big M Method -> delta is the time difference between two
             # timestamps
@@ -195,9 +191,12 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return block.energy_out <= battery.max_discharge_power * (
-                delta / pd.Timedelta("1h")
-            ) * block.component(name_battery_is_discharging)
+            return (
+                block.energy_out
+                <= battery.max_discharge_power
+                * (delta / pd.Timedelta("1h"))
+                * block.is_discharging
+            )
 
         block.add_component(
             name_battery_enforce_discharging,
@@ -206,11 +205,7 @@ def battery_block(
 
         def enforce_binary_charging_discharging(_):
             """Enforce battery can only charge or discharge"""
-            return (
-                block.is_charging
-                + block.component(name_battery_is_discharging)
-                <= 1
-            )
+            return block.is_charging + block.is_discharging <= 1
 
         block.add_component(
             name_battery_enforce_binary_power,
@@ -253,9 +248,12 @@ def battery_block(
             else:
                 delta = index.next(i) - i
 
-            return block.energy_out >= battery.min_discharge_power * (
-                delta / pd.Timedelta("1h")
-            ) * block.component(name_battery_is_discharging)
+            return (
+                block.energy_out
+                >= battery.min_discharge_power
+                * (delta / pd.Timedelta("1h"))
+                * block.is_discharging
+            )
 
         block.add_component(
             name_min_discharge_power,
