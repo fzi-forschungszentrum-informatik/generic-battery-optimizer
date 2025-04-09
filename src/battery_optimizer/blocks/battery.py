@@ -4,7 +4,6 @@ from battery_optimizer.blocks.base import Base
 from battery_optimizer.static.model import (
     TEXT_SOC,
     TEXT_CHARGE_START,
-    TEXT_ENFORCE_MIN_DISCHARGE_POWER,
 )
 from battery_optimizer.profiles.battery_profile import Battery
 
@@ -16,11 +15,6 @@ def battery_block(
     index = model.i
 
     name_soc = TEXT_SOC
-
-    # Min charge and discharge power requirements
-    name_min_discharge_power = TEXT_ENFORCE_MIN_DISCHARGE_POWER
-    # add a battery to the model
-    # 1 variable for battery energy in and 1 for energy out
 
     def max_charge_energy(_):
         """Maximum energy that can be charged in time period i"""
@@ -236,7 +230,6 @@ def battery_block(
                 * block.is_discharging
             )
 
-        block.add_component(
-            name_min_discharge_power,
-            pyo.Constraint(expr=min_discharge_power_constraint),
+        block.min_discharge_power = pyo.Constraint(
+            expr=min_discharge_power_constraint
         )
