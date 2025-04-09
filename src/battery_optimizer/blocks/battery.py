@@ -4,7 +4,6 @@ from battery_optimizer.blocks.base import Base
 from battery_optimizer.static.model import (
     TEXT_SOC,
     TEXT_CHARGE_START,
-    TEXT_ENFORCE_MIN_CHARGE_POWER,
     TEXT_ENFORCE_MIN_DISCHARGE_POWER,
 )
 from battery_optimizer.profiles.battery_profile import Battery
@@ -19,7 +18,6 @@ def battery_block(
     name_soc = TEXT_SOC
 
     # Min charge and discharge power requirements
-    name_min_charge_power = TEXT_ENFORCE_MIN_CHARGE_POWER
     name_min_discharge_power = TEXT_ENFORCE_MIN_DISCHARGE_POWER
     # add a battery to the model
     # 1 variable for battery energy in and 1 for energy out
@@ -215,9 +213,8 @@ def battery_block(
                 * block.is_charging
             )
 
-        block.add_component(
-            name_min_charge_power,
-            pyo.Constraint(expr=min_charge_power_constraint),
+        block.min_charge_power = pyo.Constraint(
+            expr=min_charge_power_constraint
         )
 
     if battery.min_discharge_power > 0:
