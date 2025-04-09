@@ -24,7 +24,6 @@ def battery_block(
     index = model.i
 
     name_soc = TEXT_SOC
-    name_charge_completion = TEXT_CHARGE_COMPLETION
     # Battery can only charge or discharge
     name_battery_is_charging = TEXT_IS_CHARGING
     name_battery_is_discharging = TEXT_IS_DISCHARGING
@@ -107,10 +106,7 @@ def battery_block(
                 battery.end_soc * battery.capacity + 0.001,
             )
 
-        block.add_component(
-            name_charge_completion,
-            pyo.Constraint(expr=charge_finished),
-        )
+        block.charge_completion = pyo.Constraint(expr=charge_finished)
 
     # do not use the battery until its start
     if battery.start_soc_time is not None:
