@@ -9,16 +9,6 @@ from battery_optimizer.static.model import (
     TEXT_CHARGE_ENERGY,
     TEXT_DISCHARGE_ENERGY,
     TEXT_SOC,
-    TEXT_SOC_CONSTRAINT,
-    TEXT_CHARGE_COMPLETION,
-    TEXT_CHARGE_START,
-    TEXT_IS_CHARGING,
-    TEXT_IS_DISCHARGING,
-    TEXT_ENFORCE_CHARGING,
-    TEXT_ENFORCE_DISCHARGING,
-    TEXT_ENFORCE_BINARY_POWER,
-    TEXT_ENFORCE_MIN_CHARGE_POWER,
-    TEXT_ENFORCE_MIN_DISCHARGE_POWER,
     TEXT_ENERGY_PROFILE_BASE,
     TEXT_SOURCE_DATA_ENERGY_COLUMN,
     TEXT_SOURCE_DATA_PRICE_COLUMN,
@@ -45,6 +35,7 @@ import pyomo.environ as pyo
 from typing import List
 import pandas as pd
 import logging
+from battery_optimizer.blocks.battery import battery_block
 
 log = logging.getLogger(__name__)
 
@@ -320,6 +311,7 @@ class Model:
         # Objective, index (initialized as empty), (...)
         # the index must be adjusted when adding new elements
         self.model = pyo.ConcreteModel()
+        self.model.batteries = pyo.Block()
 
         # store all energy sources, sinks and batteries
         self.energy_sources: list[str] = []
@@ -346,293 +338,54 @@ class Model:
         log.debug("Adding %s to the model", battery.name)
         log.debug(battery)
         base_name = f"{TEXT_BATTERY_BASE}{battery.name}"
-        name_charge_energy = f"{base_name}{TEXT_CHARGE_ENERGY}"
-        name_discharge_energy = f"{base_name}{TEXT_DISCHARGE_ENERGY}"
-        name_soc = f"{base_name}{TEXT_SOC}"
-        name_soc_constraint = f"{base_name}{TEXT_SOC_CONSTRAINT}"
-        name_charge_completion = f"{base_name}{TEXT_CHARGE_COMPLETION}"
-        # Battery can only charge or discharge
-        name_battery_is_charging = f"{base_name}{TEXT_IS_CHARGING}"
-        name_battery_is_discharging = f"{base_name}{TEXT_IS_DISCHARGING}"
-        name_battery_enforce_charging = f"{base_name}{TEXT_ENFORCE_CHARGING}"
-        name_battery_enforce_discharging = (
-            f"{base_name}{TEXT_ENFORCE_DISCHARGING}"
-        )
-        name_battery_enforce_binary_power = (
-            f"{base_name}{TEXT_ENFORCE_BINARY_POWER}"
-        )
-        # Min charge and discharge power requirements
-        name_min_charge_power = f"{base_name}{TEXT_ENFORCE_MIN_CHARGE_POWER}"
-        name_min_discarge_power = (
-            f"{base_name}{TEXT_ENFORCE_MIN_DISCHARGE_POWER}"
-        )
-        # add a battery to the model
-        # 1 variable for battery energy in and 1 for energy out
+        self.model.batteries.add_component(name=base_name, val=pyo.Block())
+        block = self.model.batteries.component(base_name)
 
-        def max_charge_energy(model, i):
-            """Maximum energy that can be charged in time period i"""
-            # from last timestamp no energy usage is allowed
-            if i == model.i.last():
-                return (0, 0)
-            # get time delta
-            delta = model.i.next(i) - i
-            # calculate energy that is allowed
-            return (0, battery.max_charge_power * (delta / pd.Timedelta("1h")))
+        # Init battery
+        block.periods = pyo.Block(
+            self.model.i,
+            rule=lambda b: battery_block(b, battery, self.model),
+        )
 
+        # Energy matrix rules
         self.model.add_component(
-            name_charge_energy,
-            pyo.Var(self.model.i, bounds=max_charge_energy),
-        )
-
-        def max_discharge_energy(model, i):
-            """Maximum energy that can be discharged in time period i"""
-            # from last timestamp no energy usage is allowed
-            if i == model.i.last():
-                return (0, 0)
-            # get time delta
-            delta = model.i.next(i) - i
-            # calculate energy that is allowed
-            return (
-                0,
-                battery.max_discharge_power * (delta / pd.Timedelta("1h")),
-            )
-
-        self.model.add_component(
-            name_discharge_energy,
-            pyo.Var(self.model.i, bounds=max_discharge_energy),
+            f"{base_name}{TEXT_CHARGE_ENERGY}",
+            pyo.Var(
+                self.model.i,
+                domain=pyo.NonNegativeReals,
+            ),
         )
         self.model.add_component(
-            name_soc, pyo.Var(self.model.i, bounds=(0, battery.capacity))
-        )
-
-        # soc calculation
-        def soc_rule(model, i):
-            """Calculate the SOC of the battery
-
-            SOC rule calculating the current energy state of the battery and
-            change in energy for the first timestamp and the change of energy
-            relative to the previous timestamps energy for all other
-            timestamps.
-            """
-            if i == model.i.at(1):
-                return model.component(name_soc)[
-                    i
-                ] == battery.start_soc * battery.capacity + model.component(
-                    name_charge_energy
-                )[
-                    i
-                ] * battery.charge_efficiency - model.component(
-                    name_discharge_energy
-                )[
-                    i
-                ] * (
-                    1 / battery.discharge_efficiency
-                )
-            else:
-                return model.component(name_soc)[i] == model.component(
-                    name_soc
-                )[model.i.prev(i)] + model.component(name_charge_energy)[
-                    i
-                ] * battery.charge_efficiency - model.component(
-                    name_discharge_energy
-                )[
-                    i
-                ] * (
-                    1 / battery.discharge_efficiency
-                )
-
-        self.model.add_component(
-            name_soc_constraint, pyo.Constraint(self.model.i, expr=soc_rule)
-        )
-
-        # make sure the charging is complete at the required timestamp
-        if battery.end_soc_time is not None:
-
-            def charge_finished(model, i):
-                if i < battery.end_soc_time:
-                    return (0, model.component(name_soc)[i], battery.capacity)
-                return (
-                    battery.end_soc * battery.capacity,
-                    model.component(name_soc)[i],
-                    # This is needed to make sure the result remains feasible
-                    battery.end_soc * battery.capacity + 0.001,
-                )
-
-            self.model.add_component(
-                name_charge_completion,
-                pyo.Constraint(self.model.i, expr=charge_finished),
-            )
-
-        # do not use the battery until its start
-        if battery.start_soc_time is not None:
-            # Prevent charge
-            def charge_start(model, i):
-                if i < battery.start_soc_time:
-                    return (0, model.component(name_charge_energy)[i], 0)
-                return (
-                    0,
-                    model.component(name_charge_energy)[i],
-                    battery.max_charge_power,
-                )
-
-            self.model.add_component(
-                f"{name_charge_energy}{TEXT_CHARGE_START}",
-                pyo.Constraint(self.model.i, expr=charge_start),
-            )
-
-            # Prevent Discharge
-            if battery.max_discharge_power > 0:
-
-                def discharge_start(model, i):
-                    if i < battery.start_soc_time:
-                        return (
-                            0,
-                            model.component(name_discharge_energy)[i],
-                            0,
-                        )
-                    return (
-                        0,
-                        model.component(name_discharge_energy)[i],
-                        battery.max_discharge_power,
-                    )
-
-                self.model.add_component(
-                    f"{name_discharge_energy}{TEXT_CHARGE_START}",
-                    pyo.Constraint(self.model.i, expr=discharge_start),
-                )
-
-        # Enforce that the battery can only charge or discharge
-        # We only add this if needed to reduce complexity
-        # This is needed if charge and discharge efficiency is 100% or
-        # minimum discharge or minimum charge power is set
-
-        if (
-            (
-                battery.charge_efficiency == 1
-                and battery.discharge_efficiency == 1
-            )
-            or battery.min_charge_power > 0
-            or battery.min_discharge_power > 0
-        ):
-            # Charging
-            self.model.add_component(
-                name_battery_is_charging,
-                pyo.Var(self.model.i, within=pyo.Binary),
-            )
-
-            def enforce_binary_charging(model, i):
-                """Enforce name_battery_is_charging to be 1 if charge_power > 0"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                if i == model.i.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = model.i.next(i) - i
-
-                return (
-                    model.component(name_charge_energy)[i]
-                    <= battery.max_charge_power
-                    * (delta / pd.Timedelta("1h"))
-                    * model.component(name_battery_is_charging)[i]
-                )
-
-            self.model.add_component(
-                name_battery_enforce_charging,
-                pyo.Constraint(self.model.i, rule=enforce_binary_charging),
-            )
-
-            # Discharging
-            self.model.add_component(
-                name_battery_is_discharging,
-                pyo.Var(self.model.i, within=pyo.Binary),
-            )
-
-            def enforce_binary_discharging(model, i):
-                """Enforce name_battery_is_discharging to be 1 if
-                discharge_power > 0"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                if i == model.i.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = model.i.next(i) - i
-
-                return (
-                    model.component(name_discharge_energy)[i]
-                    <= battery.max_discharge_power
-                    * (delta / pd.Timedelta("1h"))
-                    * model.component(name_battery_is_discharging)[i]
-                )
-
-            self.model.add_component(
-                name_battery_enforce_discharging,
-                pyo.Constraint(self.model.i, rule=enforce_binary_discharging),
-            )
-
-            def enforce_binary_charging_discharging(model, i):
-                """Enforce battery can only charge or discharge"""
-                return (
-                    model.component(name_battery_is_charging)[i]
-                    + model.component(name_battery_is_discharging)[i]
-                    <= 1
-                )
-
-            self.model.add_component(
-                name_battery_enforce_binary_power,
-                pyo.Constraint(
-                    self.model.i, rule=enforce_binary_charging_discharging
+            f"{base_name}{TEXT_CHARGE_ENERGY} Constraint",
+            pyo.Constraint(
+                self.model.i,
+                rule=lambda model, i: (
+                    block.periods[i].energy
+                    == model.component(f"{base_name}{TEXT_CHARGE_ENERGY}")[i]
                 ),
-            )
+            ),
+        )
 
-        if battery.min_charge_power > 0:
-
-            def min_charge_power_constraint(model, i):
-                """Constraint that ensures the battery is charged with
-                min_charge_power if it is charged"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                if i == model.i.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = model.i.next(i) - i
-
-                return (
-                    model.component(name_charge_energy)[i]
-                    >= battery.min_charge_power
-                    * (delta / pd.Timedelta("1h"))
-                    * model.component(name_battery_is_charging)[i]
-                )
-
-            self.model.add_component(
-                name_min_charge_power,
-                pyo.Constraint(self.model.i, expr=min_charge_power_constraint),
-            )
-
-        if battery.min_discharge_power > 0:
-
-            def min_discharge_power_constraint(model, i):
-                """Constraint that ensures the battery is discharged with
-                min_discharge_power if it is discharged"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                if i == model.i.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = model.i.next(i) - i
-
-                return (
-                    model.component(name_discharge_energy)[i]
-                    >= battery.min_discharge_power
-                    * (delta / pd.Timedelta("1h"))
-                    * model.component(name_battery_is_discharging)[i]
-                )
-
-            self.model.add_component(
-                name_min_discarge_power,
-                pyo.Constraint(
-                    self.model.i, expr=min_discharge_power_constraint
+        # Discharge energy
+        self.model.add_component(
+            f"{base_name}{TEXT_DISCHARGE_ENERGY}",
+            pyo.Var(
+                self.model.i,
+                domain=pyo.NonNegativeReals,
+            ),
+        )
+        self.model.add_component(
+            f"{base_name}{TEXT_DISCHARGE_ENERGY} Constraint",
+            pyo.Constraint(
+                self.model.i,
+                rule=lambda model, i: (
+                    block.periods[i].energy_out
+                    == model.component(f"{base_name}{TEXT_DISCHARGE_ENERGY}")[
+                        i
+                    ]
                 ),
-            )
+            ),
+        )
 
         # can the battery be used as an energy source
         if battery.max_discharge_power > 0:
@@ -1085,8 +838,9 @@ class Model:
                 )
                 # Value of the energy in the battery
                 - sum(
-                    self.model.component(f"{battery}{TEXT_SOC}")[
-                        self.model.i.at(-1)]
+                    self.model.batteries.component(battery)
+                    .periods[self.model.i.at(-1)]
+                    .component(TEXT_SOC)
                     * max(
                         self.model.component(f"{source}{TEXT_PRICE}")[
                             self.model.i.at(-1)

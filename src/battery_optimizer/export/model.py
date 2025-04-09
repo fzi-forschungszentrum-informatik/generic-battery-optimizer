@@ -313,7 +313,7 @@ class Exporter:
             if component.name == TEXT_ENERGY_PATH_MATRIX:
                 continue
             # pyomo appends an ' to component names
-            if component.name.endswith(f"{TEXT_SOC}'"):
+            if component.name.endswith(TEXT_SOC):
                 continue
             variables = variables | Exporter._ctype_to_dict(component)
 
@@ -431,20 +431,20 @@ class Exporter:
         """
         # Get all SoC variables
         variables: dict[str, dict[pd.Timestamp, float]] = {}
-        for component in self._model.model.component_objects(pyo.Var):
-            if not component.name.endswith(f"{TEXT_SOC}'"):
-                continue
-            variables = variables | Exporter._ctype_to_dict(component)
+        batteries = [
+            self._model.model.batteries.component(battery)
+            for battery in self._model.model.batteries.component_map()
+        ]
+
+        for battery in batteries:
+            battery_name = f"'{battery.local_name}{TEXT_SOC}'"
+            variables[battery_name] = {}
+            for period in battery.periods:
+                soc_component = battery.periods[period].component(TEXT_SOC)
+                variables[battery_name][period] = (
+                    soc_component.value / soc_component.ub
+                )
 
         soc_df = pd.DataFrame.from_dict(data=variables)
-
-        # soc is the upper limit of "{battery-name} - SoC"
-        for battery in soc_df.columns:
-            battery_component = self._model.model.component(
-                battery.replace("'", "")
-            )
-            capacity = next(battery_component.values()).ub
-            # Convert SoC to %
-            soc_df[battery] = soc_df[battery] / capacity
 
         return soc_df

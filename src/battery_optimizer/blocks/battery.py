@@ -1,0 +1,298 @@
+import pandas as pd
+import pyomo.environ as pyo
+from battery_optimizer.blocks.base import Base
+from battery_optimizer.static.model import (
+    TEXT_SOC,
+    TEXT_SOC_CONSTRAINT,
+    TEXT_CHARGE_COMPLETION,
+    TEXT_CHARGE_START,
+    TEXT_IS_CHARGING,
+    TEXT_IS_DISCHARGING,
+    TEXT_ENFORCE_CHARGING,
+    TEXT_ENFORCE_DISCHARGING,
+    TEXT_ENFORCE_BINARY_POWER,
+    TEXT_ENFORCE_MIN_CHARGE_POWER,
+    TEXT_ENFORCE_MIN_DISCHARGE_POWER,
+)
+from battery_optimizer.profiles.battery_profile import Battery
+
+
+def battery_block(
+    block: pyo.Block, battery: Battery, model: pyo.ConcreteModel
+):
+    i = block.index()
+    i_period = block.parent_block().periods[i]
+    index = model.i
+
+    name_charge_energy = "energy"
+    name_discharge_energy = "energy_out"
+    name_soc = TEXT_SOC
+    name_soc_constraint = TEXT_SOC_CONSTRAINT
+    name_charge_completion = TEXT_CHARGE_COMPLETION
+    # Battery can only charge or discharge
+    name_battery_is_charging = TEXT_IS_CHARGING
+    name_battery_is_discharging = TEXT_IS_DISCHARGING
+    name_battery_enforce_charging = TEXT_ENFORCE_CHARGING
+    name_battery_enforce_discharging = TEXT_ENFORCE_DISCHARGING
+
+    name_battery_enforce_binary_power = TEXT_ENFORCE_BINARY_POWER
+    # Min charge and discharge power requirements
+    name_min_charge_power = TEXT_ENFORCE_MIN_CHARGE_POWER
+    name_min_discarge_power = TEXT_ENFORCE_MIN_DISCHARGE_POWER
+    # add a battery to the model
+    # 1 variable for battery energy in and 1 for energy out
+
+    def max_charge_energy(model):
+        """Maximum energy that can be charged in time period i"""
+        # from last timestamp no energy usage is allowed
+        if i == index.last():
+            return (0, 0)
+        # get time delta
+        delta = index.next(i) - i
+        # calculate energy that is allowed
+        return (0, battery.max_charge_power * (delta / pd.Timedelta("1h")))
+
+    block.add_component(
+        name_charge_energy,
+        pyo.Var(bounds=max_charge_energy),
+    )
+
+    def max_discharge_energy(model):
+        """Maximum energy that can be discharged in time period i"""
+        # from last timestamp no energy usage is allowed
+        if i == index.last():
+            return (0, 0)
+        # get time delta
+        delta = index.next(i) - i
+        # calculate energy that is allowed
+        return (
+            0,
+            battery.max_discharge_power * (delta / pd.Timedelta("1h")),
+        )
+
+    block.add_component(
+        name_discharge_energy,
+        pyo.Var(bounds=max_discharge_energy),
+    )
+    block.add_component(name_soc, pyo.Var(bounds=(0, battery.capacity)))
+
+    # soc calculation
+    def soc_rule(model):
+        """Calculate the SOC of the battery
+
+        SOC rule calculating the current energy state of the battery and
+        change in energy for the first timestamp and the change of energy
+        relative to the previous timestamps energy for all other
+        timestamps.
+        """
+        # ToDo reference next period from block
+        if i == index.at(1):
+            return i_period.component(
+                name_soc
+            ) == battery.start_soc * battery.capacity + i_period.component(
+                name_charge_energy
+            ) * battery.charge_efficiency - i_period.component(
+                name_discharge_energy
+            ) * (
+                1 / battery.discharge_efficiency
+            )
+        else:
+            prev_period = block.parent_block().periods[index.prev(i)]
+            return i_period.component(name_soc) == prev_period.component(
+                name_soc
+            ) + i_period.component(
+                name_charge_energy
+            ) * battery.charge_efficiency - i_period.component(
+                name_discharge_energy
+            ) * (
+                1 / battery.discharge_efficiency
+            )
+
+    # Discharge energy
+    block.add_component(name_soc_constraint, pyo.Constraint(expr=soc_rule))
+
+    # make sure the charging is complete at the required timestamp
+    if battery.end_soc_time is not None:
+
+        def charge_finished(model):
+            if i < battery.end_soc_time:
+                return (0, i_period.component(name_soc), battery.capacity)
+            return (
+                battery.end_soc * battery.capacity,
+                i_period.component(name_soc),
+                # This is needed to make sure the result remains feasible
+                battery.end_soc * battery.capacity + 0.001,
+            )
+
+        block.add_component(
+            name_charge_completion,
+            pyo.Constraint(expr=charge_finished),
+        )
+
+    # do not use the battery until its start
+    if battery.start_soc_time is not None:
+        # Prevent charge
+        def charge_start(model):
+            if i < battery.start_soc_time:
+                return (0, i_period.component(name_charge_energy), 0)
+            return (
+                0,
+                i_period.component(name_charge_energy),
+                battery.max_charge_power,
+            )
+
+        block.add_component(
+            f"{name_charge_energy}{TEXT_CHARGE_START}",
+            pyo.Constraint(expr=charge_start),
+        )
+
+        # Prevent Discharge
+        if battery.max_discharge_power > 0:
+
+            def discharge_start(model):
+                if i < battery.start_soc_time:
+                    return (
+                        0,
+                        i_period.component(name_discharge_energy),
+                        0,
+                    )
+                return (
+                    0,
+                    i_period.component(name_discharge_energy),
+                    battery.max_discharge_power,
+                )
+
+            block.add_component(
+                f"{name_discharge_energy}{TEXT_CHARGE_START}",
+                pyo.Constraint(expr=discharge_start),
+            )
+
+    # Enforce that the battery can only charge or discharge
+    # We only add this if needed to reduce complexity
+    # This is needed if charge and discharge efficiency is 100% or
+    # minimum discharge or minimum charge power is set
+
+    if (
+        (battery.charge_efficiency == 1 and battery.discharge_efficiency == 1)
+        or battery.min_charge_power > 0
+        or battery.min_discharge_power > 0
+    ):
+        # Charging
+        block.add_component(
+            name_battery_is_charging,
+            pyo.Var(within=pyo.Binary),
+        )
+
+        def enforce_binary_charging(model):
+            """Enforce name_battery_is_charging to be 1 if charge_power > 0"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            if i == index.last():
+                delta = pd.Timedelta("0h")
+            else:
+                delta = index.next(i) - i
+
+            return i_period.component(
+                name_charge_energy
+            ) <= battery.max_charge_power * (
+                delta / pd.Timedelta("1h")
+            ) * i_period.component(
+                name_battery_is_charging
+            )
+
+        block.add_component(
+            name_battery_enforce_charging,
+            pyo.Constraint(rule=enforce_binary_charging),
+        )
+
+        # Discharging
+        block.add_component(
+            name_battery_is_discharging,
+            pyo.Var(within=pyo.Binary),
+        )
+
+        def enforce_binary_discharging(model):
+            """Enforce name_battery_is_discharging to be 1 if
+            discharge_power > 0"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            if i == index.last():
+                delta = pd.Timedelta("0h")
+            else:
+                delta = index.next(i) - i
+
+            return i_period.component(
+                name_discharge_energy
+            ) <= battery.max_discharge_power * (
+                delta / pd.Timedelta("1h")
+            ) * i_period.component(
+                name_battery_is_discharging
+            )
+
+        block.add_component(
+            name_battery_enforce_discharging,
+            pyo.Constraint(rule=enforce_binary_discharging),
+        )
+
+        def enforce_binary_charging_discharging(model):
+            """Enforce battery can only charge or discharge"""
+            return (
+                i_period.component(name_battery_is_charging)
+                + i_period.component(name_battery_is_discharging)
+                <= 1
+            )
+
+        block.add_component(
+            name_battery_enforce_binary_power,
+            pyo.Constraint(rule=enforce_binary_charging_discharging),
+        )
+
+    if battery.min_charge_power > 0:
+
+        def min_charge_power_constraint(model):
+            """Constraint that ensures the battery is charged with
+            min_charge_power if it is charged"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            if i == index.last():
+                delta = pd.Timedelta("0h")
+            else:
+                delta = index.next(i) - i
+
+            return i_period.component(
+                name_charge_energy
+            ) >= battery.min_charge_power * (
+                delta / pd.Timedelta("1h")
+            ) * i_period.component(
+                name_battery_is_charging
+            )
+
+        block.add_component(
+            name_min_charge_power,
+            pyo.Constraint(expr=min_charge_power_constraint),
+        )
+
+    if battery.min_discharge_power > 0:
+
+        def min_discharge_power_constraint(model):
+            """Constraint that ensures the battery is discharged with
+            min_discharge_power if it is discharged"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            if i == index.last():
+                delta = pd.Timedelta("0h")
+            else:
+                delta = index.next(i) - i
+
+            return i_period.component(
+                name_discharge_energy
+            ) >= battery.min_discharge_power * (
+                delta / pd.Timedelta("1h")
+            ) * i_period.component(
+                name_battery_is_discharging
+            )
+
+        block.add_component(
+            name_min_discarge_power,
+            pyo.Constraint(expr=min_discharge_power_constraint),
+        )
