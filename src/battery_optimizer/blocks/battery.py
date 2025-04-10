@@ -1,6 +1,5 @@
 import pandas as pd
 import pyomo.environ as pyo
-from battery_optimizer.blocks.base import Base
 from battery_optimizer.profiles.battery_profile import Battery
 
 
