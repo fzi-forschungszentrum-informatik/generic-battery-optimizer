@@ -34,7 +34,7 @@ import pyomo.environ as pyo
 from typing import List
 import pandas as pd
 import logging
-from battery_optimizer.blocks.battery import battery_block
+from battery_optimizer.blocks.battery import BatteryBlock
 
 log = logging.getLogger(__name__)
 
@@ -341,7 +341,7 @@ class Model:
             name=base_name,
             val=pyo.Block(
                 self.model.i,
-                rule=lambda b: battery_block(b, battery, self.model),
+                rule=BatteryBlock(self.model.i, battery).get_block,
             ),
         )
         block = self.model.batteries.component(base_name)
