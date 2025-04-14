@@ -54,17 +54,12 @@ class BatteryBlock:
             """
             # ToDo reference next period from block
             if i == self.index.at(1):
-                return (
-                    block.soc
-                    == self.battery.start_soc * self.battery.capacity
-                    + block.energy * self.battery.charge_efficiency
-                    - block.energy_out
-                    * (1 / self.battery.discharge_efficiency)
-                )
-            prev_period = block.parent_component()[self.index.prev(i)]
+                previous_soc = self.battery.start_soc * self.battery.capacity
+            else:
+                previous_soc = block.parent_component()[self.index.prev(i)].soc
             return (
                 block.soc
-                == prev_period.soc
+                == previous_soc
                 + block.energy * self.battery.charge_efficiency
                 - block.energy_out * (1 / self.battery.discharge_efficiency)
             )
