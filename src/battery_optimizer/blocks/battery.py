@@ -72,7 +72,7 @@ class BatteryBlock:
 
             def charge_finished(_):
                 if i < self.battery.end_soc_time:
-                    return (0, block.soc, self.battery.capacity)
+                    return pyo.Constraint.Skip
                 return (
                     self.battery.end_soc * self.battery.capacity,
                     block.soc,
@@ -88,11 +88,7 @@ class BatteryBlock:
             def charge_start(_):
                 if i < self.battery.start_soc_time:
                     return (0, block.energy, 0)
-                return (
-                    0,
-                    block.energy,
-                    self.battery.max_charge_power,
-                )
+                return pyo.Constraint.Skip
 
             block.charge_start_time = pyo.Constraint(expr=charge_start)
 
@@ -106,11 +102,7 @@ class BatteryBlock:
                             block.energy_out,
                             0,
                         )
-                    return (
-                        0,
-                        block.energy_out,
-                        self.battery.max_discharge_power,
-                    )
+                    return pyo.Constraint.Skip
 
                 block.discharge_start_time = pyo.Constraint(
                     expr=discharge_start
