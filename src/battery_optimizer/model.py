@@ -1,4 +1,4 @@
-from battery_optimizer.helpers.heat_pump_profile import get_period_length
+from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.heat_pump import (
     TEXT_HEAT_PUMP_BASE,
     TEXT_HEATING_ELEMENT_ENERGY_RULE,

@@ -1,7 +1,7 @@
 import pyomo.environ as pyo
 import hplib.hplib as hpl
+from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.helpers.heat_pump_profile import (
-    get_period_length,
     heat_loss_tank,
     interpolate_temperature,
     interpolate_heat_energy,
