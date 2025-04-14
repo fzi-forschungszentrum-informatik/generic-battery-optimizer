@@ -113,101 +113,77 @@ class BatteryBlock:
         # This is needed if charge and discharge efficiency is 100% or
         # minimum discharge or minimum charge power is set
 
-        if (
-            (
-                self.battery.charge_efficiency == 1
-                and self.battery.discharge_efficiency == 1
-            )
-            or self.battery.min_charge_power > 0
-            or self.battery.min_discharge_power > 0
-        ):
-            # Charging
-            block.is_charging = pyo.Var(within=pyo.Binary)
+        # Charging
+        block.is_charging = pyo.Var(within=pyo.Binary)
 
-            def enforce_binary_charging(_):
-                """Enforce block.is_charging to be 1 if charge_power > 0"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                if i == self.index.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = self.index.next(i) - i
-
-                return (
-                    block.energy
-                    <= self.battery.max_charge_power
-                    * (delta / pd.Timedelta("1h"))
-                    * block.is_charging
-                )
-
-            block.enforce_charging = pyo.Constraint(
-                rule=enforce_binary_charging
+        def enforce_binary_charging(_):
+            """Enforce block.is_charging to be 1 if charge_power > 0"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            return (
+                block.energy
+                <= self.battery.max_charge_power
+                * period_conversion_factor
+                * block.is_charging
             )
 
-            # Discharging
-            block.is_discharging = pyo.Var(within=pyo.Binary)
+        block.enforce_charging = pyo.Constraint(rule=enforce_binary_charging)
 
-            def enforce_binary_discharging(_):
-                """Enforce block.is_discharging to be 1 if
-                discharge_power > 0"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                if i == self.index.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = self.index.next(i) - i
+        # Discharging
+        block.is_discharging = pyo.Var(within=pyo.Binary)
 
-                return (
-                    block.energy_out
-                    <= self.battery.max_discharge_power
-                    * (delta / pd.Timedelta("1h"))
-                    * block.is_discharging
-                )
-
-            block.enforce_discharging = pyo.Constraint(
-                rule=enforce_binary_discharging
+        def enforce_binary_discharging(_):
+            """Enforce block.is_discharging to be 1 if
+            discharge_power > 0"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            return (
+                block.energy_out
+                <= self.battery.max_discharge_power
+                * period_conversion_factor
+                * block.is_discharging
             )
 
-            def enforce_binary_charging_discharging(_):
-                """Enforce battery can only charge or discharge"""
-                return block.is_charging + block.is_discharging <= 1
+        block.enforce_discharging = pyo.Constraint(
+            rule=enforce_binary_discharging
+        )
 
-            block.enforce_binary_power = pyo.Constraint(
-                rule=enforce_binary_charging_discharging
+        def enforce_binary_charging_discharging(_):
+            """Enforce battery can only charge or discharge"""
+            return block.is_charging + block.is_discharging <= 1
+
+        block.enforce_binary_power = pyo.Constraint(
+            rule=enforce_binary_charging_discharging
+        )
+
+        def min_charge_power_constraint(_):
+            """Constraint that ensures the battery is charged with
+            min_charge_power if it is charged"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            return (
+                block.energy
+                >= self.battery.min_charge_power
+                * period_conversion_factor
+                * block.is_charging
             )
 
-        if self.battery.min_charge_power > 0:
+        block.min_charge_power = pyo.Constraint(
+            expr=min_charge_power_constraint
+        )
 
-            def min_charge_power_constraint(_):
-                """Constraint that ensures the battery is charged with
-                min_charge_power if it is charged"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                return (
-                    block.energy
-                    >= self.battery.min_charge_power
-                    * period_conversion_factor
-                    * block.is_charging
-                )
-
-            block.min_charge_power = pyo.Constraint(
-                expr=min_charge_power_constraint
+        def min_discharge_power_constraint(_):
+            """Constraint that ensures the battery is discharged with
+            min_discharge_power if it is discharged"""
+            # Big M Method -> delta is the time difference between two
+            # timestamps
+            return (
+                block.energy_out
+                >= self.battery.min_discharge_power
+                * period_conversion_factor
+                * block.is_discharging
             )
 
-        if self.battery.min_discharge_power > 0:
-
-            def min_discharge_power_constraint(_):
-                """Constraint that ensures the battery is discharged with
-                min_discharge_power if it is discharged"""
-                # Big M Method -> delta is the time difference between two
-                # timestamps
-                return (
-                    block.energy_out
-                    >= self.battery.min_discharge_power
-                    * period_conversion_factor
-                    * block.is_discharging
-                )
-
-            block.min_discharge_power = pyo.Constraint(
-                expr=min_discharge_power_constraint
-            )
+        block.min_discharge_power = pyo.Constraint(
+            expr=min_discharge_power_constraint
+        )
