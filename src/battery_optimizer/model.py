@@ -359,7 +359,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    block[i].energy
+                    block[i].energy_sink
                     == model.component(f"{base_name}{TEXT_CHARGE_ENERGY}")[i]
                 ),
             ),
@@ -378,7 +378,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    block[i].energy_out
+                    block[i].energy_source
                     == model.component(f"{base_name}{TEXT_DISCHARGE_ENERGY}")[
                         i
                     ]

@@ -11,36 +11,32 @@ class BatteryBlock:
         self.battery = battery
 
     def get_block(self, block: pyo.Block):
+        # DEFAULT
+        # Source in Matrix
+        block.energy_source = pyo.Var(bounds=(0, 0))
+        block.price_source = pyo.Param(initialize=0)
+        # Sink in matrix
+        block.energy_sink = pyo.Var(bounds=(0, 0))
+        block.price_sink = pyo.Param(initialize=0)
+        # DEFAULT
+
         i = block.index()
         _, period_conversion_factor = get_period_length(i, self.index)
 
-        def max_charge_energy(_):
-            """Maximum energy that can be charged in time period i"""
-            # from last timestamp no energy usage is allowed
-            if i == self.index.last():
-                return (0, 0)
-            # calculate energy that is allowed
-            return (
-                0,
-                self.battery.max_charge_power * period_conversion_factor,
-            )
-
-        block.energy = pyo.Var(
-            bounds=max_charge_energy  # , doc="Energy in", units="kWh"
+        # Energy in
+        block.energy_sink.setub(
+            0
+            if i == self.index.last()
+            else self.battery.max_charge_power * period_conversion_factor
         )
+        # , doc="Energy in", units="kWh"
 
-        def max_discharge_energy(_):
-            """Maximum energy that can be discharged in time period i"""
-            # from last timestamp no energy usage is allowed
-            if i == self.index.last():
-                return (0, 0)
-            # calculate energy that is allowed
-            return (
-                0,
-                self.battery.max_discharge_power * period_conversion_factor,
-            )
-
-        block.energy_out = pyo.Var(bounds=max_discharge_energy)
+        # Energy out
+        block.energy_source.setub(
+            0
+            if i == self.index.last()
+            else self.battery.max_discharge_power * period_conversion_factor
+        )
         block.soc = pyo.Var(bounds=(0, self.battery.capacity))
 
         # soc calculation
@@ -60,8 +56,8 @@ class BatteryBlock:
             return (
                 block.soc
                 == previous_soc
-                + block.energy * self.battery.charge_efficiency
-                - block.energy_out * (1 / self.battery.discharge_efficiency)
+                + block.energy_sink * self.battery.charge_efficiency
+                - block.energy_source * (1 / self.battery.discharge_efficiency)
             )
 
         # Discharge energy
@@ -87,7 +83,7 @@ class BatteryBlock:
             # Prevent charge
             def charge_start(_):
                 if i < self.battery.start_soc_time:
-                    return (0, block.energy, 0)
+                    return (0, block.energy_sink, 0)
                 return pyo.Constraint.Skip
 
             block.charge_start_time = pyo.Constraint(expr=charge_start)
@@ -99,7 +95,7 @@ class BatteryBlock:
                     if i < self.battery.start_soc_time:
                         return (
                             0,
-                            block.energy_out,
+                            block.energy_source,
                             0,
                         )
                     return pyo.Constraint.Skip
@@ -121,7 +117,7 @@ class BatteryBlock:
             # Big M Method -> delta is the time difference between two
             # timestamps
             return (
-                block.energy
+                block.energy_sink
                 <= self.battery.max_charge_power
                 * period_conversion_factor
                 * block.is_charging
@@ -138,7 +134,7 @@ class BatteryBlock:
             # Big M Method -> delta is the time difference between two
             # timestamps
             return (
-                block.energy_out
+                block.energy_source
                 <= self.battery.max_discharge_power
                 * period_conversion_factor
                 * block.is_discharging
@@ -162,7 +158,7 @@ class BatteryBlock:
             # Big M Method -> delta is the time difference between two
             # timestamps
             return (
-                block.energy
+                block.energy_sink
                 >= self.battery.min_charge_power
                 * period_conversion_factor
                 * block.is_charging
@@ -178,7 +174,7 @@ class BatteryBlock:
             # Big M Method -> delta is the time difference between two
             # timestamps
             return (
-                block.energy_out
+                block.energy_source
                 >= self.battery.min_discharge_power
                 * period_conversion_factor
                 * block.is_discharging
