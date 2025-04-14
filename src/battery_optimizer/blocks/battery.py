@@ -1,6 +1,7 @@
 import datetime
 import pandas as pd
 import pyomo.environ as pyo
+from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.profiles.battery_profile import Battery
 
 
@@ -11,18 +12,17 @@ class BatteryBlock:
 
     def get_block(self, block: pyo.Block):
         i = block.index()
+        _, period_conversion_factor = get_period_length(i, self.index)
 
         def max_charge_energy(_):
             """Maximum energy that can be charged in time period i"""
             # from last timestamp no energy usage is allowed
             if i == self.index.last():
                 return (0, 0)
-            # get time delta
-            delta = self.index.next(i) - i
             # calculate energy that is allowed
             return (
                 0,
-                self.battery.max_charge_power * (delta / pd.Timedelta("1h")),
+                self.battery.max_charge_power * period_conversion_factor,
             )
 
         block.energy = pyo.Var(
@@ -34,13 +34,10 @@ class BatteryBlock:
             # from last timestamp no energy usage is allowed
             if i == self.index.last():
                 return (0, 0)
-            # get time delta
-            delta = self.index.next(i) - i
             # calculate energy that is allowed
             return (
                 0,
-                self.battery.max_discharge_power
-                * (delta / pd.Timedelta("1h")),
+                self.battery.max_discharge_power * period_conversion_factor,
             )
 
         block.energy_out = pyo.Var(bounds=max_discharge_energy)
@@ -199,15 +196,10 @@ class BatteryBlock:
                 min_charge_power if it is charged"""
                 # Big M Method -> delta is the time difference between two
                 # timestamps
-                if i == self.index.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = self.index.next(i) - i
-
                 return (
                     block.energy
                     >= self.battery.min_charge_power
-                    * (delta / pd.Timedelta("1h"))
+                    * period_conversion_factor
                     * block.is_charging
                 )
 
@@ -222,15 +214,10 @@ class BatteryBlock:
                 min_discharge_power if it is discharged"""
                 # Big M Method -> delta is the time difference between two
                 # timestamps
-                if i == self.index.last():
-                    delta = pd.Timedelta("0h")
-                else:
-                    delta = self.index.next(i) - i
-
                 return (
                     block.energy_out
                     >= self.battery.min_discharge_power
-                    * (delta / pd.Timedelta("1h"))
+                    * period_conversion_factor
                     * block.is_discharging
                 )
 
