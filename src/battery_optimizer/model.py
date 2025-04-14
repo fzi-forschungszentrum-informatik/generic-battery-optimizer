@@ -1,3 +1,8 @@
+import logging
+from typing import List
+import pyomo.environ as pyo
+from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
+import pandas as pd
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.heat_pump import (
     TEXT_HEAT_PUMP_BASE,
@@ -22,7 +27,6 @@ from battery_optimizer.static.model import (
     TEXT_OBJECTIVE_NAME,
 )
 from battery_optimizer.static.profiles import REGEX
-from pyomo.opt import SolverFactory, SolverStatus, TerminationCondition
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.blocks.heat_pump import heat_pump_block_rule
@@ -30,10 +34,6 @@ from battery_optimizer.helpers.parse_profile_stacks import (
     parse_profiles,
 )
 from battery_optimizer.profiles.profiles import ProfileStack
-import pyomo.environ as pyo
-from typing import List
-import pandas as pd
-import logging
 from battery_optimizer.blocks.battery import BatteryBlock
 
 log = logging.getLogger(__name__)
