@@ -14,10 +14,10 @@ class BatteryBlock:
         # DEFAULT
         # Source in Matrix
         block.energy_source = pyo.Var(bounds=(0, 0))
-        block.price_source = pyo.Param(initialize=0)
+        block.price_source = pyo.Param(initialize=0, mutable=True)
         # Sink in matrix
         block.energy_sink = pyo.Var(bounds=(0, 0))
-        block.price_sink = pyo.Param(initialize=0)
+        block.price_sink = pyo.Param(initialize=0, mutable=True)
         # DEFAULT
 
         i = block.index()

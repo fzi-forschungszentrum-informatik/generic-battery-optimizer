@@ -1,6 +1,7 @@
 import logging
 import pyomo.environ as pyo
 import pandas as pd
+from battery_optimizer.blocks.power_profile import PowerProfileBlock
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.heat_pump import (
     TEXT_HEAT_PUMP_BASE,
@@ -32,6 +33,10 @@ from battery_optimizer.blocks.battery import BatteryBlock
 
 log = logging.getLogger(__name__)
 
+component_map = {
+    BatteryBlock: "batteries",
+    PowerProfileBlock: "power_profiles",
+}
 
 
 # this houses the model itself
@@ -51,7 +56,8 @@ class Model:
         # Objective, index (initialized as empty), (...)
         # the index must be adjusted when adding new elements
         self.model = pyo.ConcreteModel()
-        self.model.batteries = pyo.Block()
+        for component in component_map.values():
+            self.model.add_component(component, pyo.Block())
 
         # store all energy sources, sinks and batteries
         self.energy_sources: list[str] = []
@@ -326,70 +332,95 @@ class Model:
         """Add an energy buy profile to the model"""
         log.debug("Adding buy profile %s to model", name)
         # add a new price profile to the model
-        component_name = self.__add_profile(
-            base=TEXT_ENERGY_PROFILE_BASE, name=name, profile=profile
-        )
-        # add the price profile to the energy sources
-        self.energy_sources.append(component_name)
-
-    def __add_profile(
-        self, base: str, name: str, profile: pd.DataFrame
-    ) -> str:
-        """Add a new energy profile to the model.
-
-        This can be a buy or a sell profile.
-        Generates energy limit for the profile and stores the price in the
-        model.
-        """
-        base_name = f"{base}{name}"
-        name_energy = f"{base_name}{TEXT_ENERGY}"
-        name_price = f"{base_name}{TEXT_PRICE}"
-
-        log.debug(profile)
-
-        # calculate energy limit
-        def energy_limit(_, i):
-            """Get maximum energy of profile at index i"""
-            return (
-                0,
-                max(
-                    0,
-                    profile.filter(
-                        regex=f"{REGEX}{TEXT_SOURCE_DATA_ENERGY_COLUMN}$")
-                    .loc[i]
-                    .values[0],
-                ),
-            )
-
-        self.model.add_component(
-            name_energy, pyo.Var(self.model.i, bounds=energy_limit)
-        )
-        log.debug(self.model.component(name_energy))
-        # prices
-        log.debug(profile.filter(
-            regex=f"{REGEX}{TEXT_SOURCE_DATA_PRICE_COLUMN}$"))
-        self.model.add_component(
-            name_price,
-            pyo.Param(
+        base_name = f"{TEXT_ENERGY_PROFILE_BASE}{name}"
+        self.model.power_profiles.add_component(
+            name=base_name,
+            val=pyo.Block(
                 self.model.i,
-                initialize=profile.filter(
-                    regex=f"{REGEX}{TEXT_SOURCE_DATA_PRICE_COLUMN}$"
+                rule=PowerProfileBlock(
+                    self.model.i, source=profile.to_dict(orient="index")
+                ).get_block,
+            ),
+        )
+        block = self.model.power_profiles.component(base_name)
+
+        # Energy matrix rules
+        self.model.add_component(
+            f"{base_name}{TEXT_ENERGY}",
+            pyo.Var(
+                self.model.i,
+                domain=pyo.NonNegativeReals,
+            ),
+        )
+        self.model.add_component(
+            f"{base_name}{TEXT_ENERGY} Constraint",
+            pyo.Constraint(
+                self.model.i,
+                rule=lambda model, i: (
+                    block[i].energy_source
+                    == model.component(f"{base_name}{TEXT_ENERGY}")[i]
                 ),
             ),
         )
-        log.debug(self.model.component(name_price))
 
-        return base_name
+        self.model.add_component(
+            f"{base_name}{TEXT_PRICE}",
+            pyo.Param(
+                self.model.i,
+                initialize={
+                    i: block[i].price_source.value for i in self.model.i
+                },
+            ),
+        )
+        # add the price profile to the energy sources
+        self.energy_sources.append(base_name)
 
     def add_sell_profile(self, name: str, profile: pd.DataFrame) -> None:
         """Add an energy sell profile to the model"""
         log.debug("Adding sell profile %s to model", name)
         # This adds a energy target to the energy matrix and yields revenue in
         # Objective
-        self.energy_sinks.append(
-            self.__add_profile(base=TEXT_SELL_PROFILE_BASE,
-                               name=name, profile=profile)
+        base_name = f"{TEXT_SELL_PROFILE_BASE}{name}"
+        self.model.power_profiles.add_component(
+            name=base_name,
+            val=pyo.Block(
+                self.model.i,
+                rule=PowerProfileBlock(
+                    self.model.i, sink=profile.to_dict(orient="index")
+                ).get_block,
+            ),
         )
+        block = self.model.power_profiles.component(base_name)
+
+        # Energy matrix rules
+        self.model.add_component(
+            f"{base_name}{TEXT_ENERGY}",
+            pyo.Var(
+                self.model.i,
+                domain=pyo.NonNegativeReals,
+            ),
+        )
+        self.model.add_component(
+            f"{base_name}{TEXT_ENERGY} Constraint",
+            pyo.Constraint(
+                self.model.i,
+                rule=lambda model, i: (
+                    block[i].energy_sink
+                    == model.component(f"{base_name}{TEXT_ENERGY}")[i]
+                ),
+            ),
+        )
+
+        self.model.add_component(
+            f"{base_name}{TEXT_PRICE}",
+            pyo.Param(
+                self.model.i,
+                initialize={
+                    i: block[i].price_sink.value for i in self.model.i
+                },
+            ),
+        )
+        self.energy_sinks.append(base_name)
 
     def add_fixed_consumption(self, name: str, profile: pd.DataFrame) -> None:
         """Add a fixed energy consumption to the model"""
