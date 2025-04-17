@@ -1,6 +1,7 @@
 import pandas as pd
 from battery_optimizer.profiles.battery_profile import Battery
-from battery_optimizer.model import Optimizer
+from battery_optimizer.profile_stack_problem import ProfileStackProblem
+from battery_optimizer.solver import Solver
 from battery_optimizer.export.model import Exporter
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
@@ -61,7 +62,7 @@ def optimize(
         The power in W of each heat pump profile used. Heat pumps have an
         inverter and a heating element
     """
-    opt = Optimizer(
+    opt = ProfileStackProblem(
         buy_prices=buy_prices,
         sell_prices=sell_prices,
         fixed_consumption=fixed_consumption,
@@ -69,7 +70,7 @@ def optimize(
         heat_pumps=heat_pumps,
     )
     opt.set_up()
-    opt.solve(**kwargs)
+    result = Solver(**kwargs).solve(opt.model.model)
     export = Exporter(opt.model).to_df()
     return (
         export.to_buy(),

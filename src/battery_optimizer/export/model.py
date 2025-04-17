@@ -2,7 +2,7 @@ import datetime
 import pandas as pd
 import pyomo.environ as pyo
 import logging
-from battery_optimizer.model import Model, Optimizer
+from battery_optimizer.model import Model
 from battery_optimizer.static.model import (
     TEXT_ENERGY_PATH_MATRIX,
     TEXT_SOC,
