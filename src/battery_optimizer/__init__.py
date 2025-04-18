@@ -70,7 +70,7 @@ def optimize(
         heat_pumps=heat_pumps,
     )
     opt.set_up()
-    result = Solver(**kwargs).solve(opt.model.model)
+    Solver(**kwargs).solve(opt.model.model)
     export = Exporter(opt.model).to_df()
     return (
         export.to_buy(),
