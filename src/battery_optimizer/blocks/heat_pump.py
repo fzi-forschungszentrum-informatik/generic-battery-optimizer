@@ -514,3 +514,100 @@ def heat_pump_block_rule(
     # def heat_energy_TES_heat_flow_TES_rule(block):
     #     return block.heat_energy_TES + (block.heat_supply_HR + block.heat_supply_hp_to_tes) * TIME_RESOLUTION  >= (block.heat_supply_TES_Demand + block.heat_loss_tank) * TIME_RESOLUTION
     # block.heat_energy_TES_heat_flow_TES = pyo.Constraint(rule=heat_energy_TES_heat_flow_TES_rule)
+
+    # heat_energy_TES_linkin_rule
+    if period == model.i.first():
+        block.start_soc = pyo.Constraint(
+            rule=(block.soc == heat_pump.tes_start_soc)
+        )
+    else:
+        previous_block = block.parent_component()[model.i.prev(period)]
+
+        # y_tes_over_hp_temp constraints
+        block.y_tes_over_hp_temp_c1 = pyo.Constraint(
+            expr=(
+                block.temp_TES
+                >= heat_pump.output_temperature
+                - heat_pump.output_temperature * (1 - block.y_tes_over_hp_temp)
+            ),
+            doc=(
+                "TES temperature must be over the heat pumps output "
+                "temperature when y_tes_over_hp_temp is 1"
+            ),
+        )
+        block.y_tes_over_hp_temp_c2 = pyo.Constraint(
+            expr=(
+                block.temp_TES
+                <= heat_pump.output_temperature
+                + (heat_pump.max_temp_tes - heat_pump.output_temperature)
+                * block.y_tes_over_hp_temp
+            ),
+            doc=(
+                "TES temperature must be at or below the heat pump's "
+                "output temperature if y_tes_over_hp_temp is 0."
+            ),
+        )
+
+        block.tes_temperature_below_hp_output = pyo.Constraint(
+            expr=(previous_block.y_TES + block.y_tes_over_hp_temp <= 1),
+            doc=(
+                "The TES temperature must be at or below the heat "
+                "pumps output temperature in any period **following a "
+                "charging** of the TES by the heat pump. The TES "
+                "temperature can not exceed the heat pump output "
+                "temperature with out being charged by the heating "
+                "element."
+            ),
+        )
+
+        # y_delta_tes_over_value constraints
+        # block.cons4 = pyo.Constraint(
+        #     expr=(
+        #         block.temp_TES
+        #         >= heat_pump.output_temperature
+        #         - heat_pump.output_temperature
+        #         * (1 - block.y_delta_tes_over_value)
+        #     ),
+        #     doc=(
+        #         "TES temperature must be over the heat pumps output "
+        #         "temperature when y_delta_tes_over_value is 1"
+        #     ),
+        # )
+        # block.cons5 = pyo.Constraint(
+        #     expr=(
+        #         block.temp_TES
+        #         <= heat_pump.output_temperature
+        #         + (heat_pump.max_temp_tes - heat_pump.output_temperature)
+        #         * block.y_delta_tes_over_value
+        #     ),
+        #     doc=(
+        #         "TES temperature must be at or below the heat pump's "
+        #         "output temperature if y_delta_tes_over_value is 0."
+        #     ),
+        # )
+
+        block.cons6 = pyo.Constraint(
+            expr=(block.y_TES + block.y_tes_over_hp_temp <= 1),
+            doc=(
+                "The TES temperature must be at or below the heat "
+                "pumps output temperature in **any period the TES is "
+                "charged** by the heat pump. The TES "
+                "temperature can not exceed the heat pump output "
+                "temperature with out being charged by the heating "
+                "element."
+            ),
+        )
+
+        block.heat_energy_tes_link_rule = pyo.Constraint(
+            rule=(
+                block.heat_energy_TES
+                == previous_block.heat_energy_TES
+                + (
+                    previous_block.heat_supply_hp_to_tes
+                    + previous_block.heat_supply_HR
+                    - previous_block.heat_supply_TES_Demand
+                    - previous_block.heat_loss_tank
+                )
+                * period_conversion_factor
+            )
+        )
