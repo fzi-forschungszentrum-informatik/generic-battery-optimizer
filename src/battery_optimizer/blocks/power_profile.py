@@ -1,8 +1,7 @@
 import datetime
 import logging
 import pyomo.environ as pyo
-from pydantic import BaseModel, RootModel, Field, field_validator
-from battery_optimizer.blocks.base import Base
+from pydantic import BaseModel, RootModel, Field
 
 log = logging.getLogger(__name__)
 
