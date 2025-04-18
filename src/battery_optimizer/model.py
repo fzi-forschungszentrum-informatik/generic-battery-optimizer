@@ -1,6 +1,7 @@
 import logging
 import pyomo.environ as pyo
 import pandas as pd
+from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.power_profile import PowerProfileBlock
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.heat_pump import (
@@ -36,6 +37,7 @@ log = logging.getLogger(__name__)
 component_map = {
     BatteryBlock: "batteries",
     PowerProfileBlock: "power_profiles",
+    FixedConsumptionBlock: "fixed_consumptions",
 }
 
 
@@ -426,26 +428,37 @@ class Model:
         """Add a fixed energy consumption to the model"""
         log.debug("Adding fixed consumption %s to model", name)
         log.debug(profile)
-
         base_name = f"{TEXT_CONSUMPTION_PROFILE_BASE}{name}"
-        name_energy = f"{base_name}{TEXT_ENERGY}"
-
-        # calculate energy limit
-        def energy_limit(_, i):
-            """Get maximum energy of profile at index i"""
-            value = (
-                profile.filter(
-                    regex=f"{REGEX}{TEXT_SOURCE_DATA_ENERGY_COLUMN}$")
-                .loc[i]
-                .values[0]
-            )
-            return (value, value)
-
-        self.model.add_component(
-            name_energy, pyo.Var(self.model.i, bounds=energy_limit)
+        self.model.fixed_consumptions.add_component(
+            name=base_name,
+            val=pyo.Block(
+                self.model.i,
+                rule=FixedConsumptionBlock(
+                    self.model.i,
+                    power=profile["energy"].to_dict(),
+                ).get_block,
+            ),
         )
-        log.debug(self.model.component(name_energy))
+        block = self.model.fixed_consumptions.component(base_name)
 
+        # Energy matrix rules
+        self.model.add_component(
+            f"{base_name}{TEXT_ENERGY}",
+            pyo.Var(
+                self.model.i,
+                domain=pyo.NonNegativeReals,
+            ),
+        )
+        self.model.add_component(
+            f"{base_name}{TEXT_ENERGY} Constraint",
+            pyo.Constraint(
+                self.model.i,
+                rule=lambda model, i: (
+                    block[i].energy_sink
+                    == model.component(f"{base_name}{TEXT_ENERGY}")[i]
+                ),
+            ),
+        )
         # add to list of energy sinks
         self.energy_sinks.append(base_name)
 
