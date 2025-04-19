@@ -174,21 +174,11 @@ class Model:
 
         # Energy matrix rules
         heat_pump_energy_rule = (
-            f"{base_name}{TEXT_SEPARATOR}{TEXT_INVERTER_ENERGY_RULE}"
-        )
-        heat_recovery_energy_rule = (
-            base_name + TEXT_SEPARATOR + TEXT_HEATING_ELEMENT_ENERGY_RULE
+            base_name + TEXT_SEPARATOR + TEXT_INVERTER_ENERGY_RULE
         )
 
         self.model.add_component(
             heat_pump_energy_rule,
-            pyo.Var(
-                self.model.i,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-        self.model.add_component(
-            heat_recovery_energy_rule,
             pyo.Var(
                 self.model.i,
                 domain=pyo.NonNegativeReals,
@@ -200,29 +190,14 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heat_pump_block[i].electric_power_hp
-                    * 1000  # Heat pump uses kW, not W
-                    * get_period_length(i, self.model.i)[1]
+                    heat_pump_block[i].energy_sink
                     == model.component(heat_pump_energy_rule)[i]
-                ),
-            ),
-        )
-        self.model.add_component(
-            f"{heat_recovery_energy_rule} Constraint",
-            pyo.Constraint(
-                self.model.i,
-                rule=lambda model, i: (
-                    heat_pump_block[i].electric_power_hr
-                    * 1000  # Heat pump uses kW, not W
-                    * get_period_length(i, self.model.i)[1]
-                    == model.component(heat_recovery_energy_rule)[i]
                 ),
             ),
         )
 
         # Add heat pump and heat recovery to energy sinks
         self.energy_sinks.append(heat_pump_energy_rule)
-        self.energy_sinks.append(heat_recovery_energy_rule)
 
     def add_buy_profile(self, name: str, profile: pd.DataFrame) -> None:
         """Add an energy buy profile to the model"""

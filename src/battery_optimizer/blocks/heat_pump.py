@@ -24,6 +24,14 @@ class HeatPumpBlock:
         """
         Gestaltung einer Periode im Modell
         """
+        # DEFAULT
+        # Source in Matrix
+        block.energy_source = pyo.Var(bounds=(0, 0))
+        block.price_source = pyo.Param(initialize=0, mutable=True)
+        # Sink in matrix
+        block.energy_sink = pyo.Var(bounds=(0, 0))
+        block.price_sink = pyo.Param(initialize=0, mutable=True)
+        # DEFAULT
 
         period = block.index()
 
@@ -119,6 +127,28 @@ class HeatPumpBlock:
             doc=(
                 "Electric energy consumption of the heat pump in kW during this "
                 "period"
+            ),
+        )
+
+        # link electric power to energy
+        block.energy_sink.setub(
+            (block.electric_power_hp.ub + block.electric_power_hr.ub)
+            * 1000  # Heat pump uses kW, not W
+            * period_conversion_factor
+        )
+        block.electric_power_link = pyo.Constraint(
+            expr=(
+                (block.electric_power_hp + block.electric_power_hr)
+                * 1000  # Heat pump uses kW, not W
+                * period_conversion_factor
+                == block.energy_sink
+            ),
+            name="",
+            doc=(
+                "Link between electric power for hp and hr and energy. "
+                "Both are added together and published as a single energy "
+                "variable. "
+                "Electric power is converted to energy over the period length."
             ),
         )
 
