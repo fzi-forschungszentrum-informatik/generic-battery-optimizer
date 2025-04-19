@@ -35,20 +35,15 @@ class HeatPumpBlock:
 
         period = block.index()
 
-        period_length, period_conversion_factor = get_period_length(
-            period, self.index
-        )
+        _, period_conversion_factor = get_period_length(period, self.index)
 
         temp_room = interpolate_temperature(self.heat_pump.temp_room, period)
 
         # HPL Heat Pump
-        if (
-            self.heat_pump.type == "Luft/Luft"
-            or self.heat_pump.type == "Air/Air"
-        ):
+        if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
             log.warning("L/L-WP")
             raise NotImplementedError("Air/Air heat pumps are not supported.")
-        elif self.heat_pump.type == "Generic":
+        if self.heat_pump.type == "Generic":
             parameters = hpl.get_parameters(
                 model=self.heat_pump.type,
                 group_id=self.heat_pump.id,
@@ -91,8 +86,8 @@ class HeatPumpBlock:
             ),
             within=pyo.NonNegativeReals,
             doc=(
-                "Temperature of heat source in K. e.g. outdoor air, ground water "
-                "or soil temperature."
+                "Temperature of heat source in K. e.g. outdoor air, ground "
+                "water or soil temperature."
             ),
         )
 
@@ -115,8 +110,8 @@ class HeatPumpBlock:
                 self.heat_pump.max_electric_power_hr,
             ),
             doc=(
-                "Electric energy consumption of the electric heater in kW during "
-                "this period"
+                "Electric energy consumption of the electric heater in kW "
+                "during this period."
             ),
         )
         block.electric_power_hp = pyo.Var(
@@ -125,8 +120,8 @@ class HeatPumpBlock:
                 self.heat_pump.max_electric_power_hp,
             ),
             doc=(
-                "Electric energy consumption of the heat pump in kW during this "
-                "period"
+                "Electric energy consumption of the heat pump in kW during "
+                "this period."
             ),
         )
 
@@ -170,8 +165,8 @@ class HeatPumpBlock:
                 self.heat_pump.max_heat_supply_hp,
             ),
             doc=(
-                "The heat energy the heat pump supplies to the demand side in kW "
-                "during this period"
+                "The heat energy the heat pump supplies to the demand side in "
+                "kW during this period."
             ),
         )
         block.heat_supply_hp_to_tes = pyo.Var(
@@ -180,8 +175,8 @@ class HeatPumpBlock:
                 self.heat_pump.max_heat_supply_hp,
             ),
             doc=(
-                "The heat energy the heat pump supplies to the TES in kW during "
-                "this period"
+                "The heat energy the heat pump supplies to the TES in kW "
+                "during this period."
             ),
         )
 
@@ -227,10 +222,10 @@ class HeatPumpBlock:
             domain=pyo.NonNegativeReals, bounds=(0, MAX_COP)
         )
 
-        """
-            in diesem modell HR in TES, und HR trägt direkt zur Erwärmung/Aufladung von TES bei
-            außerdem TES kann nicht gleichzeitig aufgeladen und entladen werden
-        """
+        # in diesem modell HR in TES, und HR trägt direkt zur
+        # Erwärmung/Aufladung von TES bei
+        # außerdem TES kann nicht gleichzeitig aufgeladen und entladen werden
+
         # #Restriktionen
 
         # #Wärmepumpe
@@ -278,7 +273,8 @@ class HeatPumpBlock:
         # COP Berechnung
 
         # wenn TES aufgeladen wird, Temperatur von WP = MAX_TEMP_HP
-        # wenn TES nicht aufgeladen wird, dann Temperatur von WP = TEMP_SUPPLY_DEMAND
+        # wenn TES nicht aufgeladen wird, dann Temperatur von
+        # WP = TEMP_SUPPLY_DEMAND
         def cop_rule1(block):
             if (
                 interpolate_heat_energy(
@@ -321,23 +317,18 @@ class HeatPumpBlock:
                 > 0
             ):
                 return pyo.Constraint.Skip
-            if (
-                self.heat_pump.type == "Luft/Luft"
-                or self.heat_pump.type == "Air/Air"
-            ):
+            if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
                 return block.cop_value == self.heat_pump.cop_air
-            else:
-                results = hpl_heat_pump.simulate(
-                    t_in_primary=(block.source_temp - C_TO_K),
-                    t_in_secondary=(
-                        (self.heat_pump.flow_temperature - 5) - C_TO_K
-                    ),
-                    t_amb=(block.outdoor_temperature - C_TO_K),
-                    mode=1,
-                )
-                return (block.cop_value - results["COP"]) * (
-                    1 - block.y_TES
-                ) == 0
+
+            results = hpl_heat_pump.simulate(
+                t_in_primary=(block.source_temp - C_TO_K),
+                t_in_secondary=(
+                    (self.heat_pump.flow_temperature - 5) - C_TO_K
+                ),
+                t_amb=(block.outdoor_temperature - C_TO_K),
+                mode=1,
+            )
+            return (block.cop_value - results["COP"]) * (1 - block.y_TES) == 0
 
         block.cop_cons3 = pyo.Constraint(rule=cop_rule3)
 
@@ -413,10 +404,13 @@ class HeatPumpBlock:
             # Check that last period has no demand
             if block.index() == self.index.last() and heat_supply_demand > 0:
                 log.warning(
-                    "Last period has heat demand! "
-                    f"Provided heat demand: {self.heat_pump.heat_demand[period]} "
-                    "The optimization will continue with no heat demand in "
-                    f"the last period ({period})."
+                    (
+                        "Last period has heat demand! Provided heat demand: "
+                        "%s The optimization will continue with no heat "
+                        "demand in the last period (%s)."
+                    ),
+                    self.heat_pump.heat_demand[period],
+                    period,
                 )
                 return block.heat_supply_demand == 0
             return block.heat_supply_demand == heat_supply_demand
@@ -426,9 +420,9 @@ class HeatPumpBlock:
             doc=(
                 "Sets the total heat demand in kW of the building for this "
                 "period. "
-                "If a known heat demand is given, it is used. Otherwise, the heat "
-                "demand is estimated based on the building's U-values and the "
-                "outdoor temperature"
+                "If a known heat demand is given, it is used. Otherwise, the "
+                "heat demand is estimated based on the building's U-values "
+                "and the outdoor temperature."
             ),
         )
 
@@ -445,8 +439,8 @@ class HeatPumpBlock:
         )
 
         # obere Schranke
-        # Maximum possible energy that can be supplied by the heat pump, electric
-        # heater and TES
+        # Maximum possible energy that can be supplied by the heat pump,
+        # electric heater and TES
         # TODO Convert HP and HR power to energy over period
         def heat_supply_demand_ub_rule(block):
             return (
@@ -465,7 +459,8 @@ class HeatPumpBlock:
 
         # #Wärmespeicher
 
-        # Wärmespeicher muss genügend Energie haben um Wärmestrom in Periode decken zu können
+        # Wärmespeicher muss genügend Energie haben um Wärmestrom in Periode
+        # decken zu können
         def heat_energy_TES_heat_flow_TES_rule(block):
             return (
                 block.heat_energy_TES
@@ -581,17 +576,30 @@ class HeatPumpBlock:
 
         # #Wärmestrom Demand
 
-        # #Restriktion, die sicherstellt, dass immer genügend Wärmeenergie erzeugt wieder pro Periode
+        # #Restriktion, die sicherstellt, dass immer genügend Wärmeenergie
+        # erzeugt wieder pro Periode
         # def heat_flows_TES_hp_Demand_rule2(block):
-        #     return block.heat_supply_Demand + block.heat_loss_tank <= block.heat_supply_hp_to_demand + block.heat_supply_hp_to_tes + block.heat_supply_HR + block.heat_energy_TES/TIME_RESOLUTION #* (1-block.y_TES)
-        # block.heat_flows_TES_HP_Demand2 = pyo.Constraint(rule=heat_flows_TES_HP_Demand_rule2)
+        #     return block.heat_supply_Demand + block.heat_loss_tank <=
+        #     block.heat_supply_hp_to_demand + block.heat_supply_hp_to_tes +
+        #     block.heat_supply_HR + block.heat_energy_TES/TIME_RESOLUTION
+        #     #* (1-block.y_TES)
+        # block.heat_flows_TES_HP_Demand2 = pyo.Constraint(
+        #   rule=heat_flows_TES_HP_Demand_rule2
+        # )
 
         # #Wärmespeicher
 
-        # #Wärmespeicher muss genügend Energie haben um Wärmestrom in Periode decken zu können
+        # #Wärmespeicher muss genügend Energie haben um Wärmestrom in Periode
+        # decken zu können
         # def heat_energy_TES_heat_flow_TES_rule(block):
-        #     return block.heat_energy_TES + (block.heat_supply_HR + block.heat_supply_hp_to_tes) * TIME_RESOLUTION  >= (block.heat_supply_TES_Demand + block.heat_loss_tank) * TIME_RESOLUTION
-        # block.heat_energy_TES_heat_flow_TES = pyo.Constraint(rule=heat_energy_TES_heat_flow_TES_rule)
+        #     return block.heat_energy_TES + (
+        #       block.heat_supply_HR + block.heat_supply_hp_to_tes
+        #     ) * TIME_RESOLUTION  >= (
+        #       block.heat_supply_TES_Demand + block.heat_loss_tank
+        #     ) * TIME_RESOLUTION
+        # block.heat_energy_TES_heat_flow_TES = pyo.Constraint(
+        #   rule=heat_energy_TES_heat_flow_TES_rule
+        # )
 
         # heat_energy_TES_linkin_rule
         if period == self.index.first():
@@ -659,7 +667,10 @@ class HeatPumpBlock:
             #     expr=(
             #         block.temp_TES
             #         <= self.heat_pump.output_temperature
-            #         + (self.heat_pump.max_temp_tes - self.heat_pump.output_temperature)
+            #         + (
+            #           self.heat_pump.max_temp_tes
+            #           - self.heat_pump.output_temperature
+            #         )
             #         * block.y_delta_tes_over_value
             #     ),
             #     doc=(
