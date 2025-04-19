@@ -29,7 +29,7 @@ from battery_optimizer.static.model import (
 from battery_optimizer.static.profiles import REGEX
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
-from battery_optimizer.blocks.heat_pump import heat_pump_block_rule
+from battery_optimizer.blocks.heat_pump import HeatPumpBlock
 from battery_optimizer.blocks.battery import BatteryBlock
 
 log = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ component_map = {
     BatteryBlock: "batteries",
     PowerProfileBlock: "power_profiles",
     FixedConsumptionBlock: "fixed_consumptions",
+    HeatPumpBlock: "heat_pumps",
 }
 
 
@@ -152,13 +153,15 @@ class Model:
                 "The index must have a fixed frequency to use the heat pump"
             )
         # Set up the heat pump block
-        component_name = f"{TEXT_HEAT_PUMP_BASE}{heat_pump.name}"
-        self.model.add_component(name=component_name, val=pyo.Block())
-        heat_pump_block = self.model.component(component_name)
-        heat_pump_block.periods = pyo.Block(
-            self.model.i,
-            rule=lambda b: heat_pump_block_rule(b, heat_pump, self.model),
+        base_name = f"{TEXT_HEAT_PUMP_BASE}{heat_pump.name}"
+        self.model.heat_pumps.add_component(
+            name=base_name,
+            val=pyo.Block(
+                self.model.i,
+                rule=HeatPumpBlock(self.model.i, heat_pump).get_block,
+            ),
         )
+        heat_pump_block = self.model.heat_pumps.component(base_name)
         # Add the power values of the heatpump to the energy sinks
         # We probably need extra variables in the top level of the model
         # and link them to the heatpump block to use the energy matrix
@@ -171,10 +174,10 @@ class Model:
 
         # Energy matrix rules
         heat_pump_energy_rule = (
-            f"{component_name}{TEXT_SEPARATOR}{TEXT_INVERTER_ENERGY_RULE}"
+            f"{base_name}{TEXT_SEPARATOR}{TEXT_INVERTER_ENERGY_RULE}"
         )
         heat_recovery_energy_rule = (
-            component_name + TEXT_SEPARATOR + TEXT_HEATING_ELEMENT_ENERGY_RULE
+            base_name + TEXT_SEPARATOR + TEXT_HEATING_ELEMENT_ENERGY_RULE
         )
 
         self.model.add_component(
@@ -197,7 +200,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heat_pump_block.periods[i].electric_power_hp
+                    heat_pump_block[i].electric_power_hp
                     * 1000  # Heat pump uses kW, not W
                     * get_period_length(i, self.model.i)[1]
                     == model.component(heat_pump_energy_rule)[i]
@@ -209,7 +212,7 @@ class Model:
             pyo.Constraint(
                 self.model.i,
                 rule=lambda model, i: (
-                    heat_pump_block.periods[i].electric_power_hr
+                    heat_pump_block[i].electric_power_hr
                     * 1000  # Heat pump uses kW, not W
                     * get_period_length(i, self.model.i)[1]
                     == model.component(heat_recovery_energy_rule)[i]
