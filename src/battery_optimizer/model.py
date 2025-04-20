@@ -3,10 +3,8 @@ import pyomo.environ as pyo
 import pandas as pd
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.power_profile import PowerProfileBlock
-from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.heat_pump import (
     TEXT_HEAT_PUMP_BASE,
-    TEXT_HEATING_ELEMENT_ENERGY_RULE,
     TEXT_INVERTER_ENERGY_RULE,
 )
 from battery_optimizer.static.model import (
@@ -15,8 +13,6 @@ from battery_optimizer.static.model import (
     TEXT_CHARGE_ENERGY,
     TEXT_DISCHARGE_ENERGY,
     TEXT_ENERGY_PROFILE_BASE,
-    TEXT_SOURCE_DATA_ENERGY_COLUMN,
-    TEXT_SOURCE_DATA_PRICE_COLUMN,
     TEXT_SELL_PROFILE_BASE,
     TEXT_CONSUMPTION_PROFILE_BASE,
     TEXT_ENERGY,
@@ -27,7 +23,6 @@ from battery_optimizer.static.model import (
     TEXT_SEPARATOR,
     TEXT_OBJECTIVE_NAME,
 )
-from battery_optimizer.static.profiles import REGEX
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
