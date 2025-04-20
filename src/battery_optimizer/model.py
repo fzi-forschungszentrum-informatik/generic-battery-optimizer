@@ -10,6 +10,7 @@ from battery_optimizer.static.heat_pump import (
     TEXT_INVERTER_ENERGY_RULE,
 )
 from battery_optimizer.static.model import (
+    COMPONENT_MAP,
     TEXT_BATTERY_BASE,
     TEXT_CHARGE_ENERGY,
     TEXT_DISCHARGE_ENERGY,
@@ -34,13 +35,6 @@ from battery_optimizer.blocks.battery import BatteryBlock
 
 log = logging.getLogger(__name__)
 
-component_map = {
-    BatteryBlock: "batteries",
-    PowerProfileBlock: "power_profiles",
-    FixedConsumptionBlock: "fixed_consumptions",
-    HeatPumpBlock: "heat_pumps",
-}
-
 
 # this houses the model itself
 class Model:
@@ -59,7 +53,7 @@ class Model:
         # Objective, index (initialized as empty), (...)
         # the index must be adjusted when adding new elements
         self.model = pyo.ConcreteModel()
-        for component in component_map.values():
+        for component in COMPONENT_MAP.values():
             self.model.add_component(component, pyo.Block())
 
         # store all energy sources, sinks and batteries

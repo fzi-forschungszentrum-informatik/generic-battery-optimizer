@@ -1,3 +1,7 @@
+from battery_optimizer.blocks.battery import BatteryBlock
+from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
+from battery_optimizer.blocks.heat_pump import HeatPumpBlock
+from battery_optimizer.blocks.power_profile import PowerProfileBlock
 from battery_optimizer.static.profiles import (
     MODEL_POWER_ABOVE,
     MODEL_POWER_BELOW,
@@ -43,3 +47,10 @@ TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS = "Energy distribution source constraints"
 TEXT_ENERGY_PATH_SINK_CONSTRAINTS = "Energy distribution target constraints"
 # Objective texts
 TEXT_OBJECTIVE_NAME = "Objective"
+
+COMPONENT_MAP = {
+    BatteryBlock: "batteries",
+    PowerProfileBlock: "power_profiles",
+    FixedConsumptionBlock: "fixed_consumptions",
+    HeatPumpBlock: "heat_pumps",
+}
