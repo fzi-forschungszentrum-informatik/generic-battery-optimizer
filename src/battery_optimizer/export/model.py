@@ -4,20 +4,14 @@ import pyomo.environ as pyo
 import logging
 from battery_optimizer.model import Model
 from battery_optimizer.static.model import (
+    COMPONENT_MAP,
     TEXT_ENERGY_PATH_MATRIX,
     TEXT_SOC,
     TEXT_ENERGY,
-    TEXT_CHARGE_ENERGY,
-    TEXT_DISCHARGE_ENERGY,
     TEXT_BATTERY_BASE,
     TEXT_SELL_PROFILE_BASE,
     TEXT_ENERGY_PROFILE_BASE,
     TEXT_CONSUMPTION_PROFILE_BASE,
-)
-from battery_optimizer.static.heat_pump import (
-    TEXT_HEAT_PUMP_BASE,
-    TEXT_HEATING_ELEMENT_ENERGY_RULE,
-    TEXT_INVERTER_ENERGY_RULE,
 )
 
 log = logging.getLogger(__name__)
@@ -29,31 +23,18 @@ POWER_POSTFIX = TEXT_ENERGY.replace("energy", "power")
 class ModelDataframe:
     """Dataframe with all data from a model"""
 
-    def __init__(self, df):
+    def __init__(self, model_dict, soc):
         """Create a new model dataframe
 
         Variables
         ---------
-        df : pd.DataFrame
+        model_dict : dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]]
             The DataFrame exported from the model
+        soc : dict[str, dict[datetime.datetime, float]]
+            The state of charge of the batteries
         """
-        self._df = df
-
-    @staticmethod
-    def _replace_padding_text(
-        df: pd.DataFrame, pre: str = "", post: str = ""
-    ) -> pd.DataFrame:
-        """Replace padding text from optimizer
-
-        Removes the prefix and postfix used in by the optimizer.
-        The "'" from the optimizers naming are removed automatically"""
-        mapper = {}
-        for column in df.columns:
-            new_name = column.removeprefix("'").removesuffix("'")
-            new_name = new_name.removeprefix(pre)
-            new_name = new_name.removesuffix(post)
-            mapper[column] = new_name
-        return df.rename(columns=mapper)
+        self._model_dict = model_dict
+        self._soc = soc
 
     def to_buy(self) -> pd.DataFrame:
         """Create a DataFrame with all buy power profiles
@@ -69,10 +50,15 @@ class ModelDataframe:
         pd.DataFrame
             The power in W of each buy profile.
         """
-        buy_df = self._df.filter(regex=f"^'{TEXT_ENERGY_PROFILE_BASE}")
-        return ModelDataframe._replace_padding_text(
-            buy_df, TEXT_ENERGY_PROFILE_BASE, POWER_POSTFIX
+        buy_df = pd.DataFrame(
+            {
+                device: values["source"]
+                for device, values in self._model_dict[
+                    "power_profiles"
+                ].items()
+            }
         )
+        return ModelDataframe.__convert_to_power(buy_df)
 
     def to_sell(self) -> pd.DataFrame:
         """Create a DataFrame with all sell power profiles
@@ -88,10 +74,15 @@ class ModelDataframe:
         pd.DataFrame
             The power in W of each sell profile.
         """
-        sell_df = self._df.filter(regex=f"^'{TEXT_SELL_PROFILE_BASE}")
-        return ModelDataframe._replace_padding_text(
-            sell_df, TEXT_SELL_PROFILE_BASE, POWER_POSTFIX
+        sell_df = pd.DataFrame(
+            {
+                device: values["sink"]
+                for device, values in self._model_dict[
+                    "power_profiles"
+                ].items()
+            }
         )
+        return ModelDataframe.__convert_to_power(sell_df)
 
     def to_battery_power(self) -> pd.DataFrame:
         """Create a DataFrame with all battery power profiles
@@ -110,27 +101,15 @@ class ModelDataframe:
             The power in W of each battery.
         """
         # Get Battery power
-        battery_df = self._df.filter(regex=f"^'{TEXT_BATTERY_BASE}")
-        battery_df = ModelDataframe._replace_padding_text(
-            battery_df, TEXT_BATTERY_BASE
+        return ModelDataframe.__convert_to_power(
+            pd.DataFrame(
+                {
+                    device: pd.Series(values["sink"])
+                    - pd.Series(values["source"])
+                    for device, values in self._model_dict["batteries"].items()
+                }
+            )
         )
-        # Get charge and discharge profiles
-        charge_profiles = battery_df.filter(
-            like=TEXT_CHARGE_ENERGY.replace("energy", "power"), axis=1
-        )
-        discharge_profiles = battery_df.filter(
-            like=TEXT_DISCHARGE_ENERGY.replace("energy", "power"), axis=1
-        )
-        # Remove charge and discharge text from profiles
-        charge_profiles = ModelDataframe._replace_padding_text(
-            charge_profiles, post=TEXT_CHARGE_ENERGY.replace("energy", "power")
-        )
-        discharge_profiles = ModelDataframe._replace_padding_text(
-            discharge_profiles,
-            post=TEXT_DISCHARGE_ENERGY.replace("energy", "power"),
-        )
-        # Combine profiles to one column
-        return charge_profiles - discharge_profiles
 
     def to_fixed_consumption(self) -> pd.DataFrame:
         """Create a DataFrame with all fixed consumptions
@@ -147,12 +126,15 @@ class ModelDataframe:
         pd.DataFrame
             The power in W of each fixed consumption profile.
         """
-        fixed_consumption_df = self._df.filter(
-            regex=f"^'{TEXT_CONSUMPTION_PROFILE_BASE}"
+        fixed_consumption_df = pd.DataFrame(
+            {
+                device: values["sink"]
+                for device, values in self._model_dict[
+                    "fixed_consumptions"
+                ].items()
+            }
         )
-        return ModelDataframe._replace_padding_text(
-            fixed_consumption_df, TEXT_CONSUMPTION_PROFILE_BASE, POWER_POSTFIX
-        )
+        return ModelDataframe.__convert_to_power(fixed_consumption_df)
 
     def to_heat_pump_power(self) -> pd.DataFrame:
         """Create a DataFrame with all heat pump power profiles
@@ -169,20 +151,16 @@ class ModelDataframe:
             The power in W of each heat pump profile.
         """
         # Get Battery power
-        heat_pump_df = self._df.filter(regex=f"^'{TEXT_HEAT_PUMP_BASE}")
-        heat_pump_df = ModelDataframe._replace_padding_text(
-            heat_pump_df, TEXT_HEAT_PUMP_BASE
+        return ModelDataframe.__convert_to_power(
+            pd.DataFrame(
+                {
+                    device: values["sink"]
+                    for device, values in self._model_dict[
+                        "heat_pumps"
+                    ].items()
+                }
+            )
         )
-        # Get inverter and heating element profiles
-        inverter_profiles = heat_pump_df.filter(
-            like=TEXT_INVERTER_ENERGY_RULE.replace("energy", "power"), axis=1
-        )
-        heating_element_profiles = heat_pump_df.filter(
-            like=TEXT_HEATING_ELEMENT_ENERGY_RULE.replace("energy", "power"),
-            axis=1,
-        )
-        # Combine profiles to one column
-        return pd.concat([inverter_profiles, heating_element_profiles], axis=1)
 
     def to_battery_soc(self) -> pd.DataFrame:
         """Create a DataFrame with all battery SoC profiles
@@ -196,47 +174,7 @@ class ModelDataframe:
         pd.DataFrame
             The SoC of each battery.
         """
-        soc_df = self._df.filter(regex=f"^'{TEXT_BATTERY_BASE}")
-        soc_df = self._df.filter(regex=f"{TEXT_SOC}'$")
-        return ModelDataframe._replace_padding_text(
-            soc_df, TEXT_BATTERY_BASE, TEXT_SOC
-        )
-
-
-class Exporter:
-    """Export data from a model
-
-    The Exporter class is used to export data from a model. The data can be
-    exported to a DataFrame or an Excel file."""
-
-    @staticmethod
-    def _ctype_to_dict(
-        ctype: pyo.Component, remove_timestamps: bool = False
-    ) -> dict[str, dict[pd.Timestamp, float]]:
-        """Convert Pyomo Component to dict"""
-        items: dict[str, dict[pd.Timestamp, float]] = {}
-        log.debug("Generating dictionary from %s", ctype.name)
-        for index, value in ctype.items():
-            # Do not add the sub components of blocks
-            if ".periods" in ctype.name:
-                continue
-            # Do not add parameters that are not indexed
-            if index is None:
-                log.warning("%s has no timestamp", value)
-                continue
-            # Add the item to the dictionary
-            if ctype.name not in items:
-                items[ctype.name] = {}
-            # Excel can not handle timezone aware timestamps
-            value = pyo.value(value)
-            log.debug("%s: %s", ctype.name, index)
-            # remove timezone info from timestamp
-            if remove_timestamps:
-                if isinstance(index, datetime.datetime):
-                    index = index.replace(tzinfo=None)
-            items[ctype.name][index] = value
-        log.debug("Resulting dictionary:\n %s", items)
-        return items
+        return pd.DataFrame(self._soc)
 
     @staticmethod
     def __convert_to_power(df: pd.DataFrame) -> pd.DataFrame:
@@ -275,13 +213,43 @@ class Exporter:
             column.iloc[-1] = 0
             return column
 
-        df = df.apply(calculate_power)
+        return df.apply(calculate_power)
 
-        # rename energy to power
-        mapper = {}
-        for column in df.columns:
-            mapper[column] = column.replace("energy", "power")
-        return df.rename(columns=mapper)
+
+class Exporter:
+    """Export data from a model
+
+    The Exporter class is used to export data from a model. The data can be
+    exported to a DataFrame or an Excel file."""
+
+    @staticmethod
+    def _ctype_to_dict(
+        ctype: pyo.Component, remove_timestamps: bool = False
+    ) -> dict[str, dict[pd.Timestamp, float]]:
+        """Convert Pyomo Component to dict"""
+        items: dict[str, dict[pd.Timestamp, float]] = {}
+        log.debug("Generating dictionary from %s", ctype.name)
+        for index, value in ctype.items():
+            # Do not add the sub components of blocks
+            if ".periods" in ctype.name:
+                continue
+            # Do not add parameters that are not indexed
+            if index is None:
+                log.warning("%s has no timestamp", value)
+                continue
+            # Add the item to the dictionary
+            if ctype.name not in items:
+                items[ctype.name] = {}
+            # Excel can not handle timezone aware timestamps
+            value = pyo.value(value)
+            log.debug("%s: %s", ctype.name, index)
+            # remove timezone info from timestamp
+            if remove_timestamps:
+                if isinstance(index, datetime.datetime):
+                    index = index.replace(tzinfo=None)
+            items[ctype.name][index] = value
+        log.debug("Resulting dictionary:\n %s", items)
+        return items
 
     def __init__(self, model: Model):
         """Create a new model exporter
@@ -293,6 +261,49 @@ class Exporter:
         """
         self._model = model
 
+    def to_dict(self) -> dict[str, dict[pd.Timestamp, float]]:
+        """Create a dictionary from the model
+
+        Contains all devices from the model as columns. Each value represents
+        the total constant power the device consumes during a time period.
+        Indexed by the timestamps from which the specified power should be
+        used by a device.
+
+        Returns
+        -------
+        dict[str, dict[pd.Timestamp, float]]
+            The dictionary with all data from the model
+            Output format:
+            {
+                "device": {
+                    "timestamp": value
+                }
+            }
+        """
+        device_tree = {
+            component: list(
+                self._model.model.component(component).component_map()
+            )
+            for component in COMPONENT_MAP.values()
+        }
+        device_tuples = [
+            (device_type, device)
+            for device_type, devices in device_tree.items()
+            for device in devices
+        ]
+        # TODO convert timestamps to datetime
+        variables: dict[str, dict[pd.Timestamp, float]] = {}
+        for device_type, device in device_tuples:
+            component = self._model.model.component(device_type).component(
+                device
+            )
+            variables[device] = {
+                index: component[index].energy_source.value
+                - component[index].energy_sink.value
+                for index in component
+            }
+        return variables
+
     def to_df(self) -> ModelDataframe:
         """Create a DataFrame from the model
 
@@ -301,29 +312,52 @@ class Exporter:
         Indexed by the timestamps from which the specified power should be
         used by a device.
 
-        Variables
+        Returns
         ---------
-        keep_column_names_original : bool
-            If True the original column names will be kept. If False all
-            occurrences of energy will be replaced by power as the resulting
-            DataFrame provides power values.
+            ModelDataframe
+            A DataFrame-like object containing power consumption data for all
+            devices, indexed by timestamps. The DataFrame includes energy
+            metrics and battery state of charge (SOC) information.
         """
-        variables: dict[str, dict[pd.Timestamp, float]] = {}
-        for component in self._model.model.component_objects(pyo.Var):
-            if component.name == TEXT_ENERGY_PATH_MATRIX:
-                continue
-            # pyomo appends an ' to component names
-            if component.name.endswith(TEXT_SOC):
-                continue
-            variables = variables | Exporter._ctype_to_dict(component)
+        variables: dict[
+            str, dict[str, dict[str, dict[pd.Timestamp, float]]]
+        ] = {
+            component: {
+                dev: {}
+                for dev in self._model.model.component(
+                    component
+                ).component_map()
+            }
+            for component in COMPONENT_MAP.values()
+        }
 
-        df = pd.DataFrame.from_dict(data=variables)
+        # device powers
+        for device_type, device_list in variables.items():
+            for device in device_list.keys():
+                component = self._model.model.component(device_type).component(
+                    device
+                )
+                variables[device_type][device] = {
+                    "source": {
+                        index: component[index].energy_source.value
+                        for index in component
+                    },
+                    "sink": {
+                        index: component[index].energy_sink.value
+                        for index in component
+                    },
+                }
 
-        # Contains only energy metrics, no filter needed
-        export_df = Exporter.__convert_to_power(df)
-        return ModelDataframe(
-            pd.concat([export_df, self._to_battery_soc()], axis=1)
-        )
+        # battery soc
+        soc: dict[str, dict[pd.Timestamp, float]] = {}
+        for battery in variables["batteries"]:
+            component = self._model.model.batteries.component(battery)
+            soc[battery] = {
+                index: component[index].soc.value / component[index].soc.ub
+                for index in component
+            }
+
+        return ModelDataframe(variables, soc)
 
     def write_excel(self, filename: str) -> None:
         """Create an Excel file from the model
