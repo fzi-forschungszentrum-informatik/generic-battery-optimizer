@@ -71,28 +71,30 @@ class TestChargeDischarge:
 
         result_batteries = pd.DataFrame(
             data={
-                "test-battery": [10, -10, 0],
+                "Battery: test-battery": [10, -10, 0],
             },
             index=time_series,
         )
 
         fixed_consumption_result = pd.DataFrame(
             data={
-                "fixed_consumption": [0, 0, 0],
+                "Fixed consumption: fixed_consumption": [0, 0, 0],
             },
             index=time_series,
         )
 
         buy_result = pd.DataFrame(
             data={
-                "buy": [10, 0, 0],
+                "Energy source: buy": [10, 0, 0],
+                "Sell sink: sell": [0, 0, 0],
             },
             index=time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "sell": [0, 10, 0],
+                "Energy source: buy": [0, 0, 0],
+                "Sell sink: sell": [0, 10, 0],
             },
             index=time_series,
         )
@@ -181,35 +183,37 @@ class TestChargeDischarge:
 
         result_batteries = pd.DataFrame(
             data={
-                "byd": [7, -6.7228, 0],
+                "Battery: byd": [7, -6.7228, 0],
             },
             index=time_series,
         )
 
         fixed_consumption_result = pd.DataFrame(
             data={
-                "fixed_consumption": [0, 0, 0],
+                "Fixed consumption: fixed_consumption": [0, 0, 0],
             },
             index=time_series,
         )
 
         buy_result = pd.DataFrame(
             data={
-                "supplier_price": [7, 0, 0],
+                "Energy source: supplier_price": [7, 0, 0],
+                "Sell sink: feed_in_price": [0, 0, 0],
             },
             index=time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "feed_in_price": [0, 6.7228, 0],
+                "Energy source: supplier_price": [0, 0, 0],
+                "Sell sink: feed_in_price": [0, 6.7228, 0],
             },
             index=time_series,
         )
 
         battery_soc = pd.DataFrame(
             data={
-                "byd": [0.745, 0.5, 0.5],
+                "Battery: byd": [0.745, 0.5, 0.5],
             },
             index=time_series,
         )
