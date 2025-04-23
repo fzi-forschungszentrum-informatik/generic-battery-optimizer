@@ -17,9 +17,6 @@ from battery_optimizer.static.model import (
     TEXT_CONSUMPTION_PROFILE_BASE,
     TEXT_ENERGY,
     TEXT_PRICE,
-    TEXT_ENERGY_PATH_MATRIX,
-    TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS,
-    TEXT_ENERGY_PATH_SINK_CONSTRAINTS,
     TEXT_SEPARATOR,
     TEXT_OBJECTIVE_NAME,
 )
@@ -323,6 +320,37 @@ class Model:
     def constraint_device_power(self, a, b, power):
         pass
 
+    def _get_device_tree(self):
+        """Get a tree of all devices in the model
+
+        Returns
+        -------
+        dict
+            A dictionary with the device type as key and a list of devices
+            as value.
+        """
+        device_tree = {
+            component: list(self.model.component(component).component_map())
+            for component in COMPONENT_MAP.values()
+        }
+        return device_tree
+
+    def _get_device_tuples(self):
+        """Get a list of all devices in the model
+
+        Returns
+        -------
+        list
+            A list of tuples with the device type and the device name.
+        """
+        device_tree = self._get_device_tree()
+        device_tuples = [
+            (device_type, device)
+            for device_type, devices in device_tree.items()
+            for device in devices
+        ]
+        return device_tuples
+
     # Die beiden kommen in ne extra Klasse, dann kann man nicht anfangen, erst energypaths zu generieren
     def add_energy_paths(self) -> None:
         """Add all necessary energy paths to the model
@@ -335,15 +363,7 @@ class Model:
         # Create energy path matrix
         log.debug("Generating energy matrix")
         # for each row add a constraint limiting the energy draw
-        device_tree = {
-            component: list(self.model.component(component).component_map())
-            for component in COMPONENT_MAP.values()
-        }
-        device_tuples = [
-            (device_type, device)
-            for device_type, devices in device_tree.items()
-            for device in devices
-        ]
+        device_tuples = self._get_device_tuples()
 
         self.model.energy_matrix = pyo.Var(
             self.model.i,
@@ -411,34 +431,31 @@ class Model:
 
         Minimize cost for all price profiles and their consumption
         """
-        payed_sources = []
-        for source in self.energy_sources:
-            if source.startswith(TEXT_ENERGY_PROFILE_BASE):
-                payed_sources.append(source)
-        log.debug("Payed sources:\n%s", payed_sources)
-
-        payed_sinks = []
-        for sink in self.energy_sinks:
-            if sink.startswith(TEXT_SELL_PROFILE_BASE):
-                payed_sinks.append(sink)
-        log.debug("Payed sinks:\n%s", payed_sinks)
-
         # The cost for energy is minimized
+        device_tuples = self._get_device_tuples()
         self.model.add_component(
             TEXT_OBJECTIVE_NAME,
             pyo.Objective(
                 expr=sum(
-                    self.model.component(f"{source}{TEXT_ENERGY}")[timestamp]
-                    * self.model.component(f"{source}{TEXT_PRICE}")[timestamp]
+                    self.model.component(source_type)
+                    .component(source)[timestamp]
+                    .energy_source
+                    * self.model.component(source_type)
+                    .component(source)[timestamp]
+                    .price_source
                     for timestamp in self.model.i
-                    for source in payed_sources
+                    for source_type, source in device_tuples
                 )
                 # Energy Sinks (payed)
                 - sum(
-                    self.model.component(f"{source}{TEXT_ENERGY}")[timestamp]
-                    * self.model.component(f"{source}{TEXT_PRICE}")[timestamp]
+                    self.model.component(sink_type)
+                    .component(sink)[timestamp]
+                    .energy_sink
+                    * self.model.component(sink_type)
+                    .component(sink)[timestamp]
+                    .price_sink
                     for timestamp in self.model.i
-                    for source in payed_sinks
+                    for sink_type, sink in device_tuples
                 )
                 # Value of the energy in the battery
                 - sum(
@@ -446,10 +463,10 @@ class Model:
                         self.model.i.at(-1)
                     ].soc
                     * max(
-                        self.model.component(f"{source}{TEXT_PRICE}")[
-                            self.model.i.at(-1)
-                        ]
-                        for source in payed_sinks
+                        self.model.component(sink_type)
+                        .component(sink)[self.model.i.at(-1)]
+                        .price_sink.value
+                        for sink_type, sink in device_tuples
                     )
                     for battery in self.model.batteries.component_map()
                 )
