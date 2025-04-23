@@ -334,115 +334,77 @@ class Model:
         """
         # Create energy path matrix
         log.debug("Generating energy matrix")
-        self.model.add_component(
-            TEXT_ENERGY_PATH_MATRIX,
-            pyo.Var(
-                self.model.i,
-                self.energy_sources,
-                self.energy_sinks,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-        log.debug(self.model.component(TEXT_ENERGY_PATH_MATRIX))
         # for each row add a constraint limiting the energy draw
-        for source in self.energy_sources:
-            log.debug(f"Generate row {source} constraints for energy matrix")
-            # name_discharge_energy
-            if source.startswith(TEXT_BATTERY_BASE):
-                log.debug("%s is a battery", source)
-                component = self.model.component(
-                    f"{source}{TEXT_DISCHARGE_ENERGY}")
-            # name_energy
-            elif source.startswith(TEXT_ENERGY_PROFILE_BASE):
-                log.debug("%s is an energy profile", source)
-                component = self.model.component(f"{source}{TEXT_ENERGY}")
-            # unknown
-            else:
-                raise ValueError(f"{source} is not a valid energy source")
-            log.debug("Source: ")
-            log.debug(component)
+        device_tree = {
+            component: list(self.model.component(component).component_map())
+            for component in COMPONENT_MAP.values()
+        }
+        device_tuples = [
+            (device_type, device)
+            for device_type, devices in device_tree.items()
+            for device in devices
+        ]
 
-            # add to model
-            def energy_path_source_constraint(model, timestamp):
-                """Constraint the total energy for an energy source"""
-                return (
-                    sum(
-                        model.component(TEXT_ENERGY_PATH_MATRIX)[
-                            timestamp, source, target
-                        ]
-                        for target in self.energy_sinks
-                    )
-                    == component[timestamp]
+        self.model.energy_matrix = pyo.Var(
+            self.model.i,
+            device_tuples,  # sources
+            device_tuples,  # sinks
+            domain=pyo.NonNegativeReals,
+        )
+
+        # Add constraints
+        def _add_energy_matrix_rules(block, period):
+            # for each period add a constraint limiting the energy draw
+            # from the source to the sink
+            # source sum
+            # device.energy_source == sum(all devices energy_sink)
+            for device_type, device in device_tuples:
+                # add the energy path constraint
+                component = self.model.component(device_type).component(device)
+                block.add_component(
+                    ("source: " + device_type + device),
+                    pyo.Constraint(
+                        expr=(
+                            component[period].energy_source
+                            == sum(
+                                self.model.energy_matrix[
+                                    (
+                                        period,
+                                        device_type,
+                                        device,
+                                        sink_type,
+                                        sink,
+                                    )
+                                ]
+                                for sink_type, sink in device_tuples
+                            )
+                        ),
+                    ),
+                )
+                block.add_component(
+                    ("sink: " + device_type + device),
+                    pyo.Constraint(
+                        expr=(
+                            component[period].energy_sink
+                            == sum(
+                                self.model.energy_matrix[
+                                    (
+                                        period,
+                                        source_type,
+                                        source,
+                                        device_type,
+                                        device,
+                                    )
+                                ]
+                                for (source_type, source) in device_tuples
+                            )
+                        ),
+                    ),
                 )
 
-            self.model.add_component(
-                (
-                    TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS
-                    + TEXT_SEPARATOR
-                    + source
-                ),
-                pyo.Constraint(
-                    self.model.i, expr=energy_path_source_constraint
-                ),
-            )
-            log.debug("Constraint:")
-            log.debug(
-                self.model.component(
-                    (
-                        TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS
-                        + TEXT_SEPARATOR
-                        + source
-                    )
-                )
-            )
-        # for each column add a constraint limiting the charge/feed in energy
-        # fixed energy draw needs te satisfy an equality constraint rather
-        # than a lesser than constraint
-        for sink in self.energy_sinks:
-            log.debug(f"Generate column {sink} constraints for energy matrix")
-            # name_charge_energy
-            if sink.startswith(TEXT_BATTERY_BASE):
-                log.debug("%s is a battery", sink)
-                component = self.model.component(f"{sink}{TEXT_CHARGE_ENERGY}")
-            # Sell profile
-            elif sink.startswith(TEXT_SELL_PROFILE_BASE):
-                log.debug("%s is a sell profile", sink)
-                component = self.model.component(f"{sink}{TEXT_ENERGY}")
-            # Fixed consumption
-            elif sink.startswith(TEXT_CONSUMPTION_PROFILE_BASE):
-                log.debug("%s is a consumption profile", sink)
-                component = self.model.component(f"{sink}{TEXT_ENERGY}")
-            elif sink.startswith(TEXT_HEAT_PUMP_BASE):
-                log.debug("%s is a heat pump", sink)
-                component = self.model.component(sink)
-            # unknown
-            else:
-                raise ValueError(f"{sink} is not a valid energy sink")
-            log.debug("Sink: ")
-            log.debug(component)
-
-            def energy_path_sink_constraint(model, timestamp):
-                """Constraint the total energy for an energy sink"""
-                return (
-                    sum(
-                        model.component(TEXT_ENERGY_PATH_MATRIX)[
-                            timestamp, source, sink
-                        ]
-                        for source in self.energy_sources
-                    )
-                    == component[timestamp]
-                )
-
-            self.model.add_component(
-                f"{TEXT_ENERGY_PATH_SINK_CONSTRAINTS}{TEXT_SEPARATOR}{sink}",
-                pyo.Constraint(self.model.i, expr=energy_path_sink_constraint),
-            )
-            log.debug("Constraint:")
-            log.debug(
-                self.model.component(
-                    (TEXT_ENERGY_PATH_SINK_CONSTRAINTS + TEXT_SEPARATOR + sink)
-                )
-            )
+        self.model.energy_matrix_rules = pyo.Block(
+            self.model.i, rule=_add_energy_matrix_rules
+        )
 
     def generate_objective(self):
         """Generate the models objective
