@@ -5,19 +5,13 @@ from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.power_profile import PowerProfileBlock
 from battery_optimizer.static.heat_pump import (
     TEXT_HEAT_PUMP_BASE,
-    TEXT_INVERTER_ENERGY_RULE,
 )
 from battery_optimizer.static.model import (
     COMPONENT_MAP,
     TEXT_BATTERY_BASE,
-    TEXT_CHARGE_ENERGY,
-    TEXT_DISCHARGE_ENERGY,
     TEXT_ENERGY_PROFILE_BASE,
     TEXT_SELL_PROFILE_BASE,
     TEXT_CONSUMPTION_PROFILE_BASE,
-    TEXT_ENERGY,
-    TEXT_PRICE,
-    TEXT_SEPARATOR,
     TEXT_OBJECTIVE_NAME,
 )
 from battery_optimizer.profiles.battery_profile import Battery
@@ -152,37 +146,6 @@ class Model:
     def constraint_device_power(self, a, b, power):
         pass
 
-    def _get_device_tree(self):
-        """Get a tree of all devices in the model
-
-        Returns
-        -------
-        dict
-            A dictionary with the device type as key and a list of devices
-            as value.
-        """
-        device_tree = {
-            component: list(self.model.component(component).component_map())
-            for component in COMPONENT_MAP.values()
-        }
-        return device_tree
-
-    def _get_device_tuples(self):
-        """Get a list of all devices in the model
-
-        Returns
-        -------
-        list
-            A list of tuples with the device type and the device name.
-        """
-        device_tree = self._get_device_tree()
-        device_tuples = [
-            (device_type, device)
-            for device_type, devices in device_tree.items()
-            for device in devices
-        ]
-        return device_tuples
-
     # Die beiden kommen in ne extra Klasse, dann kann man nicht anfangen, erst energypaths zu generieren
     def add_energy_paths(self) -> None:
         """Add all necessary energy paths to the model
@@ -305,3 +268,34 @@ class Model:
             ),
         )
         log.debug(self.model.component(TEXT_OBJECTIVE_NAME))
+
+    def _get_device_tree(self):
+        """Get a tree of all devices in the model
+
+        Returns
+        -------
+        dict
+            A dictionary with the device type as key and a list of devices
+            as value.
+        """
+        device_tree = {
+            component: list(self.model.component(component).component_map())
+            for component in COMPONENT_MAP.values()
+        }
+        return device_tree
+
+    def _get_device_tuples(self):
+        """Get a list of all devices in the model
+
+        Returns
+        -------
+        list
+            A list of tuples with the device type and the device name.
+        """
+        device_tree = self._get_device_tree()
+        device_tuples = [
+            (device_type, device)
+            for device_type, devices in device_tree.items()
+            for device in devices
+        ]
+        return device_tuples
