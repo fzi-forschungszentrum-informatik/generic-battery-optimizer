@@ -48,11 +48,6 @@ class Model:
         for component in COMPONENT_MAP.values():
             self.model.add_component(component, pyo.Block())
 
-        # store all energy sources, sinks and batteries
-        self.energy_sources: list[str] = []
-        self.energy_sinks: list[str] = []
-        self.batteries: list[str] = []
-
         # set up index with 0 items
         self.model.i = pyo.Set(ordered=True, initialize=index)
         log.debug("Model index:")
@@ -80,56 +75,6 @@ class Model:
                 rule=BatteryBlock(self.model.i, battery).get_block,
             ),
         )
-        block = self.model.batteries.component(base_name)
-
-        # Energy matrix rules
-        self.model.add_component(
-            f"{base_name}{TEXT_CHARGE_ENERGY}",
-            pyo.Var(
-                self.model.i,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-        self.model.add_component(
-            f"{base_name}{TEXT_CHARGE_ENERGY} Constraint",
-            pyo.Constraint(
-                self.model.i,
-                rule=lambda model, i: (
-                    block[i].energy_sink
-                    == model.component(f"{base_name}{TEXT_CHARGE_ENERGY}")[i]
-                ),
-            ),
-        )
-
-        # Discharge energy
-        self.model.add_component(
-            f"{base_name}{TEXT_DISCHARGE_ENERGY}",
-            pyo.Var(
-                self.model.i,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-        self.model.add_component(
-            f"{base_name}{TEXT_DISCHARGE_ENERGY} Constraint",
-            pyo.Constraint(
-                self.model.i,
-                rule=lambda model, i: (
-                    block[i].energy_source
-                    == model.component(f"{base_name}{TEXT_DISCHARGE_ENERGY}")[
-                        i
-                    ]
-                ),
-            ),
-        )
-
-        # can the battery be used as an energy source
-        if battery.max_discharge_power > 0:
-            self.energy_sources.append(base_name)
-
-        # Add the battery to energy sources and sinks
-        self.energy_sinks.append(base_name)
-
-        self.batteries.append(base_name)
 
     def add_heat_pump(self, heat_pump: HeatPump) -> None:
         # Check that the time stamps of the index are equidistant
@@ -147,7 +92,6 @@ class Model:
                 rule=HeatPumpBlock(self.model.i, heat_pump).get_block,
             ),
         )
-        heat_pump_block = self.model.heat_pumps.component(base_name)
         # Add the power values of the heatpump to the energy sinks
         # We probably need extra variables in the top level of the model
         # and link them to the heatpump block to use the energy matrix
@@ -157,33 +101,6 @@ class Model:
         # Funktion verknüpft Wärmeenergie von TES am ende einer Periode t mit
         # Wärmeenergie von TES am Anfang von Periode t+1, Verlust wird
         # berücksichtigt mit verändrbarem Parameter
-
-        # Energy matrix rules
-        heat_pump_energy_rule = (
-            base_name + TEXT_SEPARATOR + TEXT_INVERTER_ENERGY_RULE
-        )
-
-        self.model.add_component(
-            heat_pump_energy_rule,
-            pyo.Var(
-                self.model.i,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-
-        self.model.add_component(
-            f"{heat_pump_energy_rule} Constraint",
-            pyo.Constraint(
-                self.model.i,
-                rule=lambda model, i: (
-                    heat_pump_block[i].energy_sink
-                    == model.component(heat_pump_energy_rule)[i]
-                ),
-            ),
-        )
-
-        # Add heat pump and heat recovery to energy sinks
-        self.energy_sinks.append(heat_pump_energy_rule)
 
     def add_buy_profile(self, name: str, profile: pd.DataFrame) -> None:
         """Add an energy buy profile to the model"""
@@ -199,38 +116,6 @@ class Model:
                 ).get_block,
             ),
         )
-        block = self.model.power_profiles.component(base_name)
-
-        # Energy matrix rules
-        self.model.add_component(
-            f"{base_name}{TEXT_ENERGY}",
-            pyo.Var(
-                self.model.i,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-        self.model.add_component(
-            f"{base_name}{TEXT_ENERGY} Constraint",
-            pyo.Constraint(
-                self.model.i,
-                rule=lambda model, i: (
-                    block[i].energy_source
-                    == model.component(f"{base_name}{TEXT_ENERGY}")[i]
-                ),
-            ),
-        )
-
-        self.model.add_component(
-            f"{base_name}{TEXT_PRICE}",
-            pyo.Param(
-                self.model.i,
-                initialize={
-                    i: block[i].price_source.value for i in self.model.i
-                },
-            ),
-        )
-        # add the price profile to the energy sources
-        self.energy_sources.append(base_name)
 
     def add_sell_profile(self, name: str, profile: pd.DataFrame) -> None:
         """Add an energy sell profile to the model"""
@@ -247,37 +132,6 @@ class Model:
                 ).get_block,
             ),
         )
-        block = self.model.power_profiles.component(base_name)
-
-        # Energy matrix rules
-        self.model.add_component(
-            f"{base_name}{TEXT_ENERGY}",
-            pyo.Var(
-                self.model.i,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-        self.model.add_component(
-            f"{base_name}{TEXT_ENERGY} Constraint",
-            pyo.Constraint(
-                self.model.i,
-                rule=lambda model, i: (
-                    block[i].energy_sink
-                    == model.component(f"{base_name}{TEXT_ENERGY}")[i]
-                ),
-            ),
-        )
-
-        self.model.add_component(
-            f"{base_name}{TEXT_PRICE}",
-            pyo.Param(
-                self.model.i,
-                initialize={
-                    i: block[i].price_sink.value for i in self.model.i
-                },
-            ),
-        )
-        self.energy_sinks.append(base_name)
 
     def add_fixed_consumption(self, name: str, profile: pd.DataFrame) -> None:
         """Add a fixed energy consumption to the model"""
@@ -294,28 +148,6 @@ class Model:
                 ).get_block,
             ),
         )
-        block = self.model.fixed_consumptions.component(base_name)
-
-        # Energy matrix rules
-        self.model.add_component(
-            f"{base_name}{TEXT_ENERGY}",
-            pyo.Var(
-                self.model.i,
-                domain=pyo.NonNegativeReals,
-            ),
-        )
-        self.model.add_component(
-            f"{base_name}{TEXT_ENERGY} Constraint",
-            pyo.Constraint(
-                self.model.i,
-                rule=lambda model, i: (
-                    block[i].energy_sink
-                    == model.component(f"{base_name}{TEXT_ENERGY}")[i]
-                ),
-            ),
-        )
-        # add to list of energy sinks
-        self.energy_sinks.append(base_name)
 
     def constraint_device_power(self, a, b, power):
         pass
