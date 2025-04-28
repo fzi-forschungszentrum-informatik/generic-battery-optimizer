@@ -106,7 +106,7 @@ def test_battery_efficiency(charge_efficiency, discharge_efficiency):
 
     expected_battery_soc = pd.DataFrame(
         data={
-            "Battery: test-battery": [
+            "test-battery": [
                 (power_usage / discharge_efficiency) / battery.capacity,
                 0,
                 0,
@@ -117,7 +117,7 @@ def test_battery_efficiency(charge_efficiency, discharge_efficiency):
 
     expected_power = pd.DataFrame(
         data={
-            "Battery: test-battery": [
+            "test-battery": [
                 (power_usage / charge_efficiency) / discharge_efficiency,
                 -power_usage,
                 0,

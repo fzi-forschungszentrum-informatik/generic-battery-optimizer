@@ -61,9 +61,8 @@ class Model:
         """
         log.debug("Adding %s to the model", battery.name)
         log.debug(battery)
-        base_name = f"{TEXT_BATTERY_BASE}{battery.name}"
         self.model.batteries.add_component(
-            name=base_name,
+            name=battery.name,
             val=pyo.Block(
                 self.model.i,
                 rule=BatteryBlock(self.model.i, battery).get_block,
@@ -78,9 +77,8 @@ class Model:
                 "The index must have a fixed frequency to use the heat pump"
             )
         # Set up the heat pump block
-        base_name = f"{TEXT_HEAT_PUMP_BASE}{heat_pump.name}"
         self.model.heat_pumps.add_component(
-            name=base_name,
+            name=heat_pump.name,
             val=pyo.Block(
                 self.model.i,
                 rule=HeatPumpBlock(self.model.i, heat_pump).get_block,
@@ -100,9 +98,8 @@ class Model:
         """Add an energy buy profile to the model"""
         log.debug("Adding buy profile %s to model", name)
         # add a new price profile to the model
-        base_name = f"{TEXT_ENERGY_PROFILE_BASE}{name}"
         self.model.power_profiles.add_component(
-            name=base_name,
+            name=name,
             val=pyo.Block(
                 self.model.i,
                 rule=PowerProfileBlock(
@@ -116,9 +113,8 @@ class Model:
         log.debug("Adding sell profile %s to model", name)
         # This adds a energy target to the energy matrix and yields revenue in
         # Objective
-        base_name = f"{TEXT_SELL_PROFILE_BASE}{name}"
         self.model.power_profiles.add_component(
-            name=base_name,
+            name=name,
             val=pyo.Block(
                 self.model.i,
                 rule=PowerProfileBlock(
@@ -131,9 +127,8 @@ class Model:
         """Add a fixed energy consumption to the model"""
         log.debug("Adding fixed consumption %s to model", name)
         log.debug(profile)
-        base_name = f"{TEXT_CONSUMPTION_PROFILE_BASE}{name}"
         self.model.fixed_consumptions.add_component(
-            name=base_name,
+            name=name,
             val=pyo.Block(
                 self.model.i,
                 rule=FixedConsumptionBlock(

@@ -75,26 +75,20 @@ class TestChargeTime(unittest.TestCase):
         )
 
         buy_result = pd.DataFrame(
-            data={
-                "Energy source: pv": [5, 5, 5, 5, 0],
-                "Energy source: grid": [0, 0, 0, 0, 0],
-                "Sell sink: grid": [0, 0, 0, 0, 0],
-            },
+            data={"pv": [5, 5, 5, 5, 0], "grid": [0, 0, 0, 0, 0]},
             index=self.time_series,
         )
 
         fixed_consumption_result = pd.DataFrame(
             data={
-                "Fixed consumption: fixed_consumption": [3, 3, 3, 7, 0],
+                "fixed_consumption": [3, 3, 3, 7, 0],
             },
             index=self.time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "Energy source: pv": [0, 0, 0, 0, 0],
-                "Energy source: grid": [0, 0, 0, 0, 0],
-                "Sell sink: grid": [2, 2, 0, 0, 0],
+                "grid": [2, 2, 0, 0, 0],
             },
             index=self.time_series,
         )

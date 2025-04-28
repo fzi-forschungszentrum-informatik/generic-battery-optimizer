@@ -42,12 +42,10 @@ class TestHomeConsumption:
         )
 
         buy_result = pd.DataFrame(
-            data={"Energy source: buy": [7, 12, 0]}, index=self.time_series
-        )
+            data={"buy": [7, 12, 0]}, index=self.time_series)
 
         fixed_consumption_result = pd.DataFrame(
-            data={"Fixed consumption: fixe_consumption": [7, 12, 0]},
-            index=self.time_series,
+            data={"fixe_consumption": [7, 12, 0]}, index=self.time_series
         )
 
         # Assert power profiles
@@ -98,24 +96,13 @@ class TestHomeConsumption:
         )
 
         buy_result = pd.DataFrame(
-            data={
-                "Energy source: pv": [100, 100, 0],
-                "Sell sink: sell": [0, 0, 0],
-            },
-            index=self.time_series,
-        )
+            data={"pv": [100, 100, 0]}, index=self.time_series)
 
         sell_result = pd.DataFrame(
-            data={
-                "Energy source: pv": [0, 0, 0],
-                "Sell sink: sell": [93, 88, 0],
-            },
-            index=self.time_series,
-        )
+            data={"sell": [93, 88, 0]}, index=self.time_series)
 
         fixed_consumption_result = pd.DataFrame(
-            data={"Fixed consumption: fixed_consumption": [7, 12, 0]},
-            index=self.time_series,
+            data={"fixed_consumption": [7, 12, 0]}, index=self.time_series
         )
 
         # Assert power profiles
@@ -166,16 +153,13 @@ class TestHomeConsumption:
         )
 
         buy_result = pd.DataFrame(
-            data={
-                "Energy source: pv": [5, 5, 0],
-                "Energy source: grid": [2, 7, 0],
-            },
+            data={"pv": [5, 5, 0], "grid": [2, 7, 0]},
             index=self.time_series,
         )
 
         fixed_consumption_result = pd.DataFrame(
             data={
-                "Fixed consumption: fixed_consumption": [7, 12, 0],
+                "fixed_consumption": [7, 12, 0],
             },
             index=self.time_series,
         )
