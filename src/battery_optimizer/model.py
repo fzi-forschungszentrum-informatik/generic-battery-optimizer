@@ -1,19 +1,10 @@
+from datetime import datetime
 import logging
+from pandas import infer_freq
 import pyomo.environ as pyo
-import pandas as pd
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.power_profile import PowerProfileBlock
-from battery_optimizer.static.heat_pump import (
-    TEXT_HEAT_PUMP_BASE,
-)
-from battery_optimizer.static.model import (
-    COMPONENT_MAP,
-    TEXT_BATTERY_BASE,
-    TEXT_ENERGY_PROFILE_BASE,
-    TEXT_SELL_PROFILE_BASE,
-    TEXT_CONSUMPTION_PROFILE_BASE,
-    TEXT_OBJECTIVE_NAME,
-)
+from battery_optimizer.static.model import COMPONENT_MAP, TEXT_OBJECTIVE_NAME
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
@@ -28,12 +19,12 @@ class Model:
 
     Attributes
     ----------
-    index : List[pd.Timestamp]
+    index : List[datetime]
         A list of sorted timestamps that will be used as the index of the
         model.
     """
 
-    def __init__(self, index: list[pd.Timestamp]) -> None:
+    def __init__(self, index: list[datetime]) -> None:
         # only create a base structure for the model with absolutely necessary
         # components
         # Objective, index (initialized as empty), (...)
@@ -72,7 +63,7 @@ class Model:
     def add_heat_pump(self, heat_pump: HeatPump) -> None:
         # Check that the time stamps of the index are equidistant
         index = self.model.i.ordered_data()
-        if pd.infer_freq(index) is None:
+        if infer_freq(index) is None:
             raise ValueError(
                 "The index must have a fixed frequency to use the heat pump"
             )
@@ -94,22 +85,47 @@ class Model:
         # Wärmeenergie von TES am Anfang von Periode t+1, Verlust wird
         # berücksichtigt mit verändrbarem Parameter
 
-    def add_buy_profile(self, name: str, profile: pd.DataFrame) -> None:
-        """Add an energy buy profile to the model"""
+    def add_buy_profile(
+        self, name: str, profile: dict[datetime, dict[str, float]]
+    ) -> None:
+        """
+        Add an energy buy profile to the model.
+
+        Parameters
+        ----------
+        name : str
+            The name of the fixed consumption profile.
+        profile : dict[datetime, dict[str, float]]
+            A dictionary where the
+            keys are datetime objects with timezone information, and the
+            values are dictionaries containing "energy" and "price" as keys
+            with their respective float values.
+        """
         log.debug("Adding buy profile %s to model", name)
         # add a new price profile to the model
         self.model.power_profiles.add_component(
             name=name,
             val=pyo.Block(
                 self.model.i,
-                rule=PowerProfileBlock(
-                    self.model.i, source=profile.to_dict(orient="index")
-                ).get_block,
+                rule=PowerProfileBlock(self.model.i, source=profile).get_block,
             ),
         )
 
-    def add_sell_profile(self, name: str, profile: pd.DataFrame) -> None:
-        """Add an energy sell profile to the model"""
+    def add_sell_profile(
+        self, name: str, profile: dict[datetime, dict[str, float]]
+    ) -> None:
+        """Add an energy sell profile to the model
+
+        Parameters
+        ----------
+        name : str
+            The name of the fixed consumption profile.
+        profile : dict[datetime, dict[str, float]]
+            A dictionary where the
+            keys are datetime objects with timezone information, and the
+            values are dictionaries containing "energy" and "price" as keys
+            with their respective float values.
+        """
         log.debug("Adding sell profile %s to model", name)
         # This adds a energy target to the energy matrix and yields revenue in
         # Objective
@@ -117,14 +133,24 @@ class Model:
             name=name,
             val=pyo.Block(
                 self.model.i,
-                rule=PowerProfileBlock(
-                    self.model.i, sink=profile.to_dict(orient="index")
-                ).get_block,
+                rule=PowerProfileBlock(self.model.i, sink=profile).get_block,
             ),
         )
 
-    def add_fixed_consumption(self, name: str, profile: pd.DataFrame) -> None:
-        """Add a fixed energy consumption to the model"""
+    def add_fixed_consumption(
+        self, name: str, profile: dict[datetime, float]
+    ) -> None:
+        """Add a fixed energy consumption to the model
+
+        Parameters
+        ----------
+        name : str
+            The name of the fixed consumption profile.
+        profile : dict[datetime, float]
+            A dictionary where the keys are datetime objects and the values
+            are floats representing the fixed energy consumption at each
+            timestamp.
+        """
         log.debug("Adding fixed consumption %s to model", name)
         log.debug(profile)
         self.model.fixed_consumptions.add_component(
@@ -133,7 +159,7 @@ class Model:
                 self.model.i,
                 rule=FixedConsumptionBlock(
                     self.model.i,
-                    power=profile["energy"].to_dict(),
+                    power=profile,
                 ).get_block,
             ),
         )
