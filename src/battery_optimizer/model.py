@@ -38,7 +38,7 @@ class Model:
         log.debug("Model index:")
         log.debug(self.model.i)
 
-    def add_battery(self, battery: Battery) -> None:
+    def add_battery(self, battery: Battery) -> pyo.Block:
         """Add a new battery to the model
 
         Add all necessary constraints to the model to implement the battery.
@@ -59,8 +59,9 @@ class Model:
                 rule=BatteryBlock(self.model.i, battery).get_block,
             ),
         )
+        return self.model.batteries.component(battery.name)
 
-    def add_heat_pump(self, heat_pump: HeatPump) -> None:
+    def add_heat_pump(self, heat_pump: HeatPump) -> pyo.Block:
         # Check that the time stamps of the index are equidistant
         index = self.model.i.ordered_data()
         if infer_freq(index) is None:
@@ -84,10 +85,11 @@ class Model:
         # Funktion verknüpft Wärmeenergie von TES am ende einer Periode t mit
         # Wärmeenergie von TES am Anfang von Periode t+1, Verlust wird
         # berücksichtigt mit verändrbarem Parameter
+        return self.model.heat_pumps.component(heat_pump.name)
 
     def add_buy_profile(
         self, name: str, profile: dict[datetime, dict[str, float]]
-    ) -> None:
+    ) -> pyo.Block:
         """
         Add an energy buy profile to the model.
 
@@ -110,10 +112,11 @@ class Model:
                 rule=PowerProfileBlock(self.model.i, source=profile).get_block,
             ),
         )
+        return self.model.power_profiles.component(name)
 
     def add_sell_profile(
         self, name: str, profile: dict[datetime, dict[str, float]]
-    ) -> None:
+    ) -> pyo.Block:
         """Add an energy sell profile to the model
 
         Parameters
@@ -136,10 +139,11 @@ class Model:
                 rule=PowerProfileBlock(self.model.i, sink=profile).get_block,
             ),
         )
+        return self.model.power_profiles.component(name)
 
     def add_fixed_consumption(
         self, name: str, profile: dict[datetime, float]
-    ) -> None:
+    ) -> pyo.Block:
         """Add a fixed energy consumption to the model
 
         Parameters
@@ -163,6 +167,7 @@ class Model:
                 ).get_block,
             ),
         )
+        return self.model.fixed_consumptions.component(name)
 
     def constraint_device_power(self, a, b, power):
         pass
