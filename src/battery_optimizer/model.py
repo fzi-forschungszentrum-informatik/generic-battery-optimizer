@@ -4,6 +4,7 @@ from pandas import infer_freq
 import pyomo.environ as pyo
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.power_profile import PowerProfileBlock
+from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.model import COMPONENT_MAP, TEXT_OBJECTIVE_NAME
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
@@ -32,6 +33,8 @@ class Model:
         self.model = pyo.ConcreteModel()
         for component in COMPONENT_MAP.values():
             self.model.add_component(component, pyo.Block())
+
+        self.model.add_component("device_power_limits", pyo.Block())
 
         # set up index with 0 items
         self.model.i = pyo.Set(ordered=True, initialize=index)
@@ -169,8 +172,56 @@ class Model:
         )
         return self.model.fixed_consumptions.component(name)
 
-    def constraint_device_power(self, a, b, power):
-        pass
+    def constraint_device_power(
+        self, a: pyo.Block, b: pyo.Block, power: float
+    ) -> pyo.Constraint:
+        """Constraint power transfer between two devices
+
+        Adds a constraint to the model that limits the power transfer from
+        device `a` to device `b` to a specified value `power` in watts (W).
+        This constraint ensures that the energy transferred between the devices
+        during a given period is equal to the specified power multiplied by the
+        period length.
+
+        Parameters
+        ----------
+        a : pyo.Block
+            The source device from which power is transferred.
+        b : pyo.Block
+            The target device to which power is transferred.
+        power (float):
+            The maximum power transfer allowed between `a` and `b` in watts.
+
+        Returns
+        -------
+        pyo.Constraint
+            The constraint object added to the model that enforces
+            the power transfer limit.
+        """
+        constraint_name = a.name + "-" + b.name
+
+        def _device_power_limit(_, period):
+            return (
+                self.model.energy_matrix[
+                    (
+                        period,
+                        a.parent_block().name,
+                        a.local_name,
+                        b.parent_block().name,
+                        b.local_name,
+                    )
+                ]
+                <= power * get_period_length(period, self.model.i)[1]
+            )
+
+        self.model.device_power_limits.add_component(
+            constraint_name,
+            val=pyo.Constraint(
+                self.model.i,
+                rule=_device_power_limit,
+            ),
+        )
+        return self.model.device_power_limits.component(constraint_name)
 
     # Die beiden kommen in ne extra Klasse, dann kann man nicht anfangen, erst energypaths zu generieren
     def add_energy_paths(self) -> None:
