@@ -493,13 +493,10 @@ class HeatPumpBlock:
         )
 
         # TES Temperatur soll immer größer gleich Vorlauftemperatur sein
-        def temp_TES_rule(block):
-            if period == self.index.first():
-                return pyo.Constraint.Skip
-
-            return block.temp_TES >= self.heat_pump.flow_temperature
-
-        block.temp_TES_cons = pyo.Constraint(rule=temp_TES_rule)
+        if period != self.index.first():
+            block.temp_TES_cons = pyo.Constraint(
+                rule=(block.temp_TES >= self.heat_pump.flow_temperature)
+            )
 
         # obere Schranke für Tankverluste
         def heat_loss_tank_ub_rule(block):
@@ -517,37 +514,35 @@ class HeatPumpBlock:
         # #weitere Restriktionen
 
         # Abschaltpunkt für WP
-        def hp_switch_off_temperature_rule(block):
-            if self.heat_pump.hp_switch_off_temperature is not None:
-                return (
-                    block.outdoor_temperature
-                    - self.heat_pump.hp_switch_off_temperature
-                ) * block.y_HP >= 0
-            else:
-                return pyo.Constraint.Skip
-
-        block.hp_switch_off_temperature = pyo.Constraint(
-            rule=hp_switch_off_temperature_rule
-        )
-
-        def bivalent_temp_rule(block):
-            if self.heat_pump.bivalent_temp is not None:
-                if self.heat_pump.bivalent_temp >= block.outdoor_temperature:
-                    return (
-                        block.heat_supply_hp_total <= (block.heat_demand) * 0.7
+        if self.heat_pump.hp_switch_off_temperature is not None:
+            block.hp_switch_off_temperature = pyo.Constraint(
+                rule=(
+                    (
+                        block.outdoor_temperature
+                        - self.heat_pump.hp_switch_off_temperature
                     )
-            return pyo.Constraint.Skip
+                    * block.y_HP
+                    >= 0
+                )
+            )
 
-        block.bivalent_temp = pyo.Constraint(rule=bivalent_temp_rule)
+        if self.heat_pump.bivalent_temp is not None:
+            if self.heat_pump.bivalent_temp >= block.outdoor_temperature:
+                block.bivalent_temp = pyo.Constraint(
+                    rule=(
+                        (
+                            block.heat_supply_hp_total
+                            <= (block.heat_demand) * 0.7
+                        )
+                    )
+                )
 
         # Force SoC to be the same at start and end of optimization
-        def soc_end_rule(block):
-            if period == self.index.last():
-                return block.soc == self.heat_pump.tes_start_soc
-            return pyo.Constraint.Skip
-
         if self.heat_pump.enforce_end_soc:
-            block.soc_end = pyo.Constraint(rule=soc_end_rule)
+            if period == self.index.last():
+                block.soc_end = pyo.Constraint(
+                    rule=(block.soc == self.heat_pump.tes_start_soc)
+                )
 
         # #Wärmestrom Demand
 
