@@ -20,6 +20,23 @@ class HeatPumpBlock:
         self.index = index
         self.heat_pump = heat_pump
 
+        # HPL Heat Pump
+        if heat_pump.type in ("Luft/Luft", "Air/Air"):
+            log.warning("L/L-WP")
+            raise NotImplementedError("Air/Air heat pumps are not supported.")
+        if heat_pump.type == "Generic":
+            parameters = hpl.get_parameters(
+                model=heat_pump.type,
+                group_id=heat_pump.id,
+                t_in=heat_pump.t_in - C_TO_K,
+                t_out=heat_pump.t_out - C_TO_K,
+                p_th=heat_pump.p_th / 1000,
+            )
+            self.hpl_heat_pump = hpl.HeatPump(parameters)
+        else:
+            parameters = hpl.get_parameters(model=self.heat_pump.type)
+            self.hpl_heat_pump = hpl.HeatPump(parameters)
+
     def get_block(self, block: pyo.Block):
         """
         Gestaltung einer Periode im Modell
@@ -38,23 +55,6 @@ class HeatPumpBlock:
         _, period_conversion_factor = get_period_length(period, self.index)
 
         temp_room = interpolate_temperature(self.heat_pump.temp_room, period)
-
-        # HPL Heat Pump
-        if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
-            log.warning("L/L-WP")
-            raise NotImplementedError("Air/Air heat pumps are not supported.")
-        if self.heat_pump.type == "Generic":
-            parameters = hpl.get_parameters(
-                model=self.heat_pump.type,
-                group_id=self.heat_pump.id,
-                t_in=self.heat_pump.t_in - C_TO_K,
-                t_out=self.heat_pump.t_out - C_TO_K,
-                p_th=self.heat_pump.p_th / 1000,
-            )
-            hpl_heat_pump = hpl.HeatPump(parameters)
-        else:
-            parameters = hpl.get_parameters(model=self.heat_pump.type)
-            hpl_heat_pump = hpl.HeatPump(parameters)
 
         # Parameters
         block.outdoor_temperature = pyo.Param(
@@ -92,7 +92,7 @@ class HeatPumpBlock:
         )
 
         block.cop_high = pyo.Param(
-            initialize=hpl_heat_pump.simulate(
+            initialize=self.hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
                 t_in_secondary=(
                     (self.heat_pump.output_temperature - 5) - C_TO_K
@@ -105,7 +105,7 @@ class HeatPumpBlock:
             ),
         )
         block.cop_low = pyo.Param(
-            initialize=hpl_heat_pump.simulate(
+            initialize=self.hpl_heat_pump.simulate(
                 t_in_primary=(block.source_temp - C_TO_K),
                 t_in_secondary=(
                     (self.heat_pump.flow_temperature - 5) - C_TO_K
