@@ -91,6 +91,31 @@ class HeatPumpBlock:
             ),
         )
 
+        block.cop_high = pyo.Param(
+            initialize=hpl_heat_pump.simulate(
+                t_in_primary=(block.source_temp - C_TO_K),
+                t_in_secondary=(
+                    (self.heat_pump.output_temperature - 5) - C_TO_K
+                ),
+                t_amb=(block.outdoor_temperature - C_TO_K),
+                mode=1,
+            )["COP"],
+            doc=(
+                "The COP of the heat pump at the maximum output temperature."
+            ),
+        )
+        block.cop_low = pyo.Param(
+            initialize=hpl_heat_pump.simulate(
+                t_in_primary=(block.source_temp - C_TO_K),
+                t_in_secondary=(
+                    (self.heat_pump.flow_temperature - 5) - C_TO_K
+                ),
+                t_amb=(block.outdoor_temperature - C_TO_K),
+                mode=1,
+            )["COP"],
+            doc=("The COP of the heat pump at the flow output temperature."),
+        )
+
         # Variables
         # Binary
         block.y_HR = pyo.Var(
@@ -282,30 +307,14 @@ class HeatPumpBlock:
                 )
                 > 0
             ):
-                results = hpl_heat_pump.simulate(
-                    t_in_primary=(block.source_temp - C_TO_K),
-                    t_in_secondary=(
-                        (self.heat_pump.output_temperature - 5) - C_TO_K
-                    ),
-                    t_amb=(block.outdoor_temperature - C_TO_K),
-                    mode=1,
-                )
-                return block.cop_value == results["COP"]
+                return block.cop_value == block.cop_high
             if (
                 self.heat_pump.type == "Luft/Luft"
                 or self.heat_pump.type == "Air/Air"
             ):
                 return block.cop_value == self.heat_pump.cop_air
             else:
-                results = hpl_heat_pump.simulate(
-                    t_in_primary=(block.source_temp - C_TO_K),
-                    t_in_secondary=(
-                        (self.heat_pump.output_temperature - 5) - C_TO_K
-                    ),
-                    t_amb=(block.outdoor_temperature - C_TO_K),
-                    mode=1,
-                )
-                return (block.cop_value - results["COP"]) * block.y_TES == 0
+                return (block.cop_value - block.cop_high) * block.y_TES == 0
 
         block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
@@ -320,15 +329,7 @@ class HeatPumpBlock:
             if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
                 return block.cop_value == self.heat_pump.cop_air
 
-            results = hpl_heat_pump.simulate(
-                t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=(
-                    (self.heat_pump.flow_temperature - 5) - C_TO_K
-                ),
-                t_amb=(block.outdoor_temperature - C_TO_K),
-                mode=1,
-            )
-            return (block.cop_value - results["COP"]) * (1 - block.y_TES) == 0
+            return (block.cop_value - block.cop_low) * (1 - block.y_TES) == 0
 
         block.cop_cons3 = pyo.Constraint(rule=cop_rule3)
 
