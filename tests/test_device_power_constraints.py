@@ -66,16 +66,26 @@ class TestDevicePowerConstraints:
                             profiles.
         """
         # Input data
-        buy = {
-            self.time_series[0]: {"energy": 10, "price": 1},
-            self.time_series[1]: {"energy": 10, "price": 4},
-            self.time_series[2]: {"energy": 0, "price": 0},
+        buy_power = {
+            self.time_series[0]: 10,
+            self.time_series[1]: 10,
+            self.time_series[2]: 0,
+        }
+        buy_price = {
+            self.time_series[0]: 1,
+            self.time_series[1]: 4,
+            self.time_series[2]: 0,
         }
 
         sell = {
-            self.time_series[0]: {"energy": 10, "price": 0},
-            self.time_series[1]: {"energy": 10, "price": 3},
-            self.time_series[2]: {"energy": 0, "price": 0},
+            self.time_series[0]: 10,
+            self.time_series[1]: 10,
+            self.time_series[2]: 0,
+        }
+        sell_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 3,
+            self.time_series[2]: 0,
         }
 
         battery = Battery(
@@ -91,8 +101,8 @@ class TestDevicePowerConstraints:
 
         # Optimization
         opt = Model(self.time_series)
-        buy_block = opt.add_buy_profile("buy", buy)
-        sell_block = opt.add_sell_profile("sell", sell)
+        buy_block = opt.add_buy_profile("buy", buy_power, buy_price)
+        sell_block = opt.add_sell_profile("sell", sell, sell_price)
         battery_block = opt.add_battery(battery)
         opt.add_energy_paths()
 
@@ -153,16 +163,27 @@ class TestDevicePowerConstraints:
     )
     def test_consumption_from_pv_and_restrict_sell(self, power):
         """Home consumption from PV (rest (limited) sold to grid)"""
-        pv = {
-            self.time_series[0]: {"energy": 100, "price": 0},
-            self.time_series[1]: {"energy": 100, "price": 0},
-            self.time_series[2]: {"energy": 0, "price": 0},
+        pv_pwoer = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+        pv_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
         }
 
-        sell = {
-            self.time_series[0]: {"energy": 100, "price": 30},
-            self.time_series[1]: {"energy": 100, "price": 30},
-            self.time_series[2]: {"energy": 0, "price": 0},
+        sell_power = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+
+        sell_price = {
+            self.time_series[0]: 30,
+            self.time_series[1]: 30,
+            self.time_series[2]: 0,
         }
 
         fixed_consumption = {
@@ -173,8 +194,8 @@ class TestDevicePowerConstraints:
 
         # Optimization
         opt = Model(self.time_series)
-        pv_block = opt.add_buy_profile("pv", pv)
-        sell_block = opt.add_sell_profile("sell", sell)
+        pv_block = opt.add_buy_profile("pv", pv_pwoer, pv_price)
+        sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
         opt.add_fixed_consumption("fixed_consumption", fixed_consumption)
         opt.add_energy_paths()
 

@@ -91,7 +91,10 @@ class Model:
         return self.model.heat_pumps.component(heat_pump.name)
 
     def add_buy_profile(
-        self, name: str, profile: dict[datetime, dict[str, float]]
+        self,
+        name: str,
+        power: dict[datetime, float],
+        price: dict[datetime, float],
     ) -> pyo.Block:
         """
         Add an energy buy profile to the model.
@@ -100,11 +103,14 @@ class Model:
         ----------
         name : str
             The name of the fixed consumption profile.
-        profile : dict[datetime, dict[str, float]]
-            A dictionary where the
-            keys are datetime objects with timezone information, and the
-            values are dictionaries containing "energy" and "price" as keys
-            with their respective float values.
+        power : dict[datetime, float]
+            A dictionary of power values mapped to datetime objects,
+            representing the maximum power that can be bought at each
+            timestamp.
+        price : dict[datetime, float]
+            A dictionary of price values mapped to datetime objects,
+            representing the price at which energy can be bought at each
+            timestamp.
         """
         log.debug("Adding buy profile %s to model", name)
         # add a new price profile to the model
@@ -112,13 +118,18 @@ class Model:
             name=name,
             val=pyo.Block(
                 self.model.i,
-                rule=PowerProfileBlock(self.model.i, source=profile).get_block,
+                rule=PowerProfileBlock(
+                    self.model.i, source=(power, price)
+                ).get_block,
             ),
         )
         return self.model.power_profiles.component(name)
 
     def add_sell_profile(
-        self, name: str, profile: dict[datetime, dict[str, float]]
+        self,
+        name: str,
+        power: dict[datetime, float],
+        price: dict[datetime, float],
     ) -> pyo.Block:
         """Add an energy sell profile to the model
 
@@ -126,11 +137,13 @@ class Model:
         ----------
         name : str
             The name of the fixed consumption profile.
-        profile : dict[datetime, dict[str, float]]
-            A dictionary where the
-            keys are datetime objects with timezone information, and the
-            values are dictionaries containing "energy" and "price" as keys
-            with their respective float values.
+        power : dict[datetime, float]
+            A dictionary of power values mapped to datetime objects,
+            representing the maximum power that can be sold at each timestamp.
+        price : dict[datetime, float]
+            A dictionary of price values mapped to datetime objects,
+            representing the price at which energy can be sold at each
+            timestamp.
         """
         log.debug("Adding sell profile %s to model", name)
         # This adds a energy target to the energy matrix and yields revenue in
@@ -139,13 +152,15 @@ class Model:
             name=name,
             val=pyo.Block(
                 self.model.i,
-                rule=PowerProfileBlock(self.model.i, sink=profile).get_block,
+                rule=PowerProfileBlock(
+                    self.model.i, sink=(power, price)
+                ).get_block,
             ),
         )
         return self.model.power_profiles.component(name)
 
     def add_fixed_consumption(
-        self, name: str, profile: dict[datetime, float]
+        self, name: str, power: dict[datetime, float]
     ) -> pyo.Block:
         """Add a fixed energy consumption to the model
 
@@ -153,20 +168,20 @@ class Model:
         ----------
         name : str
             The name of the fixed consumption profile.
-        profile : dict[datetime, float]
+        power : dict[datetime, float]
             A dictionary where the keys are datetime objects and the values
             are floats representing the fixed energy consumption at each
             timestamp.
         """
         log.debug("Adding fixed consumption %s to model", name)
-        log.debug(profile)
+        log.debug(power)
         self.model.fixed_consumptions.add_component(
             name=name,
             val=pyo.Block(
                 self.model.i,
                 rule=FixedConsumptionBlock(
                     self.model.i,
-                    power=profile,
+                    power=power,
                 ).get_block,
             ),
         )

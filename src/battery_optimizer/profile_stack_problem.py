@@ -171,12 +171,17 @@ class ProfileStackProblem:
         # for each profile in prices add it to the model
         log.debug("Adding buy profiles to model")
         for name, profile in self.prices.items():
-            self.model.add_buy_profile(name, profile.to_dict(orient="index"))
+            print(profile.to_dict())
+            self.model.add_buy_profile(
+                name, profile.to_dict()["energy"], profile.to_dict()["price"]
+            )
 
         # add all sell prices to the model
         log.debug("Adding sell profiles to model")
         for name, profile in self.sell_prices.items():
-            self.model.add_sell_profile(name, profile.to_dict(orient="index"))
+            self.model.add_sell_profile(
+                name, profile.to_dict()["energy"], profile.to_dict()["price"]
+            )
 
         # add all fixed consumptions
         log.debug("Adding all fixed consumptions to model")

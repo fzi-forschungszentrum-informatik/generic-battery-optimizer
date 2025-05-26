@@ -2,6 +2,8 @@ import datetime
 from pydantic import RootModel
 import pyomo.environ as pyo
 
+from battery_optimizer.helpers.blocks import get_period_length
+
 
 class FixedPowerProfile(RootModel):
     """Stores all information about a power profile"""
@@ -24,6 +26,9 @@ class FixedConsumptionBlock:
         block.price_sink = pyo.Param(initialize=0, mutable=True)
         # DEFAULT
 
-        energy = self.power[block.index()]
+        energy = (
+            self.power[block.index()]
+            * get_period_length(block.index(), self.index)[1]
+        )
         block.energy_sink.setlb(energy)
         block.energy_sink.setub(energy)
