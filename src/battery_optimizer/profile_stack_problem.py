@@ -104,12 +104,7 @@ class ProfileStackProblem:
         log.debug("Temporary Index:")
         log.debug(temp_index)
 
-        # remove duplicates
-        index: List[pd.Timestamp] = []
-        for item in temp_index:
-            if item not in index:
-                index.append(item)
-        # sort the index
+        index = list(dict.fromkeys(temp_index))
         index.sort()
         log.debug("Index of the model:")
         log.debug(index)
