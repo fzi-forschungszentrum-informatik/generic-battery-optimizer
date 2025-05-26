@@ -9,7 +9,7 @@ from battery_optimizer.static.model import COMPONENT_MAP, TEXT_OBJECTIVE_NAME
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
-from battery_optimizer.blocks.battery import BatteryBlock
+from battery_optimizer.blocks.battery import BatteryBlock, BatteryCore
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ class Model:
         self.model = pyo.ConcreteModel()
         for component in COMPONENT_MAP.values():
             self.model.add_component(component, pyo.Block())
+        self.model.batteries_core = pyo.Block()
 
         self.model.add_component("device_power_limits", pyo.Block())
 
@@ -55,6 +56,11 @@ class Model:
         """
         log.debug("Adding %s to the model", battery.name)
         log.debug(battery)
+        core = BatteryCore(self.model.i, battery).build_block()
+        self.model.batteries_core.add_component(
+            name=battery.name + "-core",
+            val=core,
+        )
         self.model.batteries.add_component(
             name=battery.name,
             val=pyo.Block(
