@@ -198,23 +198,23 @@ class BatteryBlock:
         return block
 
 
-class Block(Base):
-    """Battery Block
+# class Block(Base):
+#     """Battery Block
 
-    This block is used to create a battery block in the optimization model.
-    It contains the energy, soc and charge/discharge constraints for the
-    battery.
-    """
+#     This block is used to create a battery block in the optimization model.
+#     It contains the energy, soc and charge/discharge constraints for the
+#     battery.
+#     """
 
-    def __init__(self, index: list[datetime.datetime], battery: Battery):
-        super().__init__(index)
-        self.battery = battery
-        self.index = index
+#     def __init__(self, index: list[datetime.datetime], battery: Battery):
+#         super().__init__(index)
+#         self.battery = battery
+#         self.index = index
 
-    def get_block(self) -> pyo.Block:
-        """Get the block of the profile"""
-        block = pyo.Block(self.index)
-        for period in self.block.index_set():
-            # add the battery block to the period
-            block[period].transfer_attributes_from(self.block[period])
-            block[period] = self.block_period(self.block[period])
+#     def get_block(self) -> pyo.Block:
+#         """Get the block of the profile"""
+#         block = pyo.Block(self.index)
+#         for period in self.block.index_set():
+#             # add the battery block to the period
+#             block[period].transfer_attributes_from(self.block[period])
+#             block[period] = self.block_period(self.block[period])
