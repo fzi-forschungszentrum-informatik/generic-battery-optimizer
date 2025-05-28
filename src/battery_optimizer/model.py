@@ -37,7 +37,7 @@ class Model:
         self.model.add_component("device_power_limits", pyo.Block())
 
         # set up index with 0 items
-        self.model.i = pyo.Set(ordered=True, initialize=index)
+        self.model.i = pyo.Set(ordered=pyo.Set.SortedOrder, initialize=index)
         log.debug("Model index:")
         log.debug(self.model.i)
 
