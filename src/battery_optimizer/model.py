@@ -9,7 +9,7 @@ from battery_optimizer.static.model import COMPONENT_MAP, TEXT_OBJECTIVE_NAME
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
-from battery_optimizer.blocks.battery import BatteryBlock, BatteryCore
+from battery_optimizer.blocks.battery import BatteryBlock
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +33,6 @@ class Model:
         self.model = pyo.ConcreteModel()
         for component in COMPONENT_MAP.values():
             self.model.add_component(component, pyo.Block())
-        self.model.batteries_core = pyo.Block()
 
         self.model.add_component("device_power_limits", pyo.Block())
 
@@ -56,17 +55,9 @@ class Model:
         """
         log.debug("Adding %s to the model", battery.name)
         log.debug(battery)
-        core = BatteryCore(self.model.i, battery).build_block()
-        self.model.batteries_core.add_component(
-            name=battery.name + "-core",
-            val=core,
-        )
         self.model.batteries.add_component(
             name=battery.name,
-            val=pyo.Block(
-                self.model.i,
-                rule=BatteryBlock(self.model.i, battery).get_block,
-            ),
+            val=BatteryBlock(self.model.i, battery).build_block(),
         )
         return self.model.batteries.component(battery.name)
 
@@ -80,10 +71,7 @@ class Model:
         # Set up the heat pump block
         self.model.heat_pumps.add_component(
             name=heat_pump.name,
-            val=pyo.Block(
-                self.model.i,
-                rule=HeatPumpBlock(self.model.i, heat_pump).get_block,
-            ),
+            val=HeatPumpBlock(self.model.i, heat_pump).build_block(),
         )
         # Add the power values of the heatpump to the energy sinks
         # We probably need extra variables in the top level of the model
@@ -122,12 +110,9 @@ class Model:
         # add a new price profile to the model
         self.model.power_profiles.add_component(
             name=name,
-            val=pyo.Block(
-                self.model.i,
-                rule=PowerProfileBlock(
-                    self.model.i, source=(power, price)
-                ).get_block,
-            ),
+            val=PowerProfileBlock(
+                self.model.i, source=(power, price)
+            ).build_block(),
         )
         return self.model.power_profiles.component(name)
 
@@ -156,12 +141,9 @@ class Model:
         # Objective
         self.model.power_profiles.add_component(
             name=name,
-            val=pyo.Block(
-                self.model.i,
-                rule=PowerProfileBlock(
-                    self.model.i, sink=(power, price)
-                ).get_block,
-            ),
+            val=PowerProfileBlock(
+                self.model.i, sink=(power, price)
+            ).build_block(),
         )
         return self.model.power_profiles.component(name)
 
@@ -183,13 +165,10 @@ class Model:
         log.debug(power)
         self.model.fixed_consumptions.add_component(
             name=name,
-            val=pyo.Block(
+            val=FixedConsumptionBlock(
                 self.model.i,
-                rule=FixedConsumptionBlock(
-                    self.model.i,
-                    power=power,
-                ).get_block,
-            ),
+                power=power,
+            ).build_block(),
         )
         return self.model.fixed_consumptions.component(name)
 
@@ -278,7 +257,7 @@ class Model:
                     ("source: " + device_type + device),
                     pyo.Constraint(
                         expr=(
-                            component[period].energy_source
+                            component.energy_source[period]
                             == sum(
                                 self.model.energy_matrix[
                                     (
@@ -298,7 +277,7 @@ class Model:
                     ("sink: " + device_type + device),
                     pyo.Constraint(
                         expr=(
-                            component[period].energy_sink
+                            component.energy_sink[period]
                             == sum(
                                 self.model.energy_matrix[
                                     (
@@ -331,34 +310,35 @@ class Model:
             pyo.Objective(
                 expr=sum(
                     self.model.component(source_type)
-                    .component(source)[timestamp]
-                    .energy_source
+                    .component(source)
+                    .energy_source[timestamp]
                     * self.model.component(source_type)
-                    .component(source)[timestamp]
-                    .price_source
+                    .component(source)
+                    .price_source[timestamp]
                     for timestamp in self.model.i
                     for source_type, source in device_tuples
                 )
                 # Energy Sinks (payed)
                 - sum(
                     self.model.component(sink_type)
-                    .component(sink)[timestamp]
-                    .energy_sink
+                    .component(sink)
+                    .energy_sink[timestamp]
                     * self.model.component(sink_type)
-                    .component(sink)[timestamp]
-                    .price_sink
+                    .component(sink)
+                    .price_sink[timestamp]
                     for timestamp in self.model.i
                     for sink_type, sink in device_tuples
                 )
                 # Value of the energy in the battery
                 - sum(
-                    self.model.batteries.component(battery)[
+                    self.model.batteries.component(battery).soc[
                         self.model.i.at(-1)
-                    ].soc
+                    ]
                     * max(
                         self.model.component(sink_type)
-                        .component(sink)[self.model.i.at(-1)]
-                        .price_sink.value
+                        .component(sink)
+                        .price_sink[self.model.i.at(-1)]
+                        .value
                         for sink_type, sink in device_tuples
                     )
                     for battery in self.model.batteries.component_map()

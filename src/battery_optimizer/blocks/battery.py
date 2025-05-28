@@ -1,9 +1,11 @@
+import datetime
 import pyomo.environ as pyo
+from battery_optimizer.blocks.base import Base
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.profiles.battery_profile import Battery
 
 
-class BatteryCore:
+class BatteryBlock:
     def __init__(self, index: pyo.Set, battery: Battery):
         self.index = index
         self.battery = battery
@@ -13,13 +15,34 @@ class BatteryCore:
         block = pyo.Block()
         # DEFAULT
         # Source in Matrix
-        block.energy_source = pyo.Var(self.index)
-        block.price_source = pyo.Param(self.index)
+        block.energy_source = pyo.Var(self.index, bounds=(0, 0), initialize=0)
+        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
         # Sink in matrix
-        block.energy_sink = pyo.Var(self.index)
-        block.price_sink = pyo.Param(self.index)
+        block.energy_sink = pyo.Var(self.index, bounds=(0, 0), initialize=0)
+        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
         # DEFAULT
+        block.energy_source.construct()
+        block.price_source.construct()
+        block.energy_sink.construct()
+        block.price_sink.construct()
 
+        for i in self.index:
+            period_conversion_factor = get_period_length(i, self.index)[1]
+            # Energy in
+            block.energy_sink[i].setub(
+                0
+                if i == self.index.last()
+                else self.battery.max_charge_power * period_conversion_factor
+            )
+            # , doc="Energy in", units="kWh"
+
+            # Energy out
+            block.energy_source[i].setub(
+                0
+                if i == self.index.last()
+                else self.battery.max_discharge_power
+                * period_conversion_factor
+            )
         block.soc = pyo.Var(self.index, bounds=(0, self.battery.capacity))
 
         # soc calculation
@@ -175,48 +198,23 @@ class BatteryCore:
         return block
 
 
-class BatteryBlock:
-    def __init__(self, index: pyo.Set, battery: Battery):
-        self.index = index
+class Block(Base):
+    """Battery Block
+
+    This block is used to create a battery block in the optimization model.
+    It contains the energy, soc and charge/discharge constraints for the
+    battery.
+    """
+
+    def __init__(self, index: list[datetime.datetime], battery: Battery):
+        super().__init__(index)
         self.battery = battery
+        self.index = index
 
-    def get_block(self, block: pyo.Block):
-        # DEFAULT
-        # Source in Matrix
-        block.energy_source = pyo.Var(bounds=(0, 0), initialize=0)
-        block.price_source = pyo.Param(initialize=0, mutable=True)
-        # Sink in matrix
-        block.energy_sink = pyo.Var(bounds=(0, 0), initialize=0)
-        block.price_sink = pyo.Param(initialize=0, mutable=True)
-        # DEFAULT
-
-        i = block.index()
-        _, period_conversion_factor = get_period_length(i, self.index)
-
-        # Energy in
-        block.energy_sink.setub(
-            0
-            if i == self.index.last()
-            else self.battery.max_charge_power * period_conversion_factor
-        )
-        # , doc="Energy in", units="kWh"
-
-        # Energy out
-        block.energy_source.setub(
-            0
-            if i == self.index.last()
-            else self.battery.max_discharge_power * period_conversion_factor
-        )
-        block.soc = pyo.Var(bounds=(0, self.battery.capacity))
-
-        name = block.local_name.replace(f"[{str(i)}]", "") + "-core"
-        comp = (
-            block.parent_block().parent_block().batteries_core.component(name)
-        )
-        block.energy_sink_constraint = pyo.Constraint(
-            expr=(comp.energy_sink[i] == block.energy_sink)
-        )
-        block.energy_source_constraint = pyo.Constraint(
-            expr=(comp.energy_source[i] == block.energy_source)
-        )
-        block.soc_constraint = pyo.Constraint(expr=(comp.soc[i] == block.soc))
+    def get_block(self) -> pyo.Block:
+        """Get the block of the profile"""
+        block = pyo.Block(self.index)
+        for period in self.block.index_set():
+            # add the battery block to the period
+            block[period].transfer_attributes_from(self.block[period])
+            block[period] = self.block_period(self.block[period])

@@ -339,12 +339,12 @@ class Exporter:
                 )
                 variables[device_type][device] = {
                     "source": {
-                        index: component[index].energy_source.value
-                        for index in component
+                        index: component.energy_source[index].value
+                        for index in component.energy_source
                     },
                     "sink": {
-                        index: component[index].energy_sink.value
-                        for index in component
+                        index: component.energy_sink[index].value
+                        for index in component.energy_sink
                     },
                 }
 
@@ -353,8 +353,8 @@ class Exporter:
         for battery in variables["batteries"]:
             component = self._model.model.batteries.component(battery)
             soc[battery] = {
-                index: component[index].soc.value / component[index].soc.ub
-                for index in component
+                index: component.soc[index].value / component.soc[index].ub
+                for index in component.soc
             }
 
         return ModelDataframe(variables, soc)

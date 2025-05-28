@@ -37,6 +37,56 @@ class HeatPumpBlock:
             parameters = hpl.get_parameters(model=self.heat_pump.type)
             self.hpl_heat_pump = hpl.HeatPump(parameters)
 
+    def build_block(self) -> pyo.Block:
+        """Build the heat pump block"""
+        block = pyo.Block()
+        # DEFAULT
+        # Source in Matrix
+        block.energy_source = pyo.Var(self.index, initialize=0)
+        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
+        # Sink in matrix
+        block.energy_sink = pyo.Var(self.index, initialize=0)
+        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
+        # DEFAULT
+        block.energy_source.construct()
+        block.price_source.construct()
+        block.energy_sink.construct()
+        block.price_sink.construct()
+
+        # Add old heat pump block for compatibility
+        block.hp_block = pyo.Block(self.index, rule=self.get_block)
+
+        # Link energy and price to old heat pump block
+        block.energy_source_constraint = pyo.Constraint(
+            self.index,
+            rule=(
+                lambda block, i: block.energy_source[i]
+                == block.hp_block[i].energy_source
+            ),
+        )
+        block.price_source_constraint = pyo.Constraint(
+            self.index,
+            rule=(
+                lambda block, i: block.price_source[i]
+                == block.hp_block[i].price_source
+            ),
+        )
+        block.energy_sink_constraint = pyo.Constraint(
+            self.index,
+            rule=(
+                lambda block, i: block.energy_sink[i]
+                == block.hp_block[i].energy_sink
+            ),
+        )
+        block.price_sink_constraint = pyo.Constraint(
+            self.index,
+            rule=(
+                lambda block, i: block.price_sink[i]
+                == block.hp_block[i].price_sink
+            ),
+        )
+        return block
+
     def get_block(self, block: pyo.Block):
         """
         Gestaltung einer Periode im Modell
