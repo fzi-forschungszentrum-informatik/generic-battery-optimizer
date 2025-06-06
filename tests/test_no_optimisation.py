@@ -1,4 +1,5 @@
 from battery_optimizer import optimize
+from helpers import find_solver
 
 
 class TestNoOptimisation:
@@ -9,12 +10,10 @@ class TestNoOptimisation:
         error.
         """
         try:
-            optimize()
+            optimize(solver=find_solver())
         except ValueError as e:
             assert (
                 str(e)
                 == "At least one of [buy_prices, sell_prices, fixed_consumption] "
                 "must contain values"
             )
-
-

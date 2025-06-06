@@ -1,5 +1,5 @@
 from battery_optimizer import optimize
-from helpers import get_profiles
+from helpers import find_solver, get_profiles
 from datetime import datetime
 import pandas as pd
 
@@ -38,6 +38,7 @@ class TestHomeConsumption:
                 self.time_series, fixed_consumption
             ),
             batteries=[],
+            solver=find_solver(),
         )
 
         buy_result = pd.DataFrame(
@@ -91,6 +92,7 @@ class TestHomeConsumption:
             fixed_consumption=get_profiles(
                 self.time_series, fixed_consumption
             ),
+            solver=find_solver(),
         )
 
         buy_result = pd.DataFrame(
@@ -147,6 +149,7 @@ class TestHomeConsumption:
                 self.time_series, fixed_consumption
             ),
             batteries=[],
+            solver=find_solver(),
         )
 
         buy_result = pd.DataFrame(

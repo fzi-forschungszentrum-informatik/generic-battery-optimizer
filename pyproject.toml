@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8"]
+requires = ["setuptools>=70", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
@@ -13,14 +13,13 @@ authors = [
     { name="Tobias Riedel", email="riedel@fzi.de" },
 ]
 dependencies = [
-  "numpy < 2",
+  "numpy",
   "pandas",
   "matplotlib",
   "pydantic >= 2",
   "pyomo",
   "xlsxwriter",
-  "pytest",
-  "pytest-watch",
+  "hplib",
 ]
 description = "Generic Battery Optimizer"
 readme = "README.md"

@@ -1,13 +1,15 @@
 import pandas as pd
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.model import Optimizer
-from battery_optimizer.export import (
+from battery_optimizer.export.model import (
     to_buy,
     to_sell,
     to_battery_soc,
     to_battery_power,
     to_fixed_consumption,
+    to_heat_pump_power,
 )
+from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
 
 
@@ -16,8 +18,15 @@ def optimize(
     sell_prices: ProfileStack | None = None,
     fixed_consumption: ProfileStack | None = None,
     batteries: list[Battery] | None = None,
+    heat_pumps: list[HeatPump] | None = None,
+    **kwargs,
 ) -> tuple[
-    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
 ]:
     """Optimize an energy system
 
@@ -38,6 +47,8 @@ def optimize(
         the electricity during this time period (unused here).
     batteries : List[Battery]
         A list of batteries that can be used in the optimization.
+    heat_pumps : List[HeatPump]
+        A list of heat pumps that provide heating energy for a household.
 
     Returns
     -------
@@ -53,19 +64,24 @@ def optimize(
     fixed_consumption : pd.Dataframe
         The power in W of each fixed consumption profile used. The same as the
         input. Just for reference.
+    heat_pump_power : pd.Dataframe
+        The power in W of each heat pump profile used. Heat pumps have an
+        inverter and a heating element
     """
     opt = Optimizer(
         buy_prices=buy_prices,
         sell_prices=sell_prices,
         fixed_consumption=fixed_consumption,
         batteries=batteries,
+        heat_pumps=heat_pumps,
     )
     opt.set_up()
-    opt.solve()
+    opt.solve(**kwargs)
     return (
         to_buy(opt.model),
         to_sell(opt.model),
         to_battery_power(opt.model),
         to_battery_soc(opt),
         to_fixed_consumption(opt.model),
+        to_heat_pump_power(opt.model),
     )

@@ -3,7 +3,7 @@ import unittest
 import pandas as pd
 from battery_optimizer import optimize
 from battery_optimizer.profiles.battery_profile import Battery
-from helpers import get_profiles
+from helpers import find_solver, get_profiles
 
 
 class TestChargeTime(unittest.TestCase):
@@ -71,6 +71,7 @@ class TestChargeTime(unittest.TestCase):
                 self.time_series, fixed_consumption
             ),
             batteries=[battery],
+            solver=find_solver(),
         )
 
         buy_result = pd.DataFrame(

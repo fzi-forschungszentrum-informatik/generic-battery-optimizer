@@ -1,26 +1,17 @@
 from battery_optimizer.profiles.profiles import ProfileStack
+from battery_optimizer.static.profiles import (
+    PROFILESTACK_PRICE,
+    PROFILESTACK_POWER,
+    MODEL_PRICE_BELOW,
+    MODEL_POWER_BELOW,
+    MODEL_POWER_ABOVE,
+)
+from battery_optimizer.static.numbers import BIG_POWER
 from typing import List
 import pandas as pd
 import logging
 
 log = logging.getLogger(__name__)
-
-# prefix match is RegEx ^\w{16}_
-REGEX = r"^.*"
-# texts for model
-MODEL_PRICE_BELOW = "price"
-MODEL_PRICE_ABOVE = "price"
-MODEL_POWER_BELOW = "power"
-MODEL_POWER_ABOVE = "power"
-MODEL_ABOVE_TEXT = "-above-limit"
-# texts from ProfileStack
-PROFILESTACK_PRICE = "price"
-PROFILESTACK_POWER = "power"
-# Nanoseconds to hours
-NS_TO_HOURS = 3.6e12
-# Replacements for NaN (unrestricted)
-BIG_POWER = 999999
-NO_POWER = 0
 
 
 def calculate_energy(column: pd.Series) -> pd.Series:

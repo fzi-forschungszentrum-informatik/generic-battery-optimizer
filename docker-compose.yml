@@ -1,9 +1,0 @@
-version: '3.4'
-
-services:
-  optimizer:
-    image: optimizer
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    restart: unless-stopped

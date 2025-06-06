@@ -269,3 +269,5 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 /.vscode
 _version.py
+# Do not track Gurobi license files
+gurobi.lic
