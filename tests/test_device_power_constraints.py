@@ -236,3 +236,56 @@ class TestDevicePowerConstraints:
         pd.testing.assert_frame_equal(
             result[4], fixed_consumption_result, check_dtype=False
         )
+
+    def test_multi_source_restriction(self):
+        """Test restriction of multiple sources (PV, battery, grid)"""
+        pv_power = {
+            self.time_series[0]: 5,
+            self.time_series[1]: 20,
+            self.time_series[2]: 0,
+        }
+        pv_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+
+        sell_power = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+        sell_price = {
+            self.time_series[0]: 30,
+            self.time_series[1]: 30,
+            self.time_series[2]: 0,
+        }
+
+        # Optimization
+        opt = Model(self.time_series)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
+        battery_block = opt.add_battery(
+            Battery(
+                name="test-battery",
+                start_soc=1,
+                capacity=10000,
+                max_charge_power=10000,
+                max_discharge_power=10000,
+                charge_efficiency=0.5,
+                discharge_efficiency=0.5,
+            )
+        )
+        sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
+        opt.add_energy_paths()
+
+        # Apply constraint
+        opt.constraint_device_power([pv_block, battery_block], sell_block, 20)
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+        export = Exporter(opt).to_df()
+        result = (
+            export.to_buy(),
+            export.to_sell(),
+            export.to_battery_power(),
+        )
