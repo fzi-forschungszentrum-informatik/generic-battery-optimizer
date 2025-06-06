@@ -6,6 +6,7 @@ from battery_optimizer.export.model import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.solver import Solver
 from battery_optimizer.profiles.battery_profile import Battery
+from pandas.testing import assert_frame_equal
 
 
 class TestDevicePowerConstraints:
@@ -284,8 +285,41 @@ class TestDevicePowerConstraints:
         opt.generate_objective()
         Solver(find_solver()).solve(opt.model)
         export = Exporter(opt).to_df()
-        result = (
-            export.to_buy(),
-            export.to_sell(),
-            export.to_battery_power(),
+        buy_result = export.to_buy()
+        sell_result = export.to_sell()
+        battery_result = export.to_battery_power()
+
+        assert_frame_equal(
+            buy_result,
+            pd.DataFrame(
+                data={
+                    "pv": [5, 20, 0],
+                    "sell": [0, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+        )
+
+        assert_frame_equal(
+            battery_result,
+            pd.DataFrame(
+                data={
+                    "test-battery": [-15, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+        )
+
+        assert_frame_equal(
+            sell_result,
+            pd.DataFrame(
+                data={
+                    "pv": [0, 0, 0],
+                    "sell": [20, 20, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
         )
