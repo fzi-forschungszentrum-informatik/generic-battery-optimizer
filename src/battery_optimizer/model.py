@@ -173,7 +173,10 @@ class Model:
         return self.model.fixed_consumptions.component(name)
 
     def constraint_device_power(
-        self, a: pyo.Block, b: pyo.Block, power: float
+        self,
+        a: pyo.Block | list[pyo.Block],
+        b: pyo.Block | list[pyo.Block],
+        power: float,
     ) -> pyo.Constraint:
         """Constraint power transfer between two devices
 
@@ -185,9 +188,9 @@ class Model:
 
         Parameters
         ----------
-        a : pyo.Block
+        a : pyo.Block | list[pyo.Block]
             The source device from which power is transferred.
-        b : pyo.Block
+        b : pyo.Block | list[pyo.Block]
             The target device to which power is transferred.
         power (float):
             The maximum power transfer allowed between `a` and `b` in watts.
@@ -198,19 +201,32 @@ class Model:
             The constraint object added to the model that enforces
             the power transfer limit.
         """
-        constraint_name = a.name + "-" + b.name
+        if not isinstance(a, list):
+            a = [a]
+        if not isinstance(b, list):
+            b = [b]
+
+        constraint_name = (
+            "-".join([source.name for source in a])
+            + "-"
+            + "-".join([sink.name for sink in b])
+        )
 
         def _device_power_limit(_, period):
             return (
-                self.model.energy_matrix[
-                    (
-                        period,
-                        a.parent_block().name,
-                        a.local_name,
-                        b.parent_block().name,
-                        b.local_name,
-                    )
-                ]
+                sum(
+                    self.model.energy_matrix[
+                        (
+                            period,
+                            source.parent_block().name,
+                            source.local_name,
+                            sink.parent_block().name,
+                            sink.local_name,
+                        )
+                    ]
+                    for source in a
+                    for sink in b
+                )
                 <= power * get_period_length(period, self.model.i)[1]
             )
 
