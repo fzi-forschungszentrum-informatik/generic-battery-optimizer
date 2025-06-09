@@ -252,11 +252,34 @@ class Model:
         log.debug("Generating energy matrix")
         # for each row add a constraint limiting the energy draw
         device_tuples = self._get_device_tuples()
+        # Filter device tuples to only include those with a power limit > 0
+        sources = [
+            device_tuple
+            for device_tuple in device_tuples
+            if any(
+                c.ub
+                for c in self.model.component(device_tuple[0])
+                .component(device_tuple[1])
+                .energy_source.values()
+            )
+            > 0
+        ]
+        sinks = [
+            device_tuple
+            for device_tuple in device_tuples
+            if any(
+                c.ub
+                for c in self.model.component(device_tuple[0])
+                .component(device_tuple[1])
+                .energy_sink.values()
+            )
+            > 0
+        ]
 
         self.model.energy_matrix = pyo.Var(
             self.model.i,
-            device_tuples,  # sources
-            device_tuples,  # sinks
+            sources,  # sources
+            sinks,  # sinks
             domain=pyo.NonNegativeReals,
             initialize=0.0,
             doc="Energy transfer between devices",
@@ -268,7 +291,7 @@ class Model:
             # from the source to the sink
             # source sum
             # device.energy_source == sum(all devices energy_sink)
-            for device_type, device in device_tuples:
+            for device_type, device in sources:
                 # add the energy path constraint
                 component = self.model.component(device_type).component(device)
                 block.add_component(
@@ -287,11 +310,13 @@ class Model:
                                         sink,
                                     )
                                 ]
-                                for sink_type, sink in device_tuples
+                                for sink_type, sink in sinks
                             )
                         ),
                     ),
                 )
+            for device_type, device in sinks:
+                component = self.model.component(device_type).component(device)
                 block.add_component(
                     ("sink: " + device_type + device),
                     pyo.Constraint(
@@ -308,7 +333,7 @@ class Model:
                                         device,
                                     )
                                 ]
-                                for (source_type, source) in device_tuples
+                                for (source_type, source) in sources
                             )
                         ),
                     ),
@@ -323,8 +348,31 @@ class Model:
 
         Minimize cost for all price profiles and their consumption
         """
-        # The cost for energy is minimized
         device_tuples = self._get_device_tuples()
+        # Filter device tuples to only include those with a power limit > 0
+        sources = [
+            device_tuple
+            for device_tuple in device_tuples
+            if any(
+                c.ub
+                for c in self.model.component(device_tuple[0])
+                .component(device_tuple[1])
+                .energy_source.values()
+            )
+            > 0
+        ]
+        sinks = [
+            device_tuple
+            for device_tuple in device_tuples
+            if any(
+                c.ub
+                for c in self.model.component(device_tuple[0])
+                .component(device_tuple[1])
+                .energy_sink.values()
+            )
+            > 0
+        ]
+        # The cost for energy is minimized
         self.model.add_component(
             TEXT_OBJECTIVE_NAME,
             pyo.Objective(
@@ -336,7 +384,7 @@ class Model:
                     .component(source)
                     .price_source[timestamp]
                     for timestamp in self.model.i
-                    for source_type, source in device_tuples
+                    for source_type, source in sources
                 )
                 # Energy Sinks (payed)
                 - sum(
@@ -347,7 +395,7 @@ class Model:
                     .component(sink)
                     .price_sink[timestamp]
                     for timestamp in self.model.i
-                    for sink_type, sink in device_tuples
+                    for sink_type, sink in sinks
                 )
                 # Value of the energy in the battery
                 - sum(
@@ -359,7 +407,7 @@ class Model:
                         .component(sink)
                         .price_sink[self.model.i.at(-1)]
                         .value
-                        for sink_type, sink in device_tuples
+                        for sink_type, sink in sinks
                     )
                     for battery in self.model.batteries.component_map()
                 )
