@@ -258,10 +258,12 @@ class Model:
             device_tuples,  # sources
             device_tuples,  # sinks
             domain=pyo.NonNegativeReals,
+            initialize=0.0,
+            doc="Energy transfer between devices",
         )
 
         # Add constraints
-        def _add_energy_matrix_rules(block, period):
+        def _add_energy_matrix_rules(block):
             # for each period add a constraint limiting the energy draw
             # from the source to the sink
             # source sum
@@ -272,12 +274,13 @@ class Model:
                 block.add_component(
                     ("source: " + device_type + device),
                     pyo.Constraint(
+                        self.model.i,
                         expr=(
-                            component.energy_source[period]
+                            lambda block, i: component.energy_source[i]
                             == sum(
                                 self.model.energy_matrix[
                                     (
-                                        period,
+                                        i,
                                         device_type,
                                         device,
                                         sink_type,
@@ -292,12 +295,13 @@ class Model:
                 block.add_component(
                     ("sink: " + device_type + device),
                     pyo.Constraint(
+                        self.model.i,
                         expr=(
-                            component.energy_sink[period]
+                            lambda block, i: component.energy_sink[i]
                             == sum(
                                 self.model.energy_matrix[
                                     (
-                                        period,
+                                        i,
                                         source_type,
                                         source,
                                         device_type,
@@ -311,7 +315,7 @@ class Model:
                 )
 
         self.model.energy_matrix_rules = pyo.Block(
-            self.model.i, rule=_add_energy_matrix_rules
+            rule=_add_energy_matrix_rules
         )
 
     def generate_objective(self):
