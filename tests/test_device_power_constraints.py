@@ -259,7 +259,7 @@ class TestDevicePowerConstraints:
         sell_price = {
             self.time_series[0]: 30,
             self.time_series[1]: 30,
-            self.time_series[2]: 0,
+            self.time_series[2]: 5,
         }
 
         # Optimization
