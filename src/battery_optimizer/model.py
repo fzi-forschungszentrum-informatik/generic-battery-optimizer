@@ -461,8 +461,8 @@ class Model:
         return device_tuples
 
     @staticmethod
-    def _hash_names(names: list[str], inner_seperator = '-', outer_seperator = '-'):
+    def _hash_names(names: list[str], inner_seperator = '-'):
         names_joined = inner_seperator.join(names)
         names_hashed = hashlib.md5(names_joined.encode(), usedforsecurity=False).hexdigest()
         names_count = len(names)
-        return f'{names_hashed}{outer_seperator}{names_count}'
+        return f'{names_hashed}({names_count})'
