@@ -1,4 +1,5 @@
 from datetime import datetime
+import hashlib
 import logging
 from pandas import infer_freq
 import pyomo.environ as pyo
@@ -313,9 +314,9 @@ class Model:
             b = [b]
 
         constraint_name = (
-            "-".join([source.name for source in a])
+            self._hash_names([source.name for source in a])
             + "-"
-            + "-".join([sink.name for sink in b])
+            + self._hash_names([sink.name for sink in b])
         )
 
         def _device_power_limit(_, period):
@@ -458,3 +459,10 @@ class Model:
             for device in devices
         ]
         return device_tuples
+
+    @staticmethod
+    def _hash_names(names: list[str], inner_seperator = '-', outer_seperator = '-'):
+        names_joined = inner_seperator.join(names)
+        names_hashed = hashlib.md5(names_joined.encode(), usedforsecurity=False).hexdigest()
+        names_count = len(names)
+        return f'{names_hashed}{outer_seperator}{names_count}'
