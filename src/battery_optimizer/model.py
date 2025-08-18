@@ -172,74 +172,9 @@ class Model:
         )
         return self.model.fixed_consumptions.component(name)
 
-    def constraint_device_power(
-        self,
-        a: pyo.Block | list[pyo.Block],
-        b: pyo.Block | list[pyo.Block],
-        power: float,
-    ) -> pyo.Constraint:
-        """Constraint power transfer between two devices
-
-        Adds a constraint to the model that limits the power transfer from
-        device `a` to device `b` to a specified value `power` in watts (W).
-        This constraint ensures that the energy transferred between the devices
-        during a given period is equal to the specified power multiplied by the
-        period length.
-
-        Parameters
-        ----------
-        a : pyo.Block | list[pyo.Block]
-            The source device from which power is transferred.
-        b : pyo.Block | list[pyo.Block]
-            The target device to which power is transferred.
-        power (float):
-            The maximum power transfer allowed between `a` and `b` in watts.
-
-        Returns
-        -------
-        pyo.Constraint
-            The constraint object added to the model that enforces
-            the power transfer limit.
-        """
-        if not isinstance(a, list):
-            a = [a]
-        if not isinstance(b, list):
-            b = [b]
-
-        constraint_name = (
-            "-".join([source.name for source in a])
-            + "-"
-            + "-".join([sink.name for sink in b])
-        )
-
-        def _device_power_limit(_, period):
-            return (
-                sum(
-                    self.model.energy_matrix[
-                        (
-                            period,
-                            source.parent_block().name,
-                            source.local_name,
-                            sink.parent_block().name,
-                            sink.local_name,
-                        )
-                    ]
-                    for source in a
-                    for sink in b
-                )
-                <= power * get_period_length(period, self.model.i)[1]
-            )
-
-        self.model.device_power_limits.add_component(
-            constraint_name,
-            val=pyo.Constraint(
-                self.model.i,
-                rule=_device_power_limit,
-            ),
-        )
-        return self.model.device_power_limits.component(constraint_name)
-
-    # Die beiden kommen in ne extra Klasse, dann kann man nicht anfangen, erst energypaths zu generieren
+    # TODO move this to a separate class (Model -> MatrixModel (This can be
+    # constrained with power limits) -> FullModel (is the result of objective
+    # generation) and can be solved)
     def add_energy_paths(self) -> None:
         """Add all necessary energy paths to the model
 
@@ -343,6 +278,85 @@ class Model:
             rule=_add_energy_matrix_rules
         )
 
+    def constraint_device_power(
+        self,
+        a: pyo.Block | list[pyo.Block],
+        b: pyo.Block | list[pyo.Block],
+        power: float,
+    ) -> pyo.Constraint:
+        """Constraint power transfer between two devices
+
+        Adds a constraint to the model that limits the power transfer from
+        device `a` to device `b` to a specified value `power` in watts (W).
+        This constraint ensures that the energy transferred between the devices
+        during a given period is equal to the specified power multiplied by the
+        period length.
+
+        Parameters
+        ----------
+        a : pyo.Block | list[pyo.Block]
+            The source device from which power is transferred.
+        b : pyo.Block | list[pyo.Block]
+            The target device to which power is transferred.
+        power (float):
+            The maximum power transfer allowed between `a` and `b` in watts.
+
+        Returns
+        -------
+        pyo.Constraint
+            The constraint object added to the model that enforces
+            the power transfer limit.
+        """
+        if not isinstance(a, list):
+            a = [a]
+        if not isinstance(b, list):
+            b = [b]
+
+        constraint_name = (
+            "-".join([source.name for source in a])
+            + "-"
+            + "-".join([sink.name for sink in b])
+        )
+
+        def _device_power_limit(_, period):
+            return (
+                sum(
+                    self.model.energy_matrix[
+                        (
+                            period,
+                            source.parent_block().name,
+                            source.local_name,
+                            sink.parent_block().name,
+                            sink.local_name,
+                        )
+                    ]
+                    for source in a
+                    for sink in b
+                )
+                <= power * get_period_length(period, self.model.i)[1]
+            )
+
+        self.model.device_power_limits.add_component(
+            constraint_name,
+            val=pyo.Constraint(
+                self.model.i,
+                rule=_device_power_limit,
+            ),
+        )
+        return self.model.device_power_limits.component(constraint_name)
+
+    def constraint_device_power_source(self, a: list[pyo.Block], power: float):
+        """Constraint power transfer from a source to all sinks"""
+        return self.constraint_device_power(
+            a, self._get_device_tuples(), power
+        )
+
+    def constraint_device_power_sink(self, b: list[pyo.Block], power: float):
+        """Constraint power transfer to a sink from all sources"""
+        return self.constraint_device_power(
+            self._get_device_tuples(), b, power
+        )
+
     def generate_objective(self):
         """Generate the models objective
 
@@ -414,7 +428,6 @@ class Model:
             ),
         )
         log.debug(self.model.component(TEXT_OBJECTIVE_NAME))
-
     def _get_device_tree(self):
         """Get a tree of all devices in the model
 
