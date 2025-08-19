@@ -8,10 +8,6 @@ from battery_optimizer.static.model import (
     TEXT_ENERGY_PATH_MATRIX,
     TEXT_SOC,
     TEXT_ENERGY,
-    TEXT_BATTERY_BASE,
-    TEXT_SELL_PROFILE_BASE,
-    TEXT_ENERGY_PROFILE_BASE,
-    TEXT_CONSUMPTION_PROFILE_BASE,
 )
 
 log = logging.getLogger(__name__)
@@ -23,7 +19,11 @@ POWER_POSTFIX = TEXT_ENERGY.replace("energy", "power")
 class ModelDataframe:
     """Dataframe with all data from a model"""
 
-    def __init__(self, model_dict, soc):
+    def __init__(
+        self,
+        model_dict: dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]],
+        soc: dict[str, dict[datetime.datetime, float]],
+    ):
         """Create a new model dataframe
 
         Variables

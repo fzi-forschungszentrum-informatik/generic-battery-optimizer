@@ -6,12 +6,13 @@ log = logging.getLogger(__name__)
 
 
 class Solver:
+
     def __init__(
         self,
-        solver="glpk",
-        tee=False,
+        solver: str = "glpk",
+        tee: bool = False,
         result_file: str = "",
-        options: dict = {},
+        options: dict[str, str | float] = {},
     ):
         """Initialize a solver
 

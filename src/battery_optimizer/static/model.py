@@ -48,7 +48,7 @@ TEXT_ENERGY_PATH_SINK_CONSTRAINTS = "Energy distribution target constraints"
 # Objective texts
 TEXT_OBJECTIVE_NAME = "Objective"
 
-COMPONENT_MAP = {
+COMPONENT_MAP: dict[class, str]  = {
     BatteryBlock: "batteries",
     PowerProfileBlock: "power_profiles",
     FixedConsumptionBlock: "fixed_consumptions",
