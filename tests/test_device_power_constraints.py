@@ -160,7 +160,7 @@ class TestDevicePowerConstraints:
     )
     def test_consumption_from_pv_and_restrict_sell(self, power):
         """Home consumption from PV (rest (limited) sold to grid)"""
-        pv_pwoer = {
+        pv_power = {
             self.time_series[0]: 100,
             self.time_series[1]: 100,
             self.time_series[2]: 0,
@@ -191,7 +191,7 @@ class TestDevicePowerConstraints:
 
         # Optimization
         opt = Model(self.time_series)
-        pv_block = opt.add_buy_profile("pv", pv_pwoer, pv_price)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
         sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
         opt.add_fixed_consumption("fixed_consumption", fixed_consumption)
         opt.add_energy_paths()
