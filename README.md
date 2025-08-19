@@ -160,6 +160,12 @@ solver = Solver("gurobi")
 ```
 To customize the behavior of the solver an options dictionary can be specified during initialization. These differ between solvers.
 
+For a list on available solvers execute 
+```bash
+pyomo help --solvers
+```
+in a shell.
+
 #### Step 7: Solve the model
 To start the solving of a model use the solve method of a solver and pass the pyomo model of the finalized model to the method. 
 ```python
@@ -196,12 +202,12 @@ export.to_heat_pump_power()
 
 ### Simplified usage (less complete)
 The simplified usage gives quick access to a subset of the models features. 
+It is the simplest way of using the optimizer. It provides a wrapper method that handles creation of a model instance, adds specified profiles and devices to the model, solves it and retrieves the data from the optimized model.
+This wrapper method accepts ProfileStack objects for its buy prices, sell prices and fixed consumption profiles. Batteries are a list of Battery objects and heat pumps are a list of HeatPump objects.
 
+The following example is provided in example/example.py and can be executed directly to play around with. 
 
-The following example is provided in example/example.py that can be execuded directly to play around with. The simplest way of using the optimizer is with its wrapper method that handles creation of an optimizers instance, the solving and data retrieval from the optimized model.
-This wrapper method accepts ProfileStack objects for its buy prices, sell prices and fixed consumption profiles. Batteries are a list of Battery objects.
-
-### Step 1: Import necessary methods
+#### Step 1: Import necessary methods
 Import the optimizer wrapper, power profile, profile stack and battery as needed:
 
 ```python
@@ -209,6 +215,7 @@ import random # Just for the random initialization of power/price values
 import pandas as pd # Useful to generate time series for the indices
 from battery_optimizer import optimize
 from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack, PowerPriceProfile
 ```
 
@@ -266,13 +273,18 @@ household_battery = Battery(
 Finally pass all profile stacks and batteries to the optimizer wrapper te get the optimized power and soc profiles. All fields are optional but sufficiently high buy-capacity is needed if fixed consumption profiles are used or a batteries end soc is specified.
 
 ```python
-buy_power, sell_power, battery_power, battery_soc, fixed_consumption = (
-    optimize(
-        buy_prices=buy_profile_stack,
-        sell_prices=sell_profile_stack,
-        fixed_consumption=consumption_profile_stack,
-        batteries=[household_battery],
-    )
+(
+    buy_power,
+    sell_power,
+    battery_power,
+    battery_soc,
+    fixed_consumption,
+    heat_pump_power,
+) = optimize(
+    buy_prices=buy_profile_stack,
+    sell_prices=sell_profile_stack,
+    fixed_consumption=consumption_profile_stack,
+    batteries=[household_battery],
 )
 ```
 
@@ -282,54 +294,8 @@ After the optimization the power profiles are stored in pandas DataFrames. In th
 The column names are the given names of the batteries and all values represent the power in each time step.
 The variable battery_soc contains the soc of the battery after each time period and its values represent soc values of the battery between zero and one.
 
-Instead of using the wrapper method the optimizer can be used manually, too. To do so import the necessary modules like above but instead of importing the wrapper method import the optimizer class with:
-
-```python
-from battery_optimizer.model import Optimizer
-```
-
-Create profile stacks and batteries as demonstrated above and construct the Optimizer with them:
-```python
-opt = Optimizer(
-    buy_prices=buy_profile_stack,
-    sell_prices=sell_profile_stack,
-    fixed_consumption=consumption_profile_stack,
-    batteries=[household_battery],
-)
-```
-
-Construct the optimization model after all data is added with:
-```python
-opt.set_up()
-```
-
-Afterwards the problem can be solved. Other solvers can be specified here.
-```python
-opt.solve()
-```
-
-For a list on available solvers execute 
-```bash
-pyomo help --solvers
-```
-in a shell.
-
-To retrieve the optimized profiles from the model, several methods are available from the battery_optimizer.export module to assist in extracting the data. Import the methods as necessary and pass the model (or for battery soc the optimizer class) to the export methods.
-
-```python
-from battery_optimizer.export.model import Exporter
-
-df_export = Exporter(opt.model).to_df()
-
-df_export.to_buy()
-df_export.to_sell()
-df_export.to_battery_power()
-df_export.to_battery_soc()
-df_export.to_fixed_consumption()
-df_export.to_heat_pump_power()
-```
-
 # Extending functionality
+The optimization model is designed to be extensible with minimal effort. 
 
 # Tests
 To run the python tests provided run:
