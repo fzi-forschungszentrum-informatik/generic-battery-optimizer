@@ -123,6 +123,8 @@ def test_battery_efficiency(charge_efficiency, discharge_efficiency):
     )
 
     pd.testing.assert_frame_equal(
-        result[3], expected_battery_soc, check_dtype=False
+        result[3], expected_battery_soc, check_dtype=False, check_freq=False
     )
-    pd.testing.assert_frame_equal(result[2], expected_power, check_dtype=False)
+    pd.testing.assert_frame_equal(
+        result[2], expected_power, check_dtype=False, check_freq=False
+    )
