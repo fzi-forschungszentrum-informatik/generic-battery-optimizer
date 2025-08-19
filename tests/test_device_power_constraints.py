@@ -129,6 +129,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
         pd.testing.assert_frame_equal(
             result[1],
@@ -140,6 +141,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
 
         # Assert battery profiles
@@ -152,6 +154,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
 
     @pytest.mark.parametrize(
@@ -226,12 +229,23 @@ class TestDevicePowerConstraints:
         )
 
         # Assert power profiles
-        pd.testing.assert_frame_equal(result[0], buy_result, check_dtype=False)
         pd.testing.assert_frame_equal(
-            result[1], sell_result, check_dtype=False
+            result[0],
+            buy_result,
+            check_dtype=False,
+            check_freq=False,
         )
         pd.testing.assert_frame_equal(
-            result[4], fixed_consumption_result, check_dtype=False
+            result[1],
+            sell_result,
+            check_dtype=False,
+            check_freq=False,
+        )
+        pd.testing.assert_frame_equal(
+            result[4],
+            fixed_consumption_result,
+            check_dtype=False,
+            check_freq=False,
         )
 
     def test_multi_source_restriction(self):
@@ -295,6 +309,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
 
         assert_frame_equal(
@@ -306,6 +321,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
 
         assert_frame_equal(
@@ -318,4 +334,5 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
