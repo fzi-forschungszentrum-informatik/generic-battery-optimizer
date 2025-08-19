@@ -10,12 +10,8 @@ from pandas.testing import assert_frame_equal
 
 
 class TestDevicePowerConstraints:
-    time_series = pd.DatetimeIndex(
-        [
-            datetime(2021, 1, 1, 8, 0, 0),
-            datetime(2021, 1, 1, 9, 0, 0),
-            datetime(2021, 1, 1, 10, 0, 0),
-        ]
+    time_series = pd.date_range(
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="H"
     )
 
     @pytest.mark.parametrize(

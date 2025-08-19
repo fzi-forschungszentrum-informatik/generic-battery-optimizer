@@ -46,12 +46,8 @@ from helpers import find_solver, get_profiles
     ],
 )
 def test_battery_efficiency(charge_efficiency, discharge_efficiency):
-    time_series = pd.DatetimeIndex(
-        [
-            datetime(2022, 1, 3, 18, 0, 0),
-            datetime(2022, 1, 3, 19, 0, 0),
-            datetime(2022, 1, 3, 20, 0, 0),
-        ]
+    time_series = pd.date_range(
+        start="2022-01-03 18:00:00", end="2022-01-03 20:00:00", freq="H"
     )
 
     buy = {
