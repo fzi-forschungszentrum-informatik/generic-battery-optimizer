@@ -2,11 +2,11 @@ from datetime import datetime
 import logging
 from pandas import infer_freq
 import pyomo.environ as pyo
-from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
-from battery_optimizer.blocks.power_profile import PowerProfileBlock
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.model import COMPONENT_MAP, TEXT_OBJECTIVE_NAME
 from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
+from battery_optimizer.blocks.power_profile import PowerProfileBlock
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
 from battery_optimizer.blocks.battery import BatteryBlock

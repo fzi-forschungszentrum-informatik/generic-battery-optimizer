@@ -1,7 +1,7 @@
 import datetime
+import logging
 import pandas as pd
 import pyomo.environ as pyo
-import logging
 from battery_optimizer.model import Model
 from battery_optimizer.static.model import (
     COMPONENT_MAP,
