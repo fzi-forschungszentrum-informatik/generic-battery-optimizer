@@ -295,7 +295,120 @@ The column names are the given names of the batteries and all values represent t
 The variable battery_soc contains the soc of the battery after each time period and its values represent soc values of the battery between zero and one.
 
 # Extending functionality
-The optimization model is designed to be extensible with minimal effort. 
+The optimization model is designed to be extensible with minimal effort. Each profile or device is implemented as its own pyomo block.
+
+## Creating the block
+To implement a new block create a new file in src > battery_optimizer > blocks and add the following template to the file:
+
+```python
+class MyBlock:
+    def __init__(self, index: pyo.Set, my_block_information: MyBlockPydantic):
+        self.index = index
+        self.my_block_information = my_block_information
+
+    def build_block(self) -> pyo.Block:
+        """Build the block"""
+        block = pyo.Block()
+        # DEFAULT
+        # Source in Matrix
+        block.energy_source = pyo.Var(self.index, bounds=(0, 0), initialize=0)
+        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
+        # Sink in matrix
+        block.energy_sink = pyo.Var(self.index, bounds=(0, 0), initialize=0)
+        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
+        # Construct variables and parameters
+        block.energy_source.construct()
+        block.price_source.construct()
+        block.energy_sink.construct()
+        block.price_sink.construct()
+        # DEFAULT
+
+        ### Your device implementation
+
+        return block
+```
+
+The index takes the models index and extra information about the device as an input. Information of the device should ideally be serializable data, so standard data types or pydantic models are a good choice.
+
+The block is built using the method ''build_block()'' and returns the built block. every block must specify the variables ''energy_source'' and ''energy_sink'' and the parameters ''price_source'' and ''price_sink''. These are used by the energy matrix to calculate the energy flows. All restrictions of the device should work with these variables to meet the devices requirements. The price parameters are used by the model in the objective to determine the cost or revenue of energy usage.
+
+To set other limits than 0 on the energy variables use the ''setub'' and ''setlb'' to set the lower and upper bound of the variable. To specify prices for the price parameters use the ''set_value'' method to set them.
+
+## Adding the block to the model
+Import the new block in battery_optimizer.model and add a method to add this block to the model. This should need minimal calculations in the Model class itself. All necessary calculations should be made during the blocks creation in the block. 
+
+This code should be sufficient for most components with only minor changes:
+```python
+def add_my_block(self, my_block_information: MyBlockPydantic) -> pyo.Block:
+        """Add a new my component to the model
+
+        Description of the component
+
+        Variables
+        ---------
+        my_block_information : BaMyBlockPydanticttery
+            The component to add to the model.
+        """
+        self.model.my_block_type.add_component(
+            name=my_block_information.name,
+            val=MyBlock(self.model.i, my_block_information).build_block(),
+        )
+        return self.model.my_block_type.component(my_block_information.name)
+```
+
+Add the new block to battery_optimizer.static.model.COMPONENT_MAP. This specifies the name of the block category used in the model and must be unique and match the name used above in the ''add_my_block'' method
+
+```python
+COMPONENT_MAP: dict[type, str] = {
+    ...,
+    MyBlockPydantic: "my_block_type",
+}
+```
+
+## Allow export of the block data
+Some exporters may need te be extended to export the data from new blocks. The to_dict method of the exporter should export power information of the new component automatically but the pandas DataFrame exporter does not automatically.
+
+To export the component as a DataFrame add a new method to the ModelDataFrame class which exports the relevant data for the component. A simple power output for the component would work like the following example:
+
+```python
+def to_my_component(self) -> pd.DataFrame:
+        """Create a DataFrame with all my_component power profiles
+
+        Device description.
+
+        Each value represents the total constant power the device consumes during a time period.
+        Indexed by the timestamps from which the specified power should be
+        used by a device.
+        my_component profiles have positive power when they consume power.
+
+        Returns
+        -------
+        pd.DataFrame
+            The power in W of each my_component profile.
+        """
+        my_component_df = pd.DataFrame(
+            {
+                device: values["source"]
+                for device, values in self._model_dict[
+                    "my_block_type"
+                ].items()
+            }
+        )
+        return ModelDataFrame.__convert_to_power(my_component_df)
+```
+
+If the device can be both a sink and a source its total power will probably be the sink-power subtracted by the source power. If so 
+```python
+pd.DataFrame(
+    {
+        device: pd.Series(values["sink"])
+        - pd.Series(values["source"])
+        for device, values in self._model_dict["my_block_type"].items()
+    }
+)
+```
+can be used to calculate this. 
+
 
 # Tests
 To run the python tests provided run:
