@@ -2,7 +2,7 @@ import pandas as pd
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profile_stack_problem import ProfileStackProblem
 from battery_optimizer.solver import Solver
-from battery_optimizer.export.model import Exporter
+from battery_optimizer.export.export import Exporter
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
 
