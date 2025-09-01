@@ -11,7 +11,7 @@ from battery_optimizer.export.heat_pump import (
 import pyomo.environ as pyo
 import matplotlib.pyplot as plt
 
-from battery_optimizer.export.export import to_heat_pump_power
+from battery_optimizer.export.pandas import to_heat_pump_power
 from battery_optimizer.static.heat_pump import C_TO_K, TEXT_HEAT_PUMP_BASE
 from battery_optimizer.static.numbers import MAX_COP
 from battery_optimizer.visualize.general import apply_design
