@@ -146,4 +146,7 @@ def interpolate_heat_energy(
     elif current_period in heat_demand:
         return heat_demand[current_period]
     else:
-        raise NotImplementedError("Interpolating heat energy is not supported")
+        df = pd.Series(heat_demand)
+        df[current_period] = None
+        df.interpolate(method="time", inplace=True)
+        return df[current_period]
