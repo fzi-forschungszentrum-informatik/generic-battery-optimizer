@@ -27,7 +27,7 @@ class TestChargeTime(unittest.TestCase):
                 },
                 index=self.time_series,
             ),
-            "grid": pd.DataFrame(
+            "grid_buy": pd.DataFrame(
                 data={
                     "input_power": [100, 100, 100, 100, 0],
                     "input_price": [30, 30, 30, 30, 0],
@@ -47,7 +47,7 @@ class TestChargeTime(unittest.TestCase):
         }
 
         sell = {
-            "grid": pd.DataFrame(
+            "grid_sell": pd.DataFrame(
                 data={
                     "input_power": [100, 100, 100, 100, 0],
                     "input_price": [4, 4, 5, 5, 0],
@@ -75,7 +75,11 @@ class TestChargeTime(unittest.TestCase):
         )
 
         buy_result = pd.DataFrame(
-            data={"pv": [5, 5, 5, 5, 0], "grid": [0, 0, 0, 0, 0]},
+            data={
+                "pv": [5, 5, 5, 5, 0],
+                "grid_buy": [0, 0, 0, 0, 0],
+                "grid_sell": [0, 0, 0, 0, 0],
+            },
             index=self.time_series,
         )
 
@@ -88,7 +92,9 @@ class TestChargeTime(unittest.TestCase):
 
         sell_result = pd.DataFrame(
             data={
-                "grid": [2, 2, 0, 0, 0],
+                "pv": [0, 0, 0, 0, 0],
+                "grid_buy": [0, 0, 0, 0, 0],
+                "grid_sell": [2, 2, 0, 0, 0],
             },
             index=self.time_series,
         )

@@ -122,6 +122,5 @@ def parse_profiles(
     for name, profile in opt_profiles.items():
         columns = profile.filter(regex=f"{MODEL_POWER_BELOW}$").columns
         columns.append(profile.filter(regex=f"{MODEL_POWER_ABOVE}$").columns)
-        profile[columns] = profile[columns].apply(calculate_energy)
 
     return opt_profiles
