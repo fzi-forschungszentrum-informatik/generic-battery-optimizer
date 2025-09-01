@@ -4,8 +4,8 @@ REGEX = r"^.*"
 # texts for model
 MODEL_PRICE_BELOW = "price"
 MODEL_PRICE_ABOVE = "price"
-MODEL_POWER_BELOW = "power"
-MODEL_POWER_ABOVE = "power"
+MODEL_POWER_BELOW = "energy"
+MODEL_POWER_ABOVE = "energy"
 MODEL_ABOVE_TEXT = "-above-limit"
 # texts from ProfileStack
 PROFILESTACK_PRICE = "price"
