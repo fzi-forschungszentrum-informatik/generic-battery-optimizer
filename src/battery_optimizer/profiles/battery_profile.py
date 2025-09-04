@@ -8,7 +8,7 @@ class Battery(NewBattery):
         warnings.warn(
             (
                 "Battery has moved. Please use "
-                "battery_optimizer.profiles.Battery instead."
+                "battery_optimizer.profiles.battery instead."
             ),
             DeprecationWarning,
             stacklevel=2,

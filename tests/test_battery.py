@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from datetime import datetime
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer import optimize
 from tests.helpers import find_solver, get_profiles
 
