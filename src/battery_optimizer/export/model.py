@@ -1,17 +1,13 @@
 import datetime
+import logging
 import pandas as pd
 import pyomo.environ as pyo
-import logging
 from battery_optimizer.model import Model
 from battery_optimizer.static.model import (
     COMPONENT_MAP,
     TEXT_ENERGY_PATH_MATRIX,
     TEXT_SOC,
     TEXT_ENERGY,
-    TEXT_BATTERY_BASE,
-    TEXT_SELL_PROFILE_BASE,
-    TEXT_ENERGY_PROFILE_BASE,
-    TEXT_CONSUMPTION_PROFILE_BASE,
 )
 
 log = logging.getLogger(__name__)
@@ -20,10 +16,14 @@ POWER_POSTFIX = TEXT_ENERGY.replace("energy", "power")
 
 
 # Könnte man den jetzt von einem DF erben lassen
-class ModelDataframe:
+class ModelDataFrame:
     """Dataframe with all data from a model"""
 
-    def __init__(self, model_dict, soc):
+    def __init__(
+        self,
+        model_dict: dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]],
+        soc: dict[str, dict[datetime.datetime, float]],
+    ):
         """Create a new model dataframe
 
         Variables
@@ -58,7 +58,7 @@ class ModelDataframe:
                 ].items()
             }
         )
-        return ModelDataframe.__convert_to_power(buy_df)
+        return ModelDataFrame.__convert_to_power(buy_df)
 
     def to_sell(self) -> pd.DataFrame:
         """Create a DataFrame with all sell power profiles
@@ -82,7 +82,7 @@ class ModelDataframe:
                 ].items()
             }
         )
-        return ModelDataframe.__convert_to_power(sell_df)
+        return ModelDataFrame.__convert_to_power(sell_df)
 
     def to_battery_power(self) -> pd.DataFrame:
         """Create a DataFrame with all battery power profiles
@@ -101,7 +101,7 @@ class ModelDataframe:
             The power in W of each battery.
         """
         # Get Battery power
-        return ModelDataframe.__convert_to_power(
+        return ModelDataFrame.__convert_to_power(
             pd.DataFrame(
                 {
                     device: pd.Series(values["sink"])
@@ -134,7 +134,7 @@ class ModelDataframe:
                 ].items()
             }
         )
-        return ModelDataframe.__convert_to_power(fixed_consumption_df)
+        return ModelDataFrame.__convert_to_power(fixed_consumption_df)
 
     def to_heat_pump_power(self) -> pd.DataFrame:
         """Create a DataFrame with all heat pump power profiles
@@ -151,7 +151,7 @@ class ModelDataframe:
             The power in W of each heat pump profile.
         """
         # Get Battery power
-        return ModelDataframe.__convert_to_power(
+        return ModelDataFrame.__convert_to_power(
             pd.DataFrame(
                 {
                     device: values["sink"]
@@ -304,7 +304,7 @@ class Exporter:
             }
         return variables
 
-    def to_df(self) -> ModelDataframe:
+    def to_df(self) -> ModelDataFrame:
         """Create a DataFrame from the model
 
         Contains all devices that draw power as columns. Each value represents
@@ -314,7 +314,7 @@ class Exporter:
 
         Returns
         ---------
-            ModelDataframe
+            ModelDataFrame
             A DataFrame-like object containing power consumption data for all
             devices, indexed by timestamps. The DataFrame includes energy
             metrics and battery state of charge (SOC) information.
@@ -357,7 +357,7 @@ class Exporter:
                 for index in component.soc
             }
 
-        return ModelDataframe(variables, soc)
+        return ModelDataFrame(variables, soc)
 
     def write_excel(self, filename: str) -> None:
         """Create an Excel file from the model

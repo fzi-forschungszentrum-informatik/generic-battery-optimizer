@@ -442,7 +442,11 @@ class HeatPumpBlock:
                         "%s The optimization will continue with no heat "
                         "demand in the last period (%s)."
                     ),
-                    self.heat_pump.heat_demand[period],
+                    (
+                        self.heat_pump.heat_demand[period]
+                        if period in self.heat_pump.heat_demand
+                        else "N/A"
+                    ),
                     period,
                 )
                 return block.heat_supply_demand == 0
