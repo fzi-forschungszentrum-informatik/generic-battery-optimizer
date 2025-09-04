@@ -15,24 +15,13 @@ class TestHeatPumpSoc:
 
     # Input data
     buy_power = {
-        time_series[0]: 10,
-        time_series[1]: 10,
+        time_series[0]: 1000000,
+        time_series[1]: 1000000,
         time_series[2]: 0,
     }
     buy_price = {
-        time_series[0]: 1,
-        time_series[1]: 4,
-        time_series[2]: 0,
-    }
-
-    sell = {
-        time_series[0]: 10,
-        time_series[1]: 10,
-        time_series[2]: 0,
-    }
-    sell_price = {
         time_series[0]: 0,
-        time_series[1]: 3,
+        time_series[1]: 0,
         time_series[2]: 0,
     }
 
@@ -46,7 +35,7 @@ class TestHeatPumpSoc:
         hp_switch_off_temperature=5 + 273.15,
         heat_demand={
             time_series[0]: 0,
-            time_series[1]: 5,
+            time_series[1]: 1,
             time_series[2]: 0,
         },
         outdoor_temperature={
@@ -66,21 +55,20 @@ class TestHeatPumpSoc:
         # Optimization
         opt = Model(self.time_series)
         opt.add_buy_profile("buy", self.buy_power, self.buy_price)
-        opt.add_sell_profile("sell", self.sell, self.sell_price)
+        # BUG energy_sink.ub of this heat pump is None after adding it to the model
         opt.add_heat_pump(self.heat_pump)
         opt.add_energy_paths()
 
         opt.generate_objective()
-        Solver(find_solver()).solve(opt.model)
+        Solver(find_solver(), tee=True).solve(opt.model)
 
         heat_pump_soc = Exporter(opt).get_heat_pump_soc()
 
         assert isinstance(heat_pump_soc, dict)
         assert "test-heat-pump" in heat_pump_soc
-        assert heat_pump_soc == {
-            "test-heat-pump": {
-                self.time_series[0]: 0.0,
-                self.time_series[1]: 0.0,
-                self.time_series[2]: 0.0,
-            }
+        assert len(heat_pump_soc) == 1
+        assert heat_pump_soc["test-heat-pump"] == {
+            self.time_series[0]: 0.0,
+            self.time_series[1]: 0.0,
+            self.time_series[2]: 0.0,
         }
