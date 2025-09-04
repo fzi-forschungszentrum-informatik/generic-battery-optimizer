@@ -1,9 +1,12 @@
 import pandas as pd
+import pytest
 from battery_optimizer.export import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.solver import Solver
 from tests.helpers import find_solver
+
+solver = find_solver("gurobi")
 
 
 class TestHeatPumpSoC:
@@ -53,6 +56,11 @@ class TestHeatPumpSoC:
     )
 
     def test_heat_pump_soc(self):
+        if solver != "gurobi":
+        pytest.skip(
+            "Skipping this test as it requires the Gurobi solver to run"
+        )
+        
         # Optimization
         opt = Model(self.time_series)
         opt.add_buy_profile("buy", self.buy_power, self.buy_price)
@@ -61,7 +69,7 @@ class TestHeatPumpSoC:
         opt.add_energy_paths()
 
         opt.generate_objective()
-        Solver(find_solver(), tee=True).solve(opt.model)
+        Solver(solver).solve(opt.model)
 
         heat_pump_soc = Exporter(opt).get_heat_pump_soc()
 
@@ -75,6 +83,11 @@ class TestHeatPumpSoC:
         }
 
     def test_heat_pump_tes_temperature(self):
+        if solver != "gurobi":
+        pytest.skip(
+            "Skipping this test as it requires the Gurobi solver to run"
+        )
+    
         # Optimization
         opt = Model(self.time_series)
         opt.add_buy_profile("buy", self.buy_power, self.buy_price)
@@ -83,7 +96,7 @@ class TestHeatPumpSoC:
         opt.add_energy_paths()
 
         opt.generate_objective()
-        Solver(find_solver(), tee=True).solve(opt.model)
+        Solver(solver).solve(opt.model)
 
         tes_temp = Exporter(opt).get_heat_pump_tes_temperature()
 
