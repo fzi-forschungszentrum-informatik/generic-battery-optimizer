@@ -146,6 +146,21 @@ class Exporter:
 
         return model_parameter.extract_values()
 
+    def get_heat_pump_soc(self) -> dict[str, dict[datetime.datetime, float]]:
+        """Get the state of charge of all heat pumps
+
+        Returns
+        -------
+        dict[str, dict[datetime.datetime, float]]
+            The dictionary with the state of charge values for all heat pumps
+        """
+        return {
+            heat_pump: self.__extract_component_parameter(
+                "heat_pumps", heat_pump, "soc"
+            )
+            for heat_pump in self._model.model.heat_pumps.component_map()
+        }
+
     def to_df(self) -> ModelDataFrame:
         """Create a DataFrame from the model
 
