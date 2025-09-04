@@ -1,5 +1,5 @@
-import random # Just for the random initialization of power/price values
-import pandas as pd # Useful to generate time series for the indices
+import random  # Just for the random initialization of power/price values
+import pandas as pd  # Useful to generate time series for the indices
 from battery_optimizer import optimize
 from battery_optimizer.profiles.battery_profile import Battery
 from battery_optimizer.profiles.profiles import ProfileStack, PowerPriceProfile
@@ -49,11 +49,16 @@ household_battery = Battery(
     max_discharge_power=5000,
 )
 
-buy_power, sell_power, battery_power, battery_soc, fixed_consumption = (
-    optimize(
-        buy_prices=buy_profile_stack,
-        sell_prices=sell_profile_stack,
-        fixed_consumption=consumption_profile_stack,
-        batteries=[household_battery],
-    )
+(
+    buy_power,
+    sell_power,
+    battery_power,
+    battery_soc,
+    fixed_consumption,
+    heat_pump_power,
+) = optimize(
+    buy_prices=buy_profile_stack,
+    sell_prices=sell_profile_stack,
+    fixed_consumption=consumption_profile_stack,
+    batteries=[household_battery],
 )

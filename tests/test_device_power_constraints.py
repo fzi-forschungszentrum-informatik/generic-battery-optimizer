@@ -6,15 +6,12 @@ from battery_optimizer.export.model import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.solver import Solver
 from battery_optimizer.profiles.battery_profile import Battery
+from pandas.testing import assert_frame_equal
 
 
 class TestDevicePowerConstraints:
-    time_series = pd.DatetimeIndex(
-        [
-            datetime(2021, 1, 1, 8, 0, 0),
-            datetime(2021, 1, 1, 9, 0, 0),
-            datetime(2021, 1, 1, 10, 0, 0),
-        ]
+    time_series = pd.date_range(
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="H"
     )
 
     @pytest.mark.parametrize(
@@ -132,6 +129,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
         pd.testing.assert_frame_equal(
             result[1],
@@ -143,6 +141,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
 
         # Assert battery profiles
@@ -155,6 +154,7 @@ class TestDevicePowerConstraints:
                 index=self.time_series,
             ),
             check_dtype=False,
+            check_freq=False,
         )
 
     @pytest.mark.parametrize(
@@ -163,7 +163,7 @@ class TestDevicePowerConstraints:
     )
     def test_consumption_from_pv_and_restrict_sell(self, power):
         """Home consumption from PV (rest (limited) sold to grid)"""
-        pv_pwoer = {
+        pv_power = {
             self.time_series[0]: 100,
             self.time_series[1]: 100,
             self.time_series[2]: 0,
@@ -194,7 +194,7 @@ class TestDevicePowerConstraints:
 
         # Optimization
         opt = Model(self.time_series)
-        pv_block = opt.add_buy_profile("pv", pv_pwoer, pv_price)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
         sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
         opt.add_fixed_consumption("fixed_consumption", fixed_consumption)
         opt.add_energy_paths()
@@ -229,10 +229,110 @@ class TestDevicePowerConstraints:
         )
 
         # Assert power profiles
-        pd.testing.assert_frame_equal(result[0], buy_result, check_dtype=False)
         pd.testing.assert_frame_equal(
-            result[1], sell_result, check_dtype=False
+            result[0],
+            buy_result,
+            check_dtype=False,
+            check_freq=False,
         )
         pd.testing.assert_frame_equal(
-            result[4], fixed_consumption_result, check_dtype=False
+            result[1],
+            sell_result,
+            check_dtype=False,
+            check_freq=False,
+        )
+        pd.testing.assert_frame_equal(
+            result[4],
+            fixed_consumption_result,
+            check_dtype=False,
+            check_freq=False,
+        )
+
+    def test_multi_source_restriction(self):
+        """Test restriction of multiple sources (PV, battery, grid)"""
+        pv_power = {
+            self.time_series[0]: 5,
+            self.time_series[1]: 20,
+            self.time_series[2]: 0,
+        }
+        pv_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+
+        sell_power = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+        sell_price = {
+            self.time_series[0]: 30,
+            self.time_series[1]: 30,
+            self.time_series[2]: 5,
+        }
+
+        # Optimization
+        opt = Model(self.time_series)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
+        battery_block = opt.add_battery(
+            Battery(
+                name="test-battery",
+                start_soc=1,
+                capacity=10000,
+                max_charge_power=10000,
+                max_discharge_power=10000,
+                charge_efficiency=0.5,
+                discharge_efficiency=0.5,
+            )
+        )
+        sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
+        opt.add_energy_paths()
+
+        # Apply constraint
+        opt.constraint_device_power([pv_block, battery_block], sell_block, 20)
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+        export = Exporter(opt).to_df()
+        buy_result = export.to_buy()
+        sell_result = export.to_sell()
+        battery_result = export.to_battery_power()
+
+        assert_frame_equal(
+            buy_result,
+            pd.DataFrame(
+                data={
+                    "pv": [5, 20, 0],
+                    "sell": [0, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+        assert_frame_equal(
+            battery_result,
+            pd.DataFrame(
+                data={
+                    "test-battery": [-15, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+        assert_frame_equal(
+            sell_result,
+            pd.DataFrame(
+                data={
+                    "pv": [0, 0, 0],
+                    "sell": [20, 20, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
         )
