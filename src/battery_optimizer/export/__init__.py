@@ -106,6 +106,46 @@ class Exporter:
             }
         return variables
 
+    def __extract_component_parameter(
+        self, device_class: str, device_name: str, parameter: str
+    ) -> dict[str, dict[datetime.datetime, float]]:
+        """Get a parameter from a device
+
+        Export an indexed component as a dictionary.
+
+        Variables
+        ---------
+        device_class : str
+            The class of the device (e.g. 'batteries')
+        device_name : str
+            The name of the device (e.g. 'battery1')
+        parameter : str
+            The parameter to extract (e.g. 'soc')
+
+        Returns
+        -------
+        dict[str, dict[datetime.datetime, float]]
+            The dictionary with the parameter values"""
+
+        device: pyo.Block = self._model.model.component(device_class)
+        if device is None:
+            raise ValueError(f"Device class {device_class} not found")
+        device: pyo.Block = device.component(device_name)
+        if device is None:
+            raise ValueError(
+                f"Device {device_name} not found in {device_class}"
+            )
+        model_parameter: pyo.Component = device.component(parameter)
+        if model_parameter is None:
+            raise ValueError(
+                (
+                    f"Parameter {parameter} not found in "
+                    f"{device_class}.{device_name}"
+                )
+            )
+
+        return model_parameter.extract_values()
+
     def to_df(self) -> ModelDataFrame:
         """Create a DataFrame from the model
 
