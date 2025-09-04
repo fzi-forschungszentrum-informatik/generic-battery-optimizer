@@ -57,10 +57,10 @@ class TestHeatPumpSoC:
 
     def test_heat_pump_soc(self):
         if solver != "gurobi":
-        pytest.skip(
-            "Skipping this test as it requires the Gurobi solver to run"
-        )
-        
+            pytest.skip(
+                "Skipping this test as it requires the Gurobi solver to run"
+            )
+
         # Optimization
         opt = Model(self.time_series)
         opt.add_buy_profile("buy", self.buy_power, self.buy_price)
@@ -84,10 +84,10 @@ class TestHeatPumpSoC:
 
     def test_heat_pump_tes_temperature(self):
         if solver != "gurobi":
-        pytest.skip(
-            "Skipping this test as it requires the Gurobi solver to run"
-        )
-    
+            pytest.skip(
+                "Skipping this test as it requires the Gurobi solver to run"
+            )
+
         # Optimization
         opt = Model(self.time_series)
         opt.add_buy_profile("buy", self.buy_power, self.buy_price)
