@@ -49,6 +49,7 @@ class TestHeatPumpSoc:
             time_series[2]: 0 + 273.15,
         },
         tank_volume=100,
+        max_temp_tes=60 + 273.15,
     )
 
     def test_heat_pump_soc(self):
@@ -69,6 +70,6 @@ class TestHeatPumpSoc:
         assert len(heat_pump_soc) == 1
         assert heat_pump_soc["test-heat-pump"] == {
             self.time_series[0]: 0.0,
-            self.time_series[1]: 0.0,
+            self.time_series[1]: 0.3503254333697084,
             self.time_series[2]: 0.0,
         }
