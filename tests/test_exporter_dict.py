@@ -62,20 +62,20 @@ class TestExporterDict:
 
         # Assert power profiles
         assert export["buy"] == {
-            "buy": [0, 0, 0],
-            "sell": [0, 0, 0],
+            self.time_series[0]: 10,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
         }
 
         assert export["sell"] == {
-            "buy": [0, 0, 0],
-            "sell": [0, 0, 0],
+            self.time_series[0]: 0,
+            self.time_series[1]: -10,
+            self.time_series[2]: 0,
         }
 
         # Assert battery profiles
-        assert export["battery_power"] == {
-            "test-battery": [0, 0, 0],
+        assert export["test-battery"] == {
+            self.time_series[0]: -10,
+            self.time_series[1]: 10,
+            self.time_series[2]: 0,
         }
-
-        # Assert empty profiles
-        assert export["fixed_consumption"] == {}
-        assert export["heat_pump_power"] == {}

@@ -67,7 +67,9 @@ class Exporter:
         Contains all devices from the model as columns. Each value represents
         the total constant power the device consumes during a time period.
         Indexed by the timestamps from which the specified power should be
-        used by a device.
+        used by a device. A positive power means that the device is emitting
+        power to other devices and a negative power means that the device is
+        acting as a energy sink.
 
         Returns
         -------
@@ -98,9 +100,9 @@ class Exporter:
                 device
             )
             variables[device] = {
-                index: component[index].energy_source.value
-                - component[index].energy_sink.value
-                for index in component
+                index: component.energy_source[index].value
+                - component.energy_sink[index].value
+                for index in self._model.model.i
             }
         return variables
 
