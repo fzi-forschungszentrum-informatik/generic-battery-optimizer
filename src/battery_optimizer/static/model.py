@@ -2,6 +2,7 @@ from battery_optimizer.blocks.battery import BatteryBlock
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
 from battery_optimizer.blocks.power_profile import PowerProfileBlock
+
 from battery_optimizer.static.profiles import (
     MODEL_POWER_ABOVE,
     MODEL_POWER_BELOW,

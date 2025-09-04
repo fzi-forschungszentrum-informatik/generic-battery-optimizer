@@ -482,3 +482,4 @@ class Exporter:
         soc_df = pd.DataFrame.from_dict(data=variables)
 
         return soc_df
+      

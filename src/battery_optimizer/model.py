@@ -222,8 +222,8 @@ class Model:
             ),
         )
         return self.model.device_power_limits.component(constraint_name)
-
     # Die beiden kommen in ne extra Klasse, dann kann man nicht anfangen, erst energypaths zu generieren
+    
     def add_energy_paths(self) -> None:
         """Add all necessary energy paths to the model
 
