@@ -508,5 +508,20 @@ Constraint the usable SoC range of the battery. Value is given in percent. This 
 You can add multiple charging stations and charging processes. Every charging process will be handled like a battery within the
 optimizer. This "battery" can only be used between start_soc_time and end_soc_time.
 
+# Citing
+Please consider citing us if this software and/or the accompanying scientific paper was useful for your work.
+```
+Tobias Riedel, Carl Hauschke, and Hartmut Schmeck. 2025.
+Power-Dependent Price Profiles - Defining Grid- and Market-Oriented Incentives for Building Energy Management Systems.
+SIGENERGY Energy Inform. Rev. 4, 4 (October 2024), 78–87.
+https://doi.org/10.1145/3717413.3717420
+```
+
 # Acknowledgements
-This project has been funded by the German Ministry of Economic Affairs and Climate Action within the research project SynergieQuartier.
+This project has been funded by the German Ministry of Economic Affairs and Climate Action between 2020 and 2023 within the research project SynergieQuartier.
+Further developments have been funded by the European Union within the Horizon Europe project WeForming. 
+
+<p>
+  <img src="BMWK-funding.png" alt="BMWK funding" width="15%">
+  <img src="EU-funding.png" alt="EU funding" width="45%">
+</p>
