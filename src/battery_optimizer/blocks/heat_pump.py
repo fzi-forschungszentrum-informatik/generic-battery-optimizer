@@ -586,7 +586,7 @@ class HeatPumpBlock:
                     rule=(
                         (
                             block.heat_supply_hp_total
-                            <= (block.heat_demand) * 0.7
+                            <= (block.heat_loss_building) * 0.7
                         )
                     )
                 )
