@@ -2,7 +2,7 @@ from datetime import datetime
 import unittest
 import pandas as pd
 from battery_optimizer import optimize
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from helpers import find_solver, get_profiles
 
 

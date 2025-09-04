@@ -1,5 +1,5 @@
 from helpers import find_solver, get_profiles
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer import optimize
 from datetime import datetime
 import pandas as pd

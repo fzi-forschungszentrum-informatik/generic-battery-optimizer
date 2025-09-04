@@ -5,7 +5,7 @@ from helpers import find_solver
 from battery_optimizer.export import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.solver import Solver
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from pandas.testing import assert_frame_equal
 
 

@@ -1,7 +1,7 @@
 import random  # Just for the random initialization of power/price values
 import pandas as pd  # Useful to generate time series for the indices
 from battery_optimizer import optimize
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.profiles import ProfileStack, PowerPriceProfile
 
 # Buy profiles

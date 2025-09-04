@@ -82,7 +82,7 @@ Available Methods are:
 Refer to the documentation of the individual components for the requirements of the components.
 
 ```python
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 buy_block = my_model.add_buy_profile(
     "buy",
     {
@@ -214,7 +214,7 @@ Import the optimizer wrapper, power profile, profile stack and battery as needed
 import random # Just for the random initialization of power/price values
 import pandas as pd # Useful to generate time series for the indices
 from battery_optimizer import optimize
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack, PowerPriceProfile
 ```

@@ -1,5 +1,5 @@
 import pandas as pd
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profile_stack_problem import ProfileStackProblem
 from battery_optimizer.solver import Solver
 from battery_optimizer.export import Exporter
