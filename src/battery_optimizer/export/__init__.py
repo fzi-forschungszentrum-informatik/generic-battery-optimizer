@@ -146,6 +146,35 @@ class Exporter:
 
         return model_parameter.extract_values()
 
+    def __extract_hp_parameter(
+        self, parameter: str
+    ) -> dict[str, dict[datetime.datetime, float]]:
+        """Get a parameter from all heat pumps
+
+        Export an indexed component as a dictionary.
+
+        Variables
+        ---------
+        parameter : str
+            The parameter to extract (e.g. 'soc')
+
+        Returns
+        -------
+        dict[str, dict[datetime.datetime, float]]
+            The dictionary with the parameter values"""
+        return {
+            heat_pump: {
+                index: self._model.model.heat_pumps.component(heat_pump)
+                .hp_block[index]
+                .component(parameter)
+                .value
+                for index in self._model.model.heat_pumps.component(
+                    heat_pump
+                ).hp_block
+            }
+            for heat_pump in self._model.model.heat_pumps.component_map()
+        }
+
     def get_heat_pump_soc(self) -> dict[str, dict[datetime.datetime, float]]:
         """Get the state of charge of all heat pumps
 
@@ -154,17 +183,7 @@ class Exporter:
         dict[str, dict[datetime.datetime, float]]
             The dictionary with the state of charge values for all heat pumps
         """
-        return {
-            heat_pump: {
-                index: self._model.model.heat_pumps.component(heat_pump)
-                .hp_block[index]
-                .soc.value
-                for index in self._model.model.heat_pumps.component(
-                    heat_pump
-                ).hp_block
-            }
-            for heat_pump in self._model.model.heat_pumps.component_map()
-        }
+        return self.__extract_hp_parameter(TEXT_SOC)
 
     def to_df(self) -> ModelDataFrame:
         """Create a DataFrame from the model
