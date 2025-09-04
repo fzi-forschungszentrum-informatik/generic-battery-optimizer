@@ -6,7 +6,7 @@ from battery_optimizer.solver import Solver
 from tests.helpers import find_solver
 
 
-class TestHeatPumpSoc:
+class TestHeatPumpSoC:
     time_series = pd.date_range(
         start="2021-01-01 08:00:00+00:00",
         end="2021-01-01 10:00:00+00:00",
@@ -72,4 +72,26 @@ class TestHeatPumpSoc:
             self.time_series[0]: 0.0,
             self.time_series[1]: 0.3503254333697084,
             self.time_series[2]: 0.0,
+        }
+
+    def test_heat_pump_tes_temperature(self):
+        # Optimization
+        opt = Model(self.time_series)
+        opt.add_buy_profile("buy", self.buy_power, self.buy_price)
+        # BUG energy_sink.ub of this heat pump is None after adding it to the model
+        opt.add_heat_pump(self.heat_pump)
+        opt.add_energy_paths()
+
+        opt.generate_objective()
+        Solver(find_solver(), tee=True).solve(opt.model)
+
+        tes_temp = Exporter(opt).get_heat_pump_tes_temperature()
+
+        assert isinstance(tes_temp, dict)
+        assert "test-heat-pump" in tes_temp
+        assert len(tes_temp) == 1
+        assert tes_temp["test-heat-pump"] == {
+            self.time_series[0]: 308.15,
+            self.time_series[1]: 316.90813583424267,
+            self.time_series[2]: 308.15,
         }

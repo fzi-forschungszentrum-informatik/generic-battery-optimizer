@@ -185,6 +185,18 @@ class Exporter:
         """
         return self.__extract_hp_parameter(TEXT_SOC)
 
+    def get_heat_pump_tes_temperature(
+        self,
+    ) -> dict[str, dict[datetime.datetime, float]]:
+        """Get the temperature of the thermal energy storage of all heat pumps
+
+        Returns
+        -------
+        dict[str, dict[datetime.datetime, float]]
+            The dictionary with the temperature values for all heat pumps
+        """
+        return self.__extract_hp_parameter("temp_TES")
+
     def to_df(self) -> ModelDataFrame:
         """Create a DataFrame from the model
 
