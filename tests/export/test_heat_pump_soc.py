@@ -43,7 +43,7 @@ class TestHeatPumpSoc:
         output_temperature=55 + 273.15,
         max_electric_power_hp=10,
         max_electric_power_hr=0,
-        bivalent_temp=5 + 273.15,
+        hp_switch_off_temperature=5 + 273.15,
         heat_demand={
             time_series[0]: 0,
             time_series[1]: 5,
