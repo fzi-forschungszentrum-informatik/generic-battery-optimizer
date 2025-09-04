@@ -1,6 +1,6 @@
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.static.heat_pump import C_TO_K
-from helpers import get_profiles, find_solver
+from tests.helpers import get_profiles, find_solver
 from battery_optimizer import optimize
 import pandas as pd
 import datetime

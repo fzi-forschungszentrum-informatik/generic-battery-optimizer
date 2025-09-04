@@ -1,7 +1,7 @@
 from datetime import datetime
 import pandas as pd
 import pytest
-from helpers import find_solver
+from tests.helpers import find_solver
 from battery_optimizer.export import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.solver import Solver
