@@ -5,7 +5,10 @@ import warnings
 class Exporter(NewExporter):
     def __init__(self, *args, **kwargs):
         warnings.warn(
-            "Exporter is deprecated. Please use battery_optimizer.export.Exporter instead.",
+            (
+                "Exporter has moved. Please use "
+                "battery_optimizer.export.Exporter instead."
+            ),
             DeprecationWarning,
             stacklevel=2,
         )
