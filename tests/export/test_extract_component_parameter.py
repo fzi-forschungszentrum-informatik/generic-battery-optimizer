@@ -81,3 +81,58 @@ class TestExtractorComponentParameter:
             self.time_series[1]: 0,
             self.time_series[2]: 0,
         }
+
+    def test_extractor_error_handling(self):
+        """
+        Tests the Exporter class's __extract_component_parameter method for
+        correct error handling when an invalid device class, device name or
+        parameter is provided.
+
+        The test performs the following steps:
+        1. Initializes an optimization model with time series data.
+        2. Adds buy and sell power profiles with corresponding prices.
+        3. Adds a battery to the model.
+        4. Generates energy paths and the objective function.
+        5. Solves the optimization model.
+        6. Attempts to export data using an invalid device class, device name
+           or parameter and asserts that a ValueError is raised with the
+           expected message.
+        """
+        # Optimization
+        opt = Model(self.time_series)
+        opt.add_buy_profile("buy", self.buy_power, self.buy_price)
+        opt.add_sell_profile("sell", self.sell, self.sell_price)
+        opt.add_battery(self.battery)
+        opt.add_energy_paths()
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+
+        exporter = Exporter(opt)
+
+        try:
+            exporter._Exporter__extract_component_parameter(
+                "invalid_class", "test-battery", "soc"
+            )
+            assert False, "Expected ValueError was not raised"
+        except ValueError as e:
+            assert str(e) == "Device class invalid_class not found"
+
+        try:
+            exporter._Exporter__extract_component_parameter(
+                "batteries", "invalid_device", "soc"
+            )
+            assert False, "Expected ValueError was not raised"
+        except ValueError as e:
+            assert str(e) == "Device invalid_device not found in batteries"
+
+        try:
+            exporter._Exporter__extract_component_parameter(
+                "batteries", "test-battery", "invalid_parameter"
+            )
+            assert False, "Expected ValueError was not raised"
+        except ValueError as e:
+            assert str(e) == (
+                "Parameter invalid_parameter not found in "
+                "batteries.test-battery"
+            )
