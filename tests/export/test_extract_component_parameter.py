@@ -7,7 +7,7 @@ from battery_optimizer.solver import Solver
 from tests.helpers import find_solver
 
 
-class TestExporterDict:
+class TestExtractorComponentParameter:
     time_series = pd.date_range(
         start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="H"
     )
@@ -46,11 +46,10 @@ class TestExporterDict:
         discharge_efficiency=1,
     )
 
-    def test_exporter_dict_buy_sell_battery(self):
+    def test_exporter_battery_soc_dict(self):
         """
-        Tests the Exporter class's to_dict method for correct export of buy,
-        sell, and battery power profiles
-        after running an optimization model.
+        Tests the Exporter class's __to_parameter_dict method for correct
+        export of battery soc after running an optimization model.
 
         The test performs the following steps:
         1. Initializes an optimization model with time series data.
@@ -59,7 +58,7 @@ class TestExporterDict:
         4. Generates energy paths and the objective function.
         5. Solves the optimization model.
         6. Exports the results to a dictionary using the Exporter class.
-        7. Asserts that the exported buy, sell, and battery profiles match
+        7. Asserts that the exported battery soc match es
            expected values for each time step.
         """
         # Optimization
@@ -72,24 +71,13 @@ class TestExporterDict:
         opt.generate_objective()
         Solver(find_solver()).solve(opt.model)
 
-        export = Exporter(opt).to_dict()
+        export = Exporter(opt)._Exporter__extract_component_parameter(
+            "batteries", "test-battery", "soc"
+        )
 
-        # Assert power profiles
-        assert export["buy"] == {
+        # Assert soc
+        assert export == {
             self.time_series[0]: 10,
             self.time_series[1]: 0,
-            self.time_series[2]: 0,
-        }
-
-        assert export["sell"] == {
-            self.time_series[0]: 0,
-            self.time_series[1]: -10,
-            self.time_series[2]: 0,
-        }
-
-        # Assert battery profiles
-        assert export["test-battery"] == {
-            self.time_series[0]: -10,
-            self.time_series[1]: 10,
             self.time_series[2]: 0,
         }
