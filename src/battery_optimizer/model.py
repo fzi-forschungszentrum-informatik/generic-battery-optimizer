@@ -193,23 +193,21 @@ class Model:
             device_tuple
             for device_tuple in device_tuples
             if any(
-                c.ub
+                c.ub != 0
                 for c in self.model.component(device_tuple[0])
                 .component(device_tuple[1])
                 .energy_source.values()
             )
-            > 0
         ]
         sinks = [
             device_tuple
             for device_tuple in device_tuples
             if any(
-                c.ub
+                c.ub != 0
                 for c in self.model.component(device_tuple[0])
                 .component(device_tuple[1])
                 .energy_sink.values()
             )
-            > 0
         ]
 
         self.model.energy_matrix = pyo.Var(
