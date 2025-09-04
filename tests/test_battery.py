@@ -47,7 +47,7 @@ from tests.helpers import find_solver, get_profiles
 )
 def test_battery_efficiency(charge_efficiency, discharge_efficiency):
     time_series = pd.date_range(
-        start="2022-01-03 18:00:00", end="2022-01-03 20:00:00", freq="H"
+        start="2022-01-03 18:00:00", end="2022-01-03 20:00:00", freq="h"
     )
 
     buy = {

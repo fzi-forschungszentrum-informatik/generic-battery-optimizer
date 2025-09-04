@@ -13,7 +13,7 @@ class TestHeatPumpSoC:
     time_series = pd.date_range(
         start="2021-01-01 08:00:00+00:00",
         end="2021-01-01 10:00:00+00:00",
-        freq="H",
+        freq="h",
     )
 
     # Input data

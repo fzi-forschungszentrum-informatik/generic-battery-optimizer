@@ -59,7 +59,7 @@ The time series is a list of timestamps. A convenient way to generate equidistan
 ```python
 import pandas as pd
 from battery_optimizer.model import Model
-time_series = pd.date_range(start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="H")
+time_series = pd.date_range(start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h")
 my_model = Model(time_series)
 ```
 
