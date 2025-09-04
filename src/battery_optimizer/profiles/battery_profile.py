@@ -7,8 +7,8 @@ class Battery(NewBattery):
     def __init__(self, *args, **kwargs):
         warnings.warn(
             (
-                "Battery has moved. Please use battery_optimizer.export.Battery "
-                "instead."
+                "Battery has moved. Please use "
+                "battery_optimizer.profiles.Battery instead."
             ),
             DeprecationWarning,
             stacklevel=2,
