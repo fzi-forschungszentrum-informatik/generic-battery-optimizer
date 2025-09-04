@@ -155,9 +155,14 @@ class Exporter:
             The dictionary with the state of charge values for all heat pumps
         """
         return {
-            heat_pump: self.__extract_component_parameter(
-                "heat_pumps", heat_pump, "soc"
-            )
+            heat_pump: {
+                index: self._model.model.heat_pumps.component(heat_pump)
+                .hp_block[index]
+                .soc.value
+                for index in self._model.model.heat_pumps.component(
+                    heat_pump
+                ).hp_block
+            }
             for heat_pump in self._model.model.heat_pumps.component_map()
         }
 
