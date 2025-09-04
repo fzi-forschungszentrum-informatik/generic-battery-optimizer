@@ -27,7 +27,7 @@ class TestHeatPumpSoC:
 
     heat_pump = HeatPump(
         name="test-heat-pump",
-        type="Bosch Compress 3000 AWS-11 MS-T",
+        type="i-SHWAK V4 12",
         flow_temperature=35 + 273.15,
         output_temperature=55 + 273.15,
         max_electric_power_hp=10,
