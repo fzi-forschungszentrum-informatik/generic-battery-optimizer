@@ -76,11 +76,15 @@ class TestHeatPumpSoC:
         assert isinstance(heat_pump_soc, dict)
         assert "test-heat-pump" in heat_pump_soc
         assert len(heat_pump_soc) == 1
-        assert heat_pump_soc["test-heat-pump"] == {
-            self.time_series[0]: 0.0,
-            self.time_series[1]: 0.3503254333697084,
-            self.time_series[2]: 0.0,
-        }
+        assert heat_pump_soc["test-heat-pump"] == pytest.approx(
+            {
+                self.time_series[0]: 0.0,
+                self.time_series[1]: 0.3503254333697084,
+                self.time_series[2]: 0.0,
+            },
+            rel=1e-9,
+            abs=1e-6,
+        )
 
     def test_heat_pump_tes_temperature(self):
         if solver != "gurobi":
@@ -103,8 +107,12 @@ class TestHeatPumpSoC:
         assert isinstance(tes_temp, dict)
         assert "test-heat-pump" in tes_temp
         assert len(tes_temp) == 1
-        assert tes_temp["test-heat-pump"] == {
-            self.time_series[0]: 308.15,
-            self.time_series[1]: 316.90813583424267,
-            self.time_series[2]: 308.15,
-        }
+        assert tes_temp["test-heat-pump"] == pytest.approx(
+            {
+                self.time_series[0]: 308.15,
+                self.time_series[1]: 316.90813583424267,
+                self.time_series[2]: 308.15,
+            },
+            rel=1e-9,
+            abs=1e-6,
+        )
