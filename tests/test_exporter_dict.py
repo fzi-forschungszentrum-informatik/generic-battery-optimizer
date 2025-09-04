@@ -47,7 +47,19 @@ class TestExporterDict:
     )
 
     def test_exporter_dict_buy_sell_battery(self):
-        """ """
+        """
+        Tests the Exporter class's to_dict method for correct export of buy, sell, and battery power profiles
+        after running an optimization model.
+
+        The test performs the following steps:
+        1. Initializes an optimization model with time series data.
+        2. Adds buy and sell power profiles with corresponding prices.
+        3. Adds a battery to the model.
+        4. Generates energy paths and the objective function.
+        5. Solves the optimization model.
+        6. Exports the results to a dictionary using the Exporter class.
+        7. Asserts that the exported buy, sell, and battery profiles match expected values for each time step.
+        """
         # Optimization
         opt = Model(self.time_series)
         opt.add_buy_profile("buy", self.buy_power, self.buy_price)
