@@ -3,6 +3,7 @@ import logging
 import pandas as pd
 import pyomo.environ as pyo
 from battery_optimizer.export.pandas import ModelDataFrame
+from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.model import Model
 from battery_optimizer.static.model import (
     COMPONENT_MAP,
@@ -101,7 +102,9 @@ class Exporter:
             )
             variables[device] = {
                 index: component.energy_source[index].value
+                / get_period_length(index, self._model.model.i)[1]
                 - component.energy_sink[index].value
+                / get_period_length(index, self._model.model.i)[1]
                 for index in self._model.model.i
             }
         return variables
