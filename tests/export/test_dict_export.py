@@ -148,8 +148,8 @@ class TestPowerConversion:
 
         export = Exporter(model).to_dict()
 
-        expected_buy = {i: 1000 for i in self.time_series_mixed[0:9]}
-        expected_buy.update({i: 0 for i in self.time_series_mixed[9:]})
+        expected_buy = {i: 1000 for i in self.time_series_mixed[0:10]}
+        expected_buy.update({i: 0 for i in self.time_series_mixed[10:]})
 
         assert export["buy"] == expected_buy
         assert export["EV"] == {i: v * -1 for i, v in expected_buy.items()}
