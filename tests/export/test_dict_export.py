@@ -6,6 +6,7 @@ devices, profiles and time series.
 """
 
 import pandas as pd
+import pytest
 from battery_optimizer.export import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.profiles.battery import Battery
@@ -151,5 +152,9 @@ class TestPowerConversion:
         expected_buy = {i: 1000 for i in self.time_series_mixed[0:10]}
         expected_buy.update({i: 0 for i in self.time_series_mixed[10:]})
 
-        assert export["buy"] == expected_buy
-        assert export["EV"] == {i: v * -1 for i, v in expected_buy.items()}
+        assert export["buy"] == pytest.approx(
+            expected_buy, rel=1e-12, abs=1e-12
+        )
+        assert export["EV"] == pytest.approx(
+            {i: v * -1 for i, v in expected_buy.items()}, rel=1e-12, abs=1e-12
+        )
