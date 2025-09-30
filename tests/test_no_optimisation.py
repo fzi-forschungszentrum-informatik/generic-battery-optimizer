@@ -1,5 +1,5 @@
 from battery_optimizer import optimize
-from helpers import find_solver
+from tests.helpers import find_solver
 
 
 class TestNoOptimisation:

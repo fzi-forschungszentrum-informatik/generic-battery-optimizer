@@ -5,7 +5,7 @@ from battery_optimizer.helpers.parse_profile_stacks import (
     parse_profiles,
 )
 from battery_optimizer.model import Model
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
 

@@ -1,9 +1,9 @@
 import pytest
 import pandas as pd
 from datetime import datetime
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer import optimize
-from helpers import find_solver, get_profiles
+from tests.helpers import find_solver, get_profiles
 
 
 @pytest.mark.parametrize(
@@ -47,7 +47,7 @@ from helpers import find_solver, get_profiles
 )
 def test_battery_efficiency(charge_efficiency, discharge_efficiency):
     time_series = pd.date_range(
-        start="2022-01-03 18:00:00", end="2022-01-03 20:00:00", freq="H"
+        start="2022-01-03 18:00:00", end="2022-01-03 20:00:00", freq="h"
     )
 
     buy = {

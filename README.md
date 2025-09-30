@@ -59,7 +59,7 @@ The time series is a list of timestamps. A convenient way to generate equidistan
 ```python
 import pandas as pd
 from battery_optimizer.model import Model
-time_series = pd.date_range(start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="H")
+time_series = pd.date_range(start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h")
 my_model = Model(time_series)
 ```
 
@@ -82,7 +82,7 @@ Available Methods are:
 Refer to the documentation of the individual components for the requirements of the components.
 
 ```python
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 buy_block = my_model.add_buy_profile(
     "buy",
     {
@@ -214,7 +214,7 @@ Import the optimizer wrapper, power profile, profile stack and battery as needed
 import random # Just for the random initialization of power/price values
 import pandas as pd # Useful to generate time series for the indices
 from battery_optimizer import optimize
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack, PowerPriceProfile
 ```

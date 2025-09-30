@@ -1,17 +1,17 @@
 from datetime import datetime
 import pandas as pd
 import pytest
-from helpers import find_solver
-from battery_optimizer.export.model import Exporter
+from tests.helpers import find_solver
+from battery_optimizer.export import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.solver import Solver
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from pandas.testing import assert_frame_equal
 
 
 class TestDevicePowerConstraints:
     time_series = pd.date_range(
-        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="H"
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h"
     )
 
     @pytest.mark.parametrize(
