@@ -16,9 +16,9 @@ from battery_optimizer.profiles.heat_pump import HeatPump
 
 
 def generate_common_time_series(
-    profiles: list[dict[str | datetime.datetime, Any]],
-    batteries: list[Battery],
-    heat_pumps: list[HeatPump],
+    profiles: list[dict[str | datetime.datetime, Any]] = [],
+    batteries: list[Battery] = [],
+    heat_pumps: list[HeatPump] = [],
 ) -> Sequence[datetime.datetime]:
     """
     Builds a unified index from all given components as timestamps.
