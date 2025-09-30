@@ -66,7 +66,7 @@ class Battery(BaseModel):
     start_soc_time: Optional[datetime] = None
 
     # Capacity (Energie)
-    capacity: float = Field(ge=0)
+    capacity: float = Field(gt=0, description="Battery capacity in Wh")
 
     # Max. charge power
     max_charge_power: float = Field(ge=0)
