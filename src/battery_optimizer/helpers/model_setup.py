@@ -67,3 +67,39 @@ def generate_common_time_series(
         if isinstance(hp.warm_water_demand, dict):
             index.update(hp.warm_water_demand.keys())
     return sorted(index)
+
+
+def reindex_profile(
+    profile: dict[str | datetime.datetime, Any],
+    index: list[datetime.datetime],
+    fill_value: Any = 0,
+) -> dict[datetime.datetime, Any]:
+    """
+    Reindexes a profile to match the given index.
+
+    All values after the first time step in the profile will be forward filled.
+    Values in the index that precede the first time step in the profile
+    will be filled with the given fill_value (by default 0).
+
+    Parameters
+    ----------
+    profile : dict[str | datetime.datetime, Any]
+        A profile as a dictionary with datetimes as keys.
+    index : list[datetime.datetime]
+        The target index to reindex the profile to.
+    fill_value : Any, optional
+        The value to use for missing timestamps in the profile, by default 0.
+
+    Returns
+    -------
+    reindexed_profile : dict[datetime.datetime, Any]
+        The reindexed profile as a dictionary with datetimes as keys.
+    """
+    # Convert keys to datetime if they are strings
+    datetime_index = pd.to_datetime(index).sort_values()
+    series = pd.Series(
+        {pd.to_datetime(time): value for time, value in profile.items()}
+    )
+    reindexed_series = series.reindex(datetime_index, method="ffill")
+    reindexed_series = reindexed_series.fillna(fill_value)
+    return reindexed_series.to_dict()
