@@ -10,11 +10,12 @@ log = logging.getLogger(__name__)
 
 
 class Battery(BaseModel):
-    """Stores all information about a domestic/car battery
+    """
+    Stores all information about a domestic/car battery.
 
-    Power and energy are given in W and Wh respectively.
+    Power and energy are assumed to be specified in W and Wh respectively.
 
-    Attributes
+    Parameters
     ----------
     name: str
         The name of the battery to reference it in the model.
@@ -85,7 +86,7 @@ class Battery(BaseModel):
     # Validate that the discharge efficiency is not NaN
     @field_validator("discharge_efficiency")
     @classmethod
-    def discharge_efficiency_not_nan(cls, v):
+    def discharge_efficiency_not_nan(cls, v: float):
         if isnan(v):
             log.warning("Discharge efficiency is NaN. Setting to 1")
             return 1
@@ -97,7 +98,7 @@ class Battery(BaseModel):
     # Validate that the discharge efficiency is not NaN
     @field_validator("charge_efficiency")
     @classmethod
-    def charge_efficiency_not_nan(cls, v):
+    def charge_efficiency_not_nan(cls, v: float):
         if isnan(v):
             log.warning("Charge efficiency is NaN. Setting to 1")
             return 1
