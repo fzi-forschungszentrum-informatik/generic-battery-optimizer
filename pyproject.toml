@@ -33,3 +33,10 @@ classifiers=[
 [project.optional-dependencies]
 dev = ["pytest", "pyyaml", "pytest-cov", "pytest-watch"]
 
+[tool.numpydoc_validation]
+checks = [
+    "all",   # report on all checks, except the below
+    # Optional section
+    "SA01",  # See Also
+    "EX01",  # Examples
+]
