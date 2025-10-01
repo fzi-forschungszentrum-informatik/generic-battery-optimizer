@@ -32,6 +32,7 @@ classifiers=[
 
 [project.optional-dependencies]
 dev = ["pytest", "pyyaml", "pytest-cov", "pytest-watch"]
+gurobi = ["gurobipy"]
 
 [tool.numpydoc_validation]
 checks = [

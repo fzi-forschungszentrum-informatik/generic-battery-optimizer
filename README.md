@@ -27,9 +27,13 @@ brew install glpk
 
 For other platforms see the [GLPK Website](https://www.gnu.org/software/glpk/)
 
-The easiest way to install [Gurobi](https://support.gurobi.com/hc/en-us/articles/4534161999889-How-do-I-install-Gurobi-Optimizer) is to use its Python version. This is fully sufficient to use this optimization model. It can be installed with:
+The easiest way to install [Gurobi](https://support.gurobi.com/hc/en-us/articles/4534161999889-How-do-I-install-Gurobi-Optimizer) is to use its Python version. This is fully sufficient to use this optimization model. It can automatically be installed with the optimizer with
 ```bash
-pip install gurobi
+pip install battery_optimizer[gurobi]
+```
+or manually with:
+```bash
+pip install gurobipy
 ```
 
 Gurobi requires licensing to use this model. A license can be obtained free of charge for research purposes from the Gurobi [licensing portal](https://portal.gurobi.com/iam/login/?target=https%3A%2F%2Fportal.gurobi.com%2Fiam%2Flicenses%2Flist). The most flexible option is to use a Gurobi web license. This can be used machine independent including container usage but requires internet access.
