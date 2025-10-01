@@ -1,3 +1,13 @@
+"""
+This module defines a Pyomo block for modeling a heat pump system.
+
+This model can simulate the operation of a heat pump system over a specified
+time index. It decides between two cop values depending on whether a thermal
+energy storage (TES) is being charged to shift electricity usage or not.
+The foundation for this model is the work of Nicolas Schilz 2024 (Flexibilität
+moderner Wärmepumpen).
+"""
+
 import pyomo.environ as pyo
 import hplib.hplib as hpl
 from battery_optimizer.helpers.blocks import get_period_length
@@ -16,7 +26,35 @@ log = logging.getLogger(__name__)
 
 
 class HeatPumpBlock:
+    """
+    A Pyomo block representing a heat pump system.
+
+    This block models the operation of a heat pump system over a specified
+    time index. It includes variables, parameters, and constraints to simulate
+    the heat pump's behavior, including its energy consumption, heat supply,
+    and interactions with a thermal energy storage (TES) system.
+
+    Parameters
+    ----------
+    index : pyo.Set
+        The time index for the heat pump model.
+    heat_pump : HeatPump
+        The heat pump profile containing parameters and settings.
+    """
     def __init__(self, index: pyo.Set, heat_pump: HeatPump):
+        """
+        Initialize the heat pump block.
+
+        Store the index and heat pump profile for use in building the heat
+        pump model.
+
+        Parameters
+        ----------
+        index : pyo.Set
+            The time index for the heat pump model.
+        heat_pump : HeatPump
+            The heat pump profile containing parameters and settings.
+        """
         self.index = index
         self.heat_pump = heat_pump
 
@@ -38,7 +76,20 @@ class HeatPumpBlock:
             self.hpl_heat_pump = hpl.HeatPump(parameters)
 
     def build_block(self) -> pyo.Block:
-        """Build the heat pump block"""
+        """
+        Build the heat pump block.
+
+        This method constructs a Pyomo block that models the operation of a
+        heat pump system over a specified time index. It includes variables,
+        parameters, and constraints to simulate the heat pump's behavior,
+        including its energy consumption, heat supply, and interactions with
+        a thermal energy storage (TES) system.
+
+        Returns
+        -------
+        pyo.Block
+            A Pyomo block representing a heat pump system.
+        """
         block = pyo.Block()
         # DEFAULT
         # Source in Matrix
@@ -89,7 +140,15 @@ class HeatPumpBlock:
 
     def get_block(self, block: pyo.Block):
         """
-        Gestaltung einer Periode im Modell
+        Model a single period of the heat pump operation.
+
+        Sets all parameters, variables and constraints for a single period of
+        the heat pump simulation/optimization.
+
+        Parameters
+        ----------
+        block : pyo.Block
+            The Pyomo block to which the heat pump model will be added.
         """
         # DEFAULT
         # Source in Matrix
@@ -346,7 +405,27 @@ class HeatPumpBlock:
         # wenn TES aufgeladen wird, Temperatur von WP = MAX_TEMP_HP
         # wenn TES nicht aufgeladen wird, dann Temperatur von
         # WP = TEMP_SUPPLY_DEMAND
-        def cop_rule1(block):
+        def cop_rule1(block: pyo.Block) -> pyo.Expression:
+            """
+            Set cop to high if heating TES.
+
+            Sets the COP of the heat pump to the high temperature COP if the
+            heat pump is heating the TES. In this case, the heat pump needs to
+            reach the maximum output temperature of the heat pump to feed the
+            TES.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the heat pump parameters and
+                variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the COP constraint for this
+                period.
+            """
             if (
                 interpolate_heat_energy(
                     self.heat_pump.warm_water_demand, period
@@ -360,7 +439,26 @@ class HeatPumpBlock:
 
         block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
-        def cop_rule3(block):
+        def cop_rule3(block: pyo.Block) -> pyo.Expression:
+            """
+            Set cop to low if not heating TES.
+
+            Sets the COP of the heat pump to the low temperature COP if the
+            heat pump is not heating the TES. We only need to reach flow
+            temperature for the demand side in this case.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the heat pump parameters and
+                variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the COP constraint for this
+                period.
+            """
             if (
                 interpolate_heat_energy(
                     self.heat_pump.warm_water_demand, period
@@ -427,8 +525,28 @@ class HeatPumpBlock:
 
         # Wärmestrom Demand
 
-        # Heizbedarf gesamt
-        def heat_supply_Demand_total_rule(block):
+        def heat_supply_Demand_total_rule(block: pyo.Block) -> pyo.Expression:
+            """
+            Total building heat demand.
+
+            Sets the total heat demand in kW of the building for this
+            period.
+            If a heat demand is provided for the last period, a warning is
+            logged and the demand is set to zero to ensure the optimization
+            remains feasible.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the building parameters and
+                variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the total heat demand for this
+                period.
+            """
             # Estimate heat demand based on the building's U-values
             heat_supply_demand = (
                 block.heat_loss_building + block.warm_water_demand
@@ -527,8 +645,24 @@ class HeatPumpBlock:
             )
         )
 
-        # #Energieverlust von Tank
-        def heat_loss_tank_rule(block):
+        def heat_loss_tank_rule(block: pyo.Block) -> pyo.Expression:
+            """
+            Calculate the heat loss of the tank.
+
+            Calculates the heat loss for this period of the tank based on its
+            dimensions, U-value, and the temperature difference between the
+            tank and the room temperature.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the tank parameters and variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the tank heat loss for this period.
+            """
             if not self.heat_pump.predict_tank_loss:
                 return block.heat_loss_tank == 0
             return block.heat_loss_tank == heat_loss_tank(
@@ -552,8 +686,25 @@ class HeatPumpBlock:
                 rule=(block.temp_TES >= self.heat_pump.flow_temperature)
             )
 
-        # obere Schranke für Tankverluste
-        def heat_loss_tank_ub_rule(block):
+        def heat_loss_tank_ub_rule(block: pyo.Block) -> pyo.Expression:
+            """
+            Upper bound for the heat loss of the tank.
+
+            Calculates the maximum possible heat loss from the tank based on
+            its dimensions, U-value, and the temperature difference
+            between the tank and the room temperature.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the tank parameters and variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the upper bound of the tank heat
+                loss.
+            """
             if not self.heat_pump.predict_tank_loss:
                 return block.heat_loss_tank <= 0
             return block.heat_loss_tank <= heat_loss_tank(

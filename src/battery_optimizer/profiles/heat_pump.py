@@ -1,3 +1,9 @@
+"""
+A model representing a heat pump system with its parameters and constraints.
+
+Stores parameters needed to model a heat pump system for optimization
+"""
+
 import datetime
 import secrets
 from typing import List, Optional
@@ -41,7 +47,8 @@ def _validate_distinct_item(item, group):
 
 
 class _U_Values_Building(BaseModel):
-    """Building U-Values for the heat pump model
+    """
+    Building U-Values for the heat pump model.
 
     The U-Values are used to calculate the heat demand of the building.
     The first number in each list is the surface area of the building's
@@ -54,6 +61,15 @@ class _U_Values_Building(BaseModel):
 
 
 class HeatPump(BaseModel):
+    """
+    A model representing a heat pump system with its parameters and constraints.
+
+    Stores various parameters needed to model a heat pump system for
+    optimization. Some of the parameters can be provided as single values or
+    as dictionaries with datetime keys for time-varying inputs.
+    Some parameters can be pre-computed with the helper functions provided in
+    battery_optimizer.helpers.hplib.
+    """
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(
@@ -310,7 +326,29 @@ class HeatPump(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_electric_power(cls, values):
+    def validate_electric_power(cls, values: "HeatPump") -> "HeatPump":
+        """
+        Validate electric power values.
+
+        Validate that the minimum electric power for both the heat pump and
+        the electric heater are less than or equal to their respective maximum
+        electric power values.
+
+        Parameters
+        ----------
+        values : HeatPump
+            The instance of the HeatPump model after initial validation.
+
+        Returns
+        -------
+        HeatPump
+            The validated HeatPump instance.
+
+        Raises
+        ------
+        ValueError
+            If minimum electric power is greater than maximum for either device.
+        """
         if values.min_electric_power_hp > values.max_electric_power_hp:
             raise ValueError(
                 "Minimum electric power for heat pump must be less than or "
@@ -327,11 +365,16 @@ class HeatPump(BaseModel):
         default=363.15,
         title="Maximum temperature of the TES [K]",
         description=(
-            "The maximum temperature of the thermal energy storage in Kelvin."
+            "The maximum temperature of the thermal energy storage in Kelvin. "
+            "This is required for the soc calculation of the thermal energy "
+            "storage (TES). The TES cannot be charged above this temperature."
         ),
         ge=MINIMUM_KELVIN,
     )
 
+    # TODO All tank information should be a separate model that can be added
+    # to the heat pump model to enable tank loss prediction. Probably
+    # specifying just the heat loss in W/K(^2) would be sufficient.
     predict_tank_loss: Optional[bool] = Field(
         default=True,
         title="Predict tank heat losses",
@@ -352,6 +395,8 @@ class HeatPump(BaseModel):
         examples=[0.3, 0.5, 0.7],
     )
 
+    # TODO specify surface area and provide methods to calculate surface area
+    # from volume and height/radius
     tank_volume: float = Field(
         title="Mass of the TES [l]",
         description="The volume of the thermal energy storage in litres.",
@@ -389,8 +434,7 @@ class HeatPump(BaseModel):
         ),
     )
 
-    heat_demand: Optional[dict[datetime.datetime, float]] = Field(
-        default=None,
+    heat_demand: dict[datetime.datetime, float] = Field(
         title="Heat demand of the building [kW]",
         description=(
             "An optional heat demand of the building in kW. "
@@ -416,7 +460,35 @@ class HeatPump(BaseModel):
     @field_validator(
         "outdoor_temperature", "heat_source_temperature", "temp_room"
     )
-    def validate_temperature_lists(cls, v):
+    def validate_temperature_lists(
+        cls, v: float | dict[datetime.datetime, float] | None
+    ) -> float | pd.Series | None:
+        """
+        Validate temperature inputs.
+
+        This validator checks if the temperature input is either a float,
+        None, or a dictionary with datetime keys and float values. It ensures
+        that all datetime keys are timezone aware and that all temperature
+        values are in Kelvin (greater than 200K).
+
+        Parameters
+        ----------
+        v : float | dict[datetime.datetime, float] | None
+            The temperature input to validate.
+
+        Returns
+        -------
+        float | pd.Series | None
+            Returns the input as is if it's None or a float. If it's a
+            dictionary, it converts it to a pandas Series for easier handling
+            later in the model.
+
+        Raises
+        ------
+        ValueError
+            If the input is not None, a float, or a valid dictionary with
+            timezone-aware datetime keys and Kelvin temperature values.
+        """
         if v is None:
             return v
         # Just a float value
@@ -425,16 +497,15 @@ class HeatPump(BaseModel):
                 raise ValueError("All temperatures must be in Kelvin")
             return v
         # A dictionary with datetime keys and float values
-        else:
-            if not all(
-                isinstance(dt, datetime.datetime) and dt.tzinfo is not None
-                for dt in v.keys()
-            ):
-                raise ValueError("All datetime keys must be timezone aware")
-            # Values should be in Kelvin
-            if any(temp < 200 for temp in v.values()):
-                raise ValueError("All temperatures must be in Kelvin")
-            return pd.Series(v)
+        if not all(
+            isinstance(dt, datetime.datetime) and dt.tzinfo is not None
+            for dt in v.keys()
+        ):
+            raise ValueError("All datetime keys must be timezone aware")
+        # Values should be in Kelvin
+        if any(temp < 200 for temp in v.values()):
+            raise ValueError("All temperatures must be in Kelvin")
+        return pd.Series(v)
 
     enforce_end_soc: Optional[bool] = Field(
         default=False,
@@ -453,22 +524,66 @@ class HeatPump(BaseModel):
     @computed_field
     @property
     def max_heat_supply_hp(self) -> float:
+        """
+        The maximum heat that can be supplied by the heat pump in kW.
+
+        Calculate the maximum heat that can be supplied by the heat pump in kW
+        for use as an upper bound in the optimization model.
+
+        Returns
+        -------
+        float
+            The maximum heat that can be supplied by the heat pump in kW.
+        """
         return 10 * self.max_electric_power_hp
 
     @computed_field
     @property
     def tank_height(self) -> float:
+        """
+        The estimated height of the TES in meters.
+
+        Calculate the estimated height of the TES in meters based on its
+        volume for use in the tank loss calculation.
+
+        Returns
+        -------
+        float
+            The estimated height of the TES in meters.
+        """
         return tank_dimensions((self.tank_volume / 1000))[1]
 
     @computed_field
     @property
     def tank_radius(self) -> float:
+        """
+        The estimated radius of the TES in meters.
+
+        Calculate the estimated radius of the TES in meters based on its
+        volume for use in the tank loss calculation.
+
+        Returns
+        -------
+        float
+            The estimated radius of the TES in meters.
+        """
         return tank_dimensions((self.tank_volume / 1000))[0]
 
     # The maximum energy that can be stored in the TES
     @computed_field
     @property
     def max_heat_energy_tes(self) -> float:
+        """
+        The maximum heat energy that can be stored in the TES in kWh.
+
+        Calculate the maximum heat energy that can be stored in the TES in kWh
+        for use as bounds in the soc calculation of the TES.
+
+        Returns
+        -------
+        float
+            The maximum heat energy that can be stored in the TES in kWh.
+        """
         return (
             (
                 (self.max_temp_tes - self.flow_temperature)
@@ -481,6 +596,17 @@ class HeatPump(BaseModel):
     @computed_field
     @property
     def max_heat_supply_tes(self) -> float:
+        """
+        The maximum heat that can be supplied by the TES in kW.
+
+        Calculate the maximum heat that can be supplied by the TES in kW for
+        use as an upper bound in the optimization model.
+
+        Returns
+        -------
+        float
+            The maximum heat that can be supplied by the TES in kW.
+        """
         return (
             self.tank_volume
             * 4186
