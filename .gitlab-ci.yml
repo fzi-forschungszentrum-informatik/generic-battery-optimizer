@@ -34,7 +34,7 @@ glpk:
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - pip install -r requirements.txt
-    - pip install dist/*.whl
+    - pip install dist/*.whl[dev]
     - export PYTHONPATH=src
     - pytest --cov-report term-missing --cov=src tests/
 
@@ -48,7 +48,7 @@ gurobi:
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - pip install -r requirements.txt
-    - pip install dist/*.whl
+    - pip install dist/*.whl[dev]
     - export PYTHONPATH=src
     - pytest --cov-report term-missing --cov=src tests/
 
