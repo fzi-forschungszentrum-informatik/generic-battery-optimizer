@@ -13,6 +13,7 @@ from battery_optimizer.export import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.solver import Solver
+from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper
 from tests.helpers import find_solver
 
 solver = find_solver("gurobi")
@@ -45,9 +46,34 @@ class TestHeatPumpSoC:
         time_series[2]: 0,
     }
 
+    outdoor_temperature = {
+        time_series[0]: 15,
+        time_series[1]: 0,
+        time_series[2]: 0,
+    }
+    heat_source_temperature = {
+        time_series[0]: 15,
+        time_series[1]: 0,
+        time_series[2]: 0,
+    }
+    hplib = HpLibWrapper(
+        HpLibProfile(
+            type="i-SHWAK V4 12",
+            flow_temperature=35,
+            output_temperature=55,
+        )
+    )
+    cop_high = hplib.get_cop_high_temp(
+        heat_source_temperature, outdoor_temperature
+    )
+    cop_low = hplib.get_cop_low_temp(
+        heat_source_temperature, outdoor_temperature
+    )
+
     heat_pump = HeatPump(
         name="test-heat-pump",
-        type="i-SHWAK V4 12",
+        cop_high_temp=cop_high,
+        cop_low_temp=cop_low,
         flow_temperature=35 + 273.15,
         output_temperature=55 + 273.15,
         max_electric_power_hp=10,
@@ -59,14 +85,10 @@ class TestHeatPumpSoC:
             time_series[2]: 0,
         },
         outdoor_temperature={
-            time_series[0]: 15 + 273.15,
-            time_series[1]: 0 + 273.15,
-            time_series[2]: 0 + 273.15,
+            i: v + 273.15 for i, v in outdoor_temperature.items()
         },
         heat_source_temperature={
-            time_series[0]: 15 + 273.15,
-            time_series[1]: 0 + 273.15,
-            time_series[2]: 0 + 273.15,
+            i: v + 273.15 for i, v in heat_source_temperature.items()
         },
         tank_volume=100,
         max_temp_tes=60 + 273.15,

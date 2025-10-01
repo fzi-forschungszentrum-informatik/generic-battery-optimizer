@@ -8,8 +8,8 @@ The foundation for this model is the work of Nicolas Schilz 2024 (Flexibilität
 moderner Wärmepumpen).
 """
 
+import logging
 import pyomo.environ as pyo
-import hplib.hplib as hpl
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.helpers.heat_pump_profile import (
     heat_loss_tank,
@@ -17,9 +17,6 @@ from battery_optimizer.helpers.heat_pump_profile import (
     interpolate_heat_energy,
 )
 from battery_optimizer.profiles.heat_pump import HeatPump
-import logging
-
-from battery_optimizer.static.heat_pump import C_TO_K
 from battery_optimizer.static.numbers import MAX_COP
 
 log = logging.getLogger(__name__)
@@ -57,23 +54,6 @@ class HeatPumpBlock:
         """
         self.index = index
         self.heat_pump = heat_pump
-
-        # HPL Heat Pump
-        if heat_pump.type in ("Luft/Luft", "Air/Air"):
-            log.warning("L/L-WP")
-            raise NotImplementedError("Air/Air heat pumps are not supported.")
-        if heat_pump.type == "Generic":
-            parameters = hpl.get_parameters(
-                model=heat_pump.type,
-                group_id=heat_pump.id,
-                t_in=heat_pump.t_in - C_TO_K,
-                t_out=heat_pump.t_out - C_TO_K,
-                p_th=heat_pump.p_th / 1000,
-            )
-            self.hpl_heat_pump = hpl.HeatPump(parameters)
-        else:
-            parameters = hpl.get_parameters(model=self.heat_pump.type)
-            self.hpl_heat_pump = hpl.HeatPump(parameters)
 
     def build_block(self) -> pyo.Block:
         """
@@ -201,27 +181,21 @@ class HeatPumpBlock:
         )
 
         block.cop_high = pyo.Param(
-            initialize=self.hpl_heat_pump.simulate(
-                t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=(
-                    (self.heat_pump.output_temperature - 5) - C_TO_K
-                ),
-                t_amb=(block.outdoor_temperature - C_TO_K),
-                mode=1,
-            )["COP"],
+            initialize=(
+                self.heat_pump.cop_high_temp[period]
+                if isinstance(self.heat_pump.cop_high_temp, dict)
+                else self.heat_pump.cop_high_temp
+            ),
             doc=(
                 "The COP of the heat pump at the maximum output temperature."
             ),
         )
         block.cop_low = pyo.Param(
-            initialize=self.hpl_heat_pump.simulate(
-                t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=(
-                    (self.heat_pump.flow_temperature - 5) - C_TO_K
-                ),
-                t_amb=(block.outdoor_temperature - C_TO_K),
-                mode=1,
-            )["COP"],
+            initialize=(
+                self.heat_pump.cop_low_temp[period]
+                if isinstance(self.heat_pump.cop_low_temp, dict)
+                else self.heat_pump.cop_low_temp
+            ),
             doc=("The COP of the heat pump at the flow output temperature."),
         )
 
@@ -433,8 +407,6 @@ class HeatPumpBlock:
                 > 0
             ):
                 return block.cop_value == block.cop_high
-            if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
-                return block.cop_value == self.heat_pump.cop_air
             return (block.cop_value - block.cop_high) * block.y_TES == 0
 
         block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
@@ -466,8 +438,6 @@ class HeatPumpBlock:
                 > 0
             ):
                 return pyo.Constraint.Skip
-            if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
-                return block.cop_value == self.heat_pump.cop_air
             return (block.cop_value - block.cop_low) * (1 - block.y_TES) == 0
 
         block.cop_cons3 = pyo.Constraint(rule=cop_rule3)
@@ -624,6 +594,7 @@ class HeatPumpBlock:
                 == block.heat_energy_TES
                 * 3600  # conversion seconds to hours (J (Ws) -> Wh)
                 / (
+                    # BUG heat pumps needs a tank volume but should not
                     self.heat_pump.tank_volume
                     * 4.186  # Heat capacity of water in kWh/kgK
                 )

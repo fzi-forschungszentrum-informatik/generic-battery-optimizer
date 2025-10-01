@@ -6,7 +6,7 @@ Stores parameters needed to model a heat pump system for optimization
 
 import datetime
 import secrets
-from typing import List, Optional
+from typing import Optional
 import pandas as pd
 from pydantic import (
     BaseModel,
@@ -18,33 +18,13 @@ from pydantic import (
 )
 from battery_optimizer.static.heat_pump import MINIMUM_KELVIN
 from battery_optimizer.static.numbers import SECRET_LENGTH
-import hplib.hplib as hpl
 from battery_optimizer.helpers.heat_pump_profile import (
     tank_dimensions,
 )
 
-heat_pump_data = hpl.load_database()
 two_item_list = Field(
     default_factory=lambda: [0.0, 0.0], min_length=2, max_length=2
 )
-
-
-def _validate_distinct_item(item, group):
-    """Checks if the item is in group
-
-    -----
-    Input
-    item: any
-        the item that should be checked against the list
-    group: List[any]
-        the list the item is checked against
-
-    ------
-    Raises
-    ValueError
-        If the value is not in the list"""
-    assert item in group, f"{item} is not allowed. Allowed values: {group}"
-
 
 class _U_Values_Building(BaseModel):
     """
@@ -82,160 +62,31 @@ class HeatPump(BaseModel):
         ),
     )
 
-    """ Required Data for hplib """
-    type: str = Field(
-        title="hplib heat pump type",
+    cop_high_temp: float | dict[datetime.datetime, float] = Field(
+        title="The CoP of the heat pump at the maximum output temperature.",
         description=(
-            "Heat pump model type for the heat pump simulation. The heat pump "
-            "simulation uses [hplib](https://github.com/FZJ-IEK3-VSA/hplib) "
-            "to estimate heat pump behavior. Many commercial heat pumps can "
-            "be simulated or custom heat pumps can be specified. hplib "
-            "supports Air/Water, Water/Water and Brine/Water heat pumps. "
-            "Air/Air heat pumps are not supported by hplib and can only be "
-            "modeled with a constant CoP (see cop_air field)."
-            'Can be ["Air/Air", "Luft/Luft", "Generic"'
-            '"All other [hplib](https://github.com/FZJ-IEK3-VSA/hplib) heat '
-            'pump types available"]'
-        ),
-        examples=["AE050RXYDEG/EU & AE200RNWMEG/EU", "Air/Air", "Generic"],
-    )
-
-    @field_validator("type")
-    def validate_type(cls, v):
-        allowed_types = list(heat_pump_data["Type"].unique())
-        if "Titel" in heat_pump_data.columns:
-            allowed_types.extend(list(heat_pump_data["Titel"].unique()))
-        allowed_types.extend(list(heat_pump_data["Model"].unique()))
-        allowed_types.extend(["Air/Air", "Luft/Luft", "Generic"])
-        _validate_distinct_item(v, allowed_types)
-        return v
-
-    """Start of hplib specific data"""
-    id: Optional[int] = Field(
-        default=None,
-        title="hplib Group ID",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "[hplib](https://github.com/FZJ-IEK3-VSA/hplib#heat-pump-models-"
-            "and-group-ids) uses it to return the correct model."
-            "Available heat pump types are "
-            "[1]: Air/Water regulated, [4]: Air/Water on-off, "
-            "[2]: Brine/Water regulated, [5]: Brine/Water on-off, "
-            "[3]: Water/Water regulated and [6]: Water/Water on-off."
-        ),
-        examples=[1, 2, 3, 4, 5, 6],
-    )
-
-    @field_validator("id")
-    def validate_id(cls, v):
-        if v is None:
-            return v
-        _validate_distinct_item(v, heat_pump_data["Group"].unique())
-        return v
-
-    # These values are only needed/allowed when the type is Generic
-    t_in: Optional[float] = Field(
-        default=None,
-        title="hplib heat pump temperature cool side (outdoors) [K]",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "Temperature in K on the low temperature side of the heat pump. "
-            "Usually the outside atmosphere."
-        ),
-        ge=MINIMUM_KELVIN,
-    )
-    t_out: Optional[float] = Field(
-        default=None,
-        title="hplib heat pump temperature hot side (indoors) [K]",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "Temperature in K on the warm temperature side of the heat pump. "
-            "Usually the heat water output of the heat pump."
-        ),
-        ge=MINIMUM_KELVIN,
-    )
-    p_th: Optional[float] = Field(
-        default=None,
-        title="hplib heat pump thermal output power [kW]",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "Thermal output power at set point t_in, t_out "
-            "(and for water/water, brine/water heat pumps t_amb = -7°C)."
-        ),
-    )
-
-    @model_validator(mode="after")
-    def validate_generic_hp_value_existence(cls, values):
-        if values.type == "Generic":
-            if not all([values.id, values.t_in, values.t_out, values.p_th]):
-                raise ValueError(
-                    "All Generic heat pump values must be provided"
-                )
-        return values
-
-    """End of hplib specific data"""
-    cop_air: Optional[float] = Field(
-        default=None,
-        title="CoP for Air/Air heat pump",
-        description=(
-            "hplib does not implement Air/Air heat pumps. "
-            "This value will be used instead and must be provided when the "
-            "type is Air/Air"
+            "The coefficient of performance (CoP) of the heat pump when the "
+            "heat pump has to reach high output temperatures to supply the "
+            "thermal energy storage. The specified CoP should be valid for "
+            "heat pump when it has to heat the water to the maximum output "
+            "temperature of the heat pump."
         ),
         examples=[1.0, 2.3, 3.1],
     )
-
-    @field_validator("cop_air")
-    def validate_cop_air(cls, v):
-        assert cls.type in [
-            "Air/Air",
-            "Luft/Luft",
-        ], 'This value is only allowed when an "Air/Air"-Heat pump is used'
-        return v
-
-    u_values_building: Optional[_U_Values_Building] = Field(
-        title="Building U-Values",
+    cop_low_temp: float | dict[datetime.datetime, float] = Field(
+        title="CoP at flow temperature",
         description=(
-            "Needed when no heat demand is provided. "
-            "Building area and U-Values used to calculate the heat demand of "
-            "the building. The first number in each list is the surface area "
-            "of the building's component in m². The second number is the "
-            "U-Value in W/m²K."
+            "The coefficient of performance (CoP) of the heat pump when the "
+            "heat pump has to reach flow temperature output temperature to "
+            "supply building directly. The specified CoP should be valid "
+            "for heat pump when it has to heat the water to the flow "
+            "temperature of the heating system. This CoP should generally be "
+            "phigher than the cop_high_temp."
         ),
-        default=None,
-        examples=[
-            {
-                "wall": [159.4, 0.8],
-                "roof": [100.8, 0.5],
-                "window": [27, 1.3],
-            }
-        ],
+        examples=[3.0, 4.3, 5.1],
     )
 
-    living_area: float = Field(
-        title="Living area [m²]",
-        description=(
-            "Needed when no heat demand is provided. "
-            "The living area in m² of the building."
-        ),
-        default=None,
-        examples=[100.0, 150.0, 200.0],
-    )
-
-    @model_validator(mode="after")
-    def energy_estimation_or_heat_demand(cls, values):
-        if not (
-            (values.u_values_building and values.living_area)
-            or values.heat_demand
-        ):
-            raise ValueError(
-                "Either u_values_building and living_area or heat_demand must "
-                "be provided"
-            )
-        return values
-
-    # End of values for estimating the heat demand of the building
-
+    # TODO use C instead of K for all temperatures
     flow_temperature: float = Field(
         title="Flow temperature [K]",
         description=(
