@@ -29,3 +29,7 @@ classifiers=[
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.10",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest", "pyyaml", "pytest-cov", "pytest-watch"]
+
