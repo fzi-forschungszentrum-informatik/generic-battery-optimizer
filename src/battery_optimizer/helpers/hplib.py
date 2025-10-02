@@ -267,6 +267,11 @@ class HpLibWrapper:
                 "same type."
             )
         if isinstance(source_temperature, (float, int)):
+            if any(v > MINIMUM_KELVIN for v in [source_temperature, outdoor_temperature]):
+                raise ValueError(
+                    "Source and outdoor temperature seem unreasonably high. "
+                    "They should be in °C."
+                )
             return pd.DataFrame(
                 {
                     "source_temperature": source_temperature,
@@ -280,6 +285,13 @@ class HpLibWrapper:
             raise ValueError(
                 "source_temperature and outdoor_temperature must be of the "
                 "same type."
+            )
+        if any(
+            v > MINIMUM_KELVIN for v in [*source_temperature.values(), *outdoor_temperature.values()]
+        ):
+            raise ValueError(
+                "Source and outdoor temperature seem unreasonably high. "
+                    "They should be in °C."
             )
         return pd.DataFrame(
             {
