@@ -176,7 +176,7 @@ def test_scenarios(data: dict[str, Any]):
 
         # Heat Pump
         outdoor_temperature = (
-            input_data[data["weather_column"]].astype(float) + C_TO_K
+            input_data[data["weather_column"]].astype(float)
         ).round(2)
 
         # Constant power in W -> kW in period
