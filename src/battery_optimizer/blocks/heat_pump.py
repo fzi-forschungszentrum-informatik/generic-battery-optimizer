@@ -146,12 +146,13 @@ class HeatPumpBlock:
         temp_room = interpolate_temperature(self.heat_pump.temp_room, period)
 
         # Parameters
-        block.outdoor_temperature = pyo.Param(
-            initialize=interpolate_temperature(
-                self.heat_pump.outdoor_temperature, period
-            ),
-            within=pyo.NonNegativeReals,
-        )
+        if self.heat_pump.outdoor_temperature is not None:
+            block.outdoor_temperature = pyo.Param(
+                initialize=interpolate_temperature(
+                    self.heat_pump.outdoor_temperature, period
+                ),
+                within=pyo.NonNegativeReals,
+            )
 
         block.warm_water_demand = pyo.Param(
             initialize=interpolate_heat_energy(
@@ -167,17 +168,6 @@ class HeatPumpBlock:
             ),
             within=pyo.NonNegativeReals,
             doc="Building heat loss/demand in kW for this period.",
-        )
-
-        block.source_temp = pyo.Param(
-            initialize=interpolate_temperature(
-                self.heat_pump.heat_source_temperature, period
-            ),
-            within=pyo.NonNegativeReals,
-            doc=(
-                "Temperature of heat source in K. e.g. outdoor air, ground "
-                "water or soil temperature."
-            ),
         )
 
         block.cop_high = pyo.Param(
