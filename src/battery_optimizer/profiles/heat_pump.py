@@ -6,9 +6,10 @@ Stores parameters needed to model a heat pump system for optimization
 
 import datetime
 import secrets
-from typing import Optional
+from typing import Annotated, Optional, Self
 import pandas as pd
 from pydantic import (
+    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
@@ -22,27 +23,10 @@ from battery_optimizer.helpers.heat_pump_profile import (
     tank_dimensions,
 )
 
-two_item_list = Field(
-    default_factory=lambda: [0.0, 0.0], min_length=2, max_length=2
-)
-
-class _U_Values_Building(BaseModel):
-    """
-    Building U-Values for the heat pump model.
-
-    The U-Values are used to calculate the heat demand of the building.
-    The first number in each list is the surface area of the building's
-    component in m². The second number is the U-Value in W/m²K.
-    """
-    model_config = ConfigDict(extra="forbid")
-    wall: list[float] = two_item_list
-    roof: list[float] = two_item_list
-    window: list[float] = two_item_list
-
 
 class HeatPump(BaseModel):
     """
-    A model representing a heat pump system with its parameters and constraints.
+    A model representing a heat pump system.
 
     Stores various parameters needed to model a heat pump system for
     optimization. Some of the parameters can be provided as single values or
@@ -261,29 +245,44 @@ class HeatPump(BaseModel):
         examples=[0.0, 0.5, 1.0],
     )
 
-    outdoor_temperature: float | dict[datetime.datetime, float] = Field(
-        title="Outdoor temperature [K]",
-        description=(
-            "The outdoor temperature in Kelvin. This can be a single value "
-            "or a dictionary with datetime keys and float values. "
-            "When a dictionary is used, the keys must be timezone aware. "
-            "When the keys do not match a period start in the model, the "
-            "temperature is linearly interpolated between the two closest "
-            "values."
-        ),
+    outdoor_temperature: Optional[float | dict[datetime.datetime, float]] = (
+        Field(
+            default=None,
+            title="Outdoor temperature [K]",
+            description=(
+                "The outdoor temperature in Kelvin. This can be a single "
+                "value or a dictionary with datetime keys and float values. "
+                "When a dictionary is used, the keys must be timezone aware. "
+                "When the keys do not match a period start in the model, the "
+                "temperature is linearly interpolated between the two closest "
+                "values."
+            ),
+        )
     )
-    heat_source_temperature: float | dict[datetime.datetime, float] = Field(
-        title="Heat source temperature [K]",
-        description=(
-            "The temperature in Kelvin of the heat source "
-            "(e.g. air or water). This can be a single value "
-            "or a dictionary with datetime keys and float values. "
-            "When a dictionary is used, the keys must be timezone aware. "
-            "When the keys do not match a period start in the model, the "
-            "temperature is linearly interpolated between the two closest "
-            "values."
-        ),
-    )
+
+    @model_validator(mode="after")
+    def enforce_outdoor_temperature(self) -> Self:
+        """
+        Ensure outdoor temperature is set when needed.
+
+        Ensure that outdoor_temperature is provided if either
+        hp_switch_off_temperature or bivalent_temp is set, as these
+        parameters depend on outdoor temperature to correctly control
+        the operation of the heat pump in low temperature conditions.
+
+        Returns
+        -------
+        Self
+            The validated HeatPump instance.
+        """
+        if (
+            self.hp_switch_off_temperature or self.bivalent_temp
+        ) and self.outdoor_temperature is None:
+            raise ValueError(
+                "outdoor_temperature must be provided if either "
+                "hp_switch_off_temperature or bivalent_temp is set."
+            )
+        return self
 
     heat_demand: dict[datetime.datetime, float] = Field(
         title="Heat demand of the building [kW]",
@@ -308,9 +307,7 @@ class HeatPump(BaseModel):
         ),
     )
 
-    @field_validator(
-        "outdoor_temperature", "heat_source_temperature", "temp_room"
-    )
+    @field_validator("outdoor_temperature", "temp_room")
     def validate_temperature_lists(
         cls, v: float | dict[datetime.datetime, float] | None
     ) -> float | pd.Series | None:

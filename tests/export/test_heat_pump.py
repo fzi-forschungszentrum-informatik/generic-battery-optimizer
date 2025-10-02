@@ -87,9 +87,6 @@ class TestHeatPumpSoC:
         outdoor_temperature={
             i: v + 273.15 for i, v in outdoor_temperature.items()
         },
-        heat_source_temperature={
-            i: v + 273.15 for i, v in heat_source_temperature.items()
-        },
         tank_volume=100,
         max_temp_tes=60 + 273.15,
     )
