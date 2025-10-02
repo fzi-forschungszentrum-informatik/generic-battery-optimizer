@@ -248,8 +248,10 @@ class HpLibWrapper:
         Parameters
         ----------
         source_temperature : dict[datetime.datetime, float] | float | int
-            The source temperature (e.g., air or ground temperature) as a
-            single value or time series.
+            The temperature in Celsius of the heat source (e.g. air or water).
+            This can be a single value or a dictionary with datetime keys and
+            float values. When a dictionary is used, the keys must be timezone
+            aware.
         outdoor_temperature : dict[datetime.datetime, float] | float | int
             The outdoor temperature as a single value or time series.
 
@@ -325,8 +327,10 @@ class HpLibWrapper:
         Parameters
         ----------
         source_temperature : dict[datetime.datetime, float] | float | int
-            The source temperature [C] (e.g., air or ground temperature) as a
-            single value or time series.
+            The temperature in Celsius of the heat source (e.g. air or water).
+            This can be a single value or a dictionary with datetime keys and
+            float values. When a dictionary is used, the keys must be timezone
+            aware.
         outdoor_temperature : dict[datetime.datetime, float] | float | int
             The outdoor temperature [C] as a single value or time series.
 
@@ -369,8 +373,10 @@ class HpLibWrapper:
         Parameters
         ----------
         source_temperature : dict[datetime.datetime, float] | float | int
-            The source temperature [C] (e.g., air or ground temperature) as a
-            single value or time series.
+            The temperature in Celsius of the heat source (e.g. air or water).
+            This can be a single value or a dictionary with datetime keys and
+            float values. When a dictionary is used, the keys must be timezone
+            aware.
         outdoor_temperature : dict[datetime.datetime, float] | float | int
             The outdoor temperature [C] as a single value or time series.
 
@@ -413,8 +419,10 @@ class HpLibWrapper:
         Parameters
         ----------
         source_temperature : dict[datetime.datetime, float] | float | int
-            The source temperature [C] (e.g., air or ground temperature) as a
-            single value or time series.
+            The temperature in Celsius of the heat source (e.g. air or water).
+            This can be a single value or a dictionary with datetime keys and
+            float values. When a dictionary is used, the keys must be timezone
+            aware.
         outdoor_temperature : dict[datetime.datetime, float] | float | int
             The outdoor temperature [C] as a single value or time series.
 
