@@ -6,10 +6,9 @@ Stores parameters needed to model a heat pump system for optimization
 
 import datetime
 import secrets
-from typing import Annotated, Optional
+from typing import Optional
 import pandas as pd
 from pydantic import (
-    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
