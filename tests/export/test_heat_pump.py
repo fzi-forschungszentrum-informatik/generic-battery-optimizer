@@ -74,21 +74,19 @@ class TestHeatPumpSoC:
         name="test-heat-pump",
         cop_high_temp=cop_high,
         cop_low_temp=cop_low,
-        flow_temperature=35 + 273.15,
-        output_temperature=55 + 273.15,
+        flow_temperature=35,
+        output_temperature=55,
         max_electric_power_hp=10,
         max_electric_power_hr=0,
-        hp_switch_off_temperature=5 + 273.15,
+        hp_switch_off_temperature=5,
         heat_demand={
             time_series[0]: 0,
             time_series[1]: 1,
             time_series[2]: 0,
         },
-        outdoor_temperature={
-            i: v + 273.15 for i, v in outdoor_temperature.items()
-        },
+        outdoor_temperature=outdoor_temperature,
         tank_volume=100,
-        max_temp_tes=60 + 273.15,
+        max_temp_tes=60,
     )
 
     def test_heat_pump_soc(self):
@@ -161,9 +159,9 @@ class TestHeatPumpSoC:
         assert len(tes_temp) == 1
         assert tes_temp["test-heat-pump"] == pytest.approx(
             {
-                self.time_series[0]: 308.15,
-                self.time_series[1]: 316.90813583424267,
-                self.time_series[2]: 308.15,
+                self.time_series[0]: 35,
+                self.time_series[1]: 43.758135834242694,
+                self.time_series[2]: 35,
             },
             rel=1e-9,
             abs=1e-6,
