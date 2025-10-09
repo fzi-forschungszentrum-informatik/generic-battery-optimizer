@@ -306,7 +306,9 @@ class ProfileStack:
         for name, ppp in self.profiles.items():
             ppp["price"] = ppp["price"].add(price)
 
-    def integrate_to_costs(self, power: pd.Series, optimize_usage=True) -> float:
+    def integrate_to_costs(
+        self, power: pd.Series, optimize_usage=True, tolerance: float = 0
+    ) -> float:
         """
         Calculate costs or revenues based on power and feed_in flag for the
         entire ProfileStack.
@@ -316,6 +318,11 @@ class ProfileStack:
         lowest price will be selected.
         :return: Calculated costs (if feed_in is False) or revenues (if
         feed_in is True) for the entire ProfileStack.
+        :tolerance: Optional tolerance for the power demand.
+        If the remaining power in a timestep is below this value, it is
+        considered as zero.
+        0.0 means no tolerance, meaning that the remaining power must be exactly
+        zero to stop the calculation.
         """
         if not (power.index == list(self.profiles.values())[0].index).all():
             raise ValueError(
@@ -341,7 +348,7 @@ class ProfileStack:
                 available_profiles = self.profiles.copy()
                 remaining_power_in_timestep = power[timestep]
                 costs_in_timestep = 0
-                while remaining_power_in_timestep >= 0:
+                while remaining_power_in_timestep >= tolerance:
                     if not available_profiles:
                         raise ValueError(
                             "Power of all profiles is not sufficient to meet "
