@@ -69,24 +69,23 @@ class HeatPump(BaseModel):
         examples=[3.0, 4.3, 5.1],
     )
 
-    # TODO use C instead of K for all temperatures
     flow_temperature: float = Field(
-        title="Flow temperature [K]",
+        title="Flow temperature [C]",
         description=(
-            "The flow temperature of the heating circuit in Kelvin. "
+            "The flow temperature of the heating circuit in Celsius. "
             "This is the temperature of the water as it leaves the heat "
             "pump/temperature energy storage and enters the heating system, "
             "such as radiators or underfloor heating."
         ),
-        ge=MINIMUM_KELVIN,
-        examples=[303.15, 308.15, 313.15, 318.15],
+        le=MINIMUM_KELVIN,
+        examples=[30, 35, 40, 45],
     )
     temp_room: float | dict[datetime.datetime, float] = Field(
-        default=293.15,
-        title="Room temperature [K]",
+        default=20,
+        title="Room temperature [C]",
         description=(
             "The desired room temperature heated by the heating system in "
-            "Kelvin. "
+            "Celsius. "
             "This can be a single value or a dictionary with datetime keys "
             "and float values. When a dictionary is used, the keys must be "
             "timezone aware. When the keys do not match a period start in the "
@@ -97,34 +96,34 @@ class HeatPump(BaseModel):
 
     hp_switch_off_temperature: Optional[float] = Field(
         default=None,
-        title="Outdoor temperature switch off [K]",
+        title="Outdoor temperature switch off [C]",
         description=(
-            "The outdoor temperature in Kelvin at which the heat pump is "
+            "The outdoor temperature in Celsius at which the heat pump is "
             "switched off. If not provided, the heat pump can always run."
         ),
-        ge=MINIMUM_KELVIN,
-        examples=[268.15, 263.15, 258.15],
+        le=MINIMUM_KELVIN,
+        examples=[-5, -10, -15],
     )
     bivalent_temp: Optional[float] = Field(
         default=None,
-        title="Bivalent temperature [K]",
+        title="Bivalent temperature [C]",
         description=(
-            "The outdoor temperature in Kelvin below which the heat pump only "
+            "The outdoor temperature in Celsius below which the heat pump only "
             "provides 70% of the building heat demand. The remaining 30% are "
             "provided by a backup heater."
         ),
-        ge=MINIMUM_KELVIN,
+        le=MINIMUM_KELVIN,
     )
 
     output_temperature: float = Field(
-        title="Heat pump output temperature [K]",
+        title="Heat pump output temperature [C]",
         description=(
-            "The high side output temperature of the heat pump in Kelvin. "
+            "The high side output temperature of the heat pump in Celsius. "
             "This is the maximum temperature the heat pump can provide. "
             "Charging the TES above this temperature must be done by the "
             "backup heater."
         ),
-        ge=MINIMUM_KELVIN,
+        le=MINIMUM_KELVIN,
     )
 
     min_electric_power_hp: Optional[float] = Field(
@@ -196,14 +195,14 @@ class HeatPump(BaseModel):
         return values
 
     max_temp_tes: float = Field(
-        default=363.15,
-        title="Maximum temperature of the TES [K]",
+        default=90,
+        title="Maximum temperature of the TES [C]",
         description=(
-            "The maximum temperature of the thermal energy storage in Kelvin. "
+            "The maximum temperature of the thermal energy storage in Celsius. "
             "This is required for the soc calculation of the thermal energy "
             "storage (TES). The TES cannot be charged above this temperature."
         ),
-        ge=MINIMUM_KELVIN,
+        le=MINIMUM_KELVIN,
     )
 
     # TODO All tank information should be a separate model that can be added
@@ -247,9 +246,9 @@ class HeatPump(BaseModel):
     outdoor_temperature: Optional[float | dict[datetime.datetime, float]] = (
         Field(
             default=None,
-            title="Outdoor temperature [K]",
+            title="Outdoor temperature [C]",
             description=(
-                "The outdoor temperature in Kelvin. This can be a single "
+                "The outdoor temperature in Celsius. This can be a single "
                 "value or a dictionary with datetime keys and float values. "
                 "When a dictionary is used, the keys must be timezone aware. "
                 "When the keys do not match a period start in the model, the "
@@ -316,7 +315,7 @@ class HeatPump(BaseModel):
         This validator checks if the temperature input is either a float,
         None, or a dictionary with datetime keys and float values. It ensures
         that all datetime keys are timezone aware and that all temperature
-        values are in Kelvin (greater than 200K).
+        values are in Celsius (less than 200K).
 
         Parameters
         ----------
@@ -334,14 +333,14 @@ class HeatPump(BaseModel):
         ------
         ValueError
             If the input is not None, a float, or a valid dictionary with
-            timezone-aware datetime keys and Kelvin temperature values.
+            timezone-aware datetime keys and Celsius temperature values.
         """
         if v is None:
             return v
         # Just a float value
         if isinstance(v, float):
-            if v < 200:
-                raise ValueError("All temperatures must be in Kelvin")
+            if v > 200:
+                raise ValueError("All temperatures must be in Celsius")
             return v
         # A dictionary with datetime keys and float values
         if not all(
@@ -349,9 +348,9 @@ class HeatPump(BaseModel):
             for dt in v.keys()
         ):
             raise ValueError("All datetime keys must be timezone aware")
-        # Values should be in Kelvin
-        if any(temp < 200 for temp in v.values()):
-            raise ValueError("All temperatures must be in Kelvin")
+        # Values should be in Celsius
+        if any(temp > 200 for temp in v.values()):
+            raise ValueError("All temperatures must be in Celsius")
         return pd.Series(v)
 
     enforce_end_soc: Optional[bool] = Field(

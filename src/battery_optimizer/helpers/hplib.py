@@ -87,7 +87,7 @@ class HpLibProfile(BaseModel):
             "such as radiators or underfloor heating."
         ),
         le=MINIMUM_KELVIN,
-        examples=[303.15, 308.15, 313.15, 318.15],
+        examples=[30, 35, 40, 45],
     )
 
     # TODO can output temperature be retrieved from hplib?
