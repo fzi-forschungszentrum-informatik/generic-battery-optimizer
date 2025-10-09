@@ -1,5 +1,18 @@
+# Currently maintained Python versions (as of 2025-11) https://devguide.python.org/versions/
+.variables:
+  &python_versions
+  - "3.10"
+  - "3.11"
+  - "3.12"
+  - "3.13"
+
+variables:
+  # Python version for build/publish
+  LATEST_PYTHON: "3.13"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+
 default:
-  image: python:3.11-slim
+  image: python:${PYTHON_VERSION}-slim
   cache:
     paths:
       - .pip-cache/
@@ -13,10 +26,8 @@ stages:
   - test
   - publish
 
-variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
-
 build:
+  image: python:${LATEST_PYTHON}-slim
   stage: build
   variables:
     GIT_DEPTH: 0
@@ -41,6 +52,9 @@ glpk:
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - *run-tests
+  parallel:
+    matrix:
+      - PYTHON_VERSION: *python_versions
 
 scip:
   stage: test
@@ -54,9 +68,11 @@ scip:
     - echo "$SHASUM  scipopt.deb" | sha256sum --check -
     - apt install -y --no-install-recommends ./scipopt.deb && rm -rf /var/lib/apt/lists/*
     - *run-tests
+  parallel:
+    matrix:
+      - PYTHON_VERSION: *python_versions
 
 gurobi:
-  image: gurobi/python
   stage: test
   variables:
     SOLVER: gurobi
@@ -64,13 +80,18 @@ gurobi:
     - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
+    - pip install gurobipy
     - *run-tests
-
+  parallel:
+    matrix:
+      - PYTHON_VERSION: *python_versions
 
 publish:
+  image: python:${LATEST_PYTHON}-slim
   stage: publish
   only:
     - tags
     - master
+    - main
   script:
     - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*

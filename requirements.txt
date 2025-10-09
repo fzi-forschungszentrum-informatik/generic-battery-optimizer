@@ -1,7 +1,7 @@
 numpy
 pandas
 matplotlib
-pydantic>=2
+pydantic>=2,<2.12
 pyomo
 xlsxwriter
 hplib
