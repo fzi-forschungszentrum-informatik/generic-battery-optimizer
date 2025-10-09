@@ -86,6 +86,27 @@ gurobi:
     matrix:
       - PYTHON_VERSION: *python_versions
 
+gurobi-prerelease:
+  stage: test
+  allow_failure: true
+  variables:
+    SOLVER: gurobi
+  script:
+    - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
+    - pip install --pre gurobipy
+    - pip install pytest pyyaml pytest-cov
+    # Install prerelease versions without upper version limits
+    - pip install --pre --upgrade --upgrade-strategy eager -r <(sed 's/,<[^[:space:]]*//g' requirements.txt)
+    - pip install --no-deps dist/*.whl
+    - export PYTHONPATH=src
+    - pytest --cov-report term-missing --cov=src tests/
+  parallel:
+    matrix:
+      - PYTHON_VERSION: *python_versions
+
+
 publish:
   image: python:${LATEST_PYTHON}-slim
   stage: publish
