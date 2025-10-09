@@ -6,7 +6,7 @@ Stores parameters needed to model a heat pump system for optimization
 
 import datetime
 import secrets
-from typing import Annotated, Optional, Self
+from typing import Annotated, Optional
 import pandas as pd
 from pydantic import (
     AfterValidator,
@@ -261,7 +261,7 @@ class HeatPump(BaseModel):
     )
 
     @model_validator(mode="after")
-    def enforce_outdoor_temperature(self) -> Self:
+    def enforce_outdoor_temperature(self) -> "HeatPump":
         """
         Ensure outdoor temperature is set when needed.
 
@@ -272,7 +272,7 @@ class HeatPump(BaseModel):
 
         Returns
         -------
-        Self
+        "HeatPump"
             The validated HeatPump instance.
         """
         if (
