@@ -7,7 +7,7 @@ battery optimizer. It includes functionality to handle both single-value
 and time series inputs for source and outdoor temperatures.
 """
 
-from typing import Annotated, Optional, Any, Iterable, Self
+from typing import Annotated, Optional, Any, Iterable
 import datetime
 import logging
 import pandas as pd
@@ -175,7 +175,7 @@ class HpLibProfile(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_generic_hp_value_existence(self) -> Self:
+    def validate_generic_hp_value_existence(self) -> "HpLibProfile":
         """
         Validate that all required fields are provided for Generic heat pumps.
 
@@ -185,7 +185,7 @@ class HpLibProfile(BaseModel):
 
         Returns
         -------
-        Self
+        "HpLibProfile"
             The validated HpLibProfile instance.
 
         Raises
