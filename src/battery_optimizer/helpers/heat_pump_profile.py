@@ -51,7 +51,7 @@ def heat_loss_tank(
     height: int | float,
     radius: int | float,
     u_value_material: int | float,
-    tempretaure_difference: int | float,
+    temperature_difference: int | float,
 ) -> float:
     """
     Transmission heat losses of the tank.
@@ -68,7 +68,7 @@ def heat_loss_tank(
     u_value_material : int | float
         The U-value of the insulation material of the tank in W/(m^2*K)
         This is usually between 0.3 and 0.7 W/(m^2*K).
-    tempretaure_difference : int | float
+    temperature_difference : int | float
         The temperature difference between the tank and the room temperature
         in K.
 
@@ -80,7 +80,7 @@ def heat_loss_tank(
     return (
         (2 * np.pi * radius * (radius + height))
         * u_value_material
-        * tempretaure_difference
+        * temperature_difference
     ) / 1000
 
 
