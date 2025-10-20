@@ -15,6 +15,10 @@ from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 
 
+# TODO Add rounding of timestamps e.g. to full minutes, 5-minutes, seconds, hourly
+# add this as a separate endpoint to the service
+# fit-parameters Endpoint vom esg-service
+
 def generate_common_time_series(
     profiles: list[dict[str | datetime.datetime, Any]] = [],
     batteries: list[Battery] = [],
@@ -69,6 +73,7 @@ def generate_common_time_series(
     return sorted(index)
 
 
+# What happens when the profile contains indices that are not in the index
 def reindex_profile(
     profile: dict[str | datetime.datetime, Any],
     index: list[datetime.datetime],

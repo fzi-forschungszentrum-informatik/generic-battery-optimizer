@@ -49,7 +49,7 @@ pip install .
 from the projects root folder.
 
 ## Using the optimizer with Python
-The optimization model can be used in one of two ways. A manual way (recommended) which gives a more flexibility to and features and a simplified way that offers a quick ways to optimize simple energy systems. 
+The optimization model can be used in one of two ways. A manual way (recommended) which gives more flexibility to features and a simplified way that offers a quick way to optimize simple energy systems. 
 
 ### Manual usage
 The usage of the optimizer is a 8 (or 9) step process. Initializing the model, adding profiles and devices, generating the energy paths, adding optional constraints on energy paths, generating the objective, initializing a solver, solving the model and exporting the data from the model. 
@@ -73,7 +73,6 @@ The components take either directly serializable data as input or pydantic model
 The methods return the created block for the model and can be stored for future use to reference the blocks in the model. This is needed to add power limits on energy paths.
 
 Available Methods are:
-|-----------------------|-------------------------------------------------------|
 |Method                 |Device/Profile                                         |
 |-----------------------|-------------------------------------------------------|
 |add_battery            |Batteries - Home battery storage or EV assert_batteries|
@@ -81,7 +80,6 @@ Available Methods are:
 |add_buy_profile        |Energy buy profiles - provide energy for a cost        |
 |add_sell_profile       |Energy sell profiles - can sell energy for a revenue   |
 |add_fixed_consumption  |Inflexible consumption - must be satisfied             |
-|-----------------------|-------------------------------------------------------|
 
 Refer to the documentation of the individual components for the requirements of the components.
 
@@ -126,6 +124,16 @@ battery_block = my_model.add_battery(
     )
 )
 ```
+
+The heat pump model is one of the more complex components that can be added to an optimization problem.
+Due to its complexity some functionality that may be useful is handled by other methods than the usual device model. These functions are  
+interpolate_heat_energy and interpolate_temperature, provided by the module battery_optimizer.helpers.heat_pump_profile for interpolating input data and the HpLibWrapper class provided by the module battery_optimizer.helpers.hplib.
+The heat pump model relies on two data series that provide CoP information to the model based on the heat output temperature (high or low) and the time step in the simulation. Many external factors can influence the CoP like outdoor temperatures or the temperature the heat pump has to heat to. One option is to estimate these CoP values using [hplib](https://github.com/FZJ-IEK3-VSA/hplib).
+A wrapper around this package is provided by this package from the module battery_optimizer.helpers.hplib. This module abstracts some of the hplib functionality to allow for simple estimation of the two required CoP time-series.
+
+The `HpLibWrapper` class from this module takes a `HpLibProfile` model as an input and provides the methods `get_cop_low_temp`, `get_cop_high_temp` and `get_cop_values`. 
+All three methods accept two inputs. Both can be either a float or a dictionary with datetime keys and floats as values. The `source_temperature` specifies the 
+`get_cop_low_temp` ta
 
 #### Step 3: Generate energy paths
 After all profiles and devices have been added the energy paths have to be generated with: 
