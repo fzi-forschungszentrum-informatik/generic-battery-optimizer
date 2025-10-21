@@ -15,17 +15,16 @@ from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 
 
-# TODO Add rounding of timestamps e.g. to full minutes, 5-minutes, seconds, hourly
-# add this as a separate endpoint to the service
-# fit-parameters Endpoint vom esg-service
-
+# TODO add this as a separate endpoint to the service
+# possibly fit-parameters Endpoint vom esg-service
 def generate_common_time_series(
     profiles: list[dict[str | datetime.datetime, Any]] = [],
     batteries: list[Battery] = [],
     heat_pumps: list[HeatPump] = [],
+    round_freq: str | None = None,
 ) -> Sequence[datetime.datetime]:
     """
-    Builds a unified index from all given components as timestamps.
+    Build a unified index from all given components as timestamps.
 
     Each component is assumed to be a list of components and each component
     has a "times" key that contains a list of timestamps.
@@ -40,11 +39,53 @@ def generate_common_time_series(
     heat_pumps : list[HeatPump]
         A list of heat pump components. All timestamps from the heat pumps will
         be included in the index.
+    round_freq : str | None, optional
+        If given, all timestamps will be rounded to the closest frequency
+        specified by the pandas offset alias string (e.g. '5min', 'h'), by
+        default None.
 
     Returns
     -------
-    index : list[datetime.datetime]
+    list[datetime.datetime]
         A sorted list containing all unique timestamps from the profiles.
+
+    Examples
+    --------
+    >>> from datetime import datetime
+    >>> from battery_optimizer.profiles.battery import Battery
+    >>> from battery_optimizer.profiles.heat_pump import HeatPump
+    >>> profiles = [
+    ...     {datetime(2024, 6, 1, 12, 0): 1, datetime(2024, 6, 1, 12, 5): 2},
+    ...     {datetime(2024, 6, 1, 12, 10): 3}
+    ... ]
+    >>> batteries = [
+    ...     Battery(
+    ...         start_soc_time = datetime(2024, 6, 1, 12, 15),
+    ...         end_soc_time = datetime(2024, 6, 1, 12, 20)
+    ...     )
+    ... ]
+    >>> heat_pumps = [
+    ...     HeatPump(
+    ...         heat_demand={datetime(2024, 6, 1, 12, 25): 21}
+    ...     )
+    ... ]
+    >>> generate_common_time_series(profiles, batteries, heat_pumps)
+    [
+        datetime.datetime(2024, 6, 1, 12, 0),
+        datetime.datetime(2024, 6, 1, 12, 5),
+        datetime.datetime(2024, 6, 1, 12, 10),
+        datetime.datetime(2024, 6, 1, 12, 15),
+        datetime.datetime(2024, 6, 1, 12, 20),
+        datetime.datetime(2024, 6, 1, 12, 25)
+    ]
+    >>> generate_common_time_series(
+    ...     profiles, batteries, heat_pumps, round_freq='10min'
+    ... )
+    [
+        Timestamp('2024-06-01 12:00:00'),
+        Timestamp('2024-06-01 12:10:00'),
+        Timestamp('2024-06-01 12:20:00')
+    ]
     """
     index: set[datetime.datetime] = set()
     index.update(
@@ -60,16 +101,20 @@ def generate_common_time_series(
 
     # Heat pump
     for hp in heat_pumps:
+        index.update(hp.heat_demand.keys())
+        if isinstance(hp.cop_high_temp, dict):
+            index.update(hp.cop_high_temp.keys())
+        if isinstance(hp.cop_low_temp, dict):
+            index.update(hp.cop_low_temp.keys())
         if isinstance(hp.temp_room, dict):
             index.update(hp.temp_room.keys())
         if isinstance(hp.outdoor_temperature, dict):
             index.update(hp.outdoor_temperature.keys())
-        if isinstance(hp.heat_source_temperature, dict):
-            index.update(hp.heat_source_temperature.keys())
-        if isinstance(hp.heat_demand, dict):
-            index.update(hp.heat_demand.keys())
         if isinstance(hp.warm_water_demand, dict):
             index.update(hp.warm_water_demand.keys())
+
+    if round_freq is not None:
+        index = {pd.to_datetime(time).round(round_freq) for time in index}
     return sorted(index)
 
 
@@ -80,7 +125,7 @@ def reindex_profile(
     fill_value: Any = 0,
 ) -> dict[datetime.datetime, Any]:
     """
-    Reindexes a profile to match the given index.
+    Reindex a profile to match the given index.
 
     All values after the first time step in the profile will be forward filled.
     Values in the index that precede the first time step in the profile
@@ -97,7 +142,7 @@ def reindex_profile(
 
     Returns
     -------
-    reindexed_profile : dict[datetime.datetime, Any]
+    dict[datetime.datetime, Any]
         The reindexed profile as a dictionary with datetimes as keys.
     """
     # Convert keys to datetime if they are strings
