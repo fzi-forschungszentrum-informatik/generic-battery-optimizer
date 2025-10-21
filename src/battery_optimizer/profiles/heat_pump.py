@@ -351,7 +351,7 @@ class HeatPump(BaseModel):
         # Values should be in Celsius
         if any(temp > 200 for temp in v.values()):
             raise ValueError("All temperatures must be in Celsius")
-        return pd.Series(v)
+        return v
 
     enforce_end_soc: Optional[bool] = Field(
         default=False,
