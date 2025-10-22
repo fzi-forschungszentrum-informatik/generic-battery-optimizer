@@ -1,3 +1,17 @@
+"""
+Test heat pump behavior against real-life data.
+
+This test runs several scenarios with different heat pumps and weather
+conditions and compares the results to real-life data. The test passes if the
+simulated energy consumption is within 20 Wh or 0.1% of the previous
+simulations for each day and the average relative difference over all days is
+less than 1%.
+The previous measurements are from Nicolas Schilz 2024 (Flexibilität
+moderner Wärmepumpen)
+"""
+
+from typing import Any
+from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.static.heat_pump import C_TO_K
 from tests.helpers import get_profiles, find_solver
@@ -11,7 +25,7 @@ base = "data/tests/"
 
 solver = find_solver("gurobi")
 
-testdata = [
+testdata: list[dict[str, Any]] = [
     {
         "path": "Data set 1/",
         "hp_specs": "heat_pump.yaml",
@@ -96,7 +110,19 @@ testdata = [
 
 
 @pytest.mark.parametrize("data", testdata)
-def test_scenarios(data):
+def test_scenarios(data: dict[str, Any]):
+    """
+    Compare simulated heat pump energy consumption to real-life data.
+
+    The test passes if the simulated energy consumption is within 20 Wh or 0.1%
+    of the previous simulations for each day and the average relative
+    difference over all days is less than 1%.
+
+    Parameters
+    ----------
+    data : dict
+        A dictionary containing information about the scenario to be tested.
+    """
     # This test relies on hplib v1.9
     # newer versions of hplib yield different results
     if solver != "gurobi":
@@ -150,37 +176,51 @@ def test_scenarios(data):
 
         # Heat Pump
         outdoor_temperature = (
-            input_data[data["weather_column"]].astype(float) + C_TO_K
+            input_data[data["weather_column"]].astype(float)
         ).round(2)
 
         # Constant power in W -> kW in period
         heat_demand = input_data[data["heat_column"]] / 1000
 
+        hplib = HpLibWrapper(
+            HpLibProfile(
+                type=house_data["TYPE"],
+                flow_temperature=house_data["TEMP_SUPPLY_DEMAND"] - C_TO_K,
+                output_temperature=house_data["TEMP_HP"] - C_TO_K,
+                t_in=house_data["T_IN"],
+                t_out=house_data["T_OUT"],
+                p_th=house_data["P_TH"],
+                u_values_building=house_data["U_VALUES_BUILDING"],
+            )
+        )
+        # living_area=house_data["SURFACE_BUILDING"],
+
+        cop_high = hplib.get_cop_high_temp(
+            outdoor_temperature.to_dict(), outdoor_temperature.to_dict()
+        )
+        cop_low = hplib.get_cop_low_temp(
+            outdoor_temperature.to_dict(), outdoor_temperature.to_dict()
+        )
+
         # Heat pump
         hp = HeatPump(
             name="Heat Pump",
-            type=house_data["TYPE"],
-            t_in=house_data["T_IN"],
-            t_out=house_data["T_OUT"],
-            p_th=house_data["P_TH"],
-            living_area=house_data["SURFACE_BUILDING"],
-            flow_temperature=house_data["TEMP_SUPPLY_DEMAND"],
-            temp_room=house_data["TEMP_ROOM"],
-            hp_switch_off_temperature=house_data["TEMP_HP_OUT"],
+            cop_high_temp=cop_high,
+            cop_low_temp=cop_low,
+            flow_temperature=house_data["TEMP_SUPPLY_DEMAND"] - C_TO_K,
+            output_temperature=house_data["TEMP_HP"] - C_TO_K,
+            temp_room=house_data["TEMP_ROOM"] - C_TO_K,
+            hp_switch_off_temperature=house_data["TEMP_HP_OUT"] - C_TO_K,
+            outdoor_temperature=(outdoor_temperature).to_dict(),
             bivalent_temp=house_data["BIVALENT_TEMP"],
-            output_temperature=house_data["TEMP_HP"],
             max_electric_power_hp=house_data["MAX_ELECTRIC_CONSUMPTION_HP"],
             min_electric_power_hp=house_data["MIND_ELECTRIC_CONSUMPTION_HP"],
             max_electric_power_hr=house_data["MAX_ELECTRIC_CONSUMPTION_HR"],
             min_electric_power_hr=house_data["MIND_ELECTRIC_CONSUMPTION_HR"],
             tank_volume=house_data["TANK_MASS"],
             tes_start_soc=house_data["TES_START_VALUE"],
-            max_temp_tes=house_data["MAX_TEMP_TES"],
-            u_values_building=house_data["U_VALUES_BUILDING"],
-            outdoor_temperature=outdoor_temperature.to_dict(),
-            heat_source_temperature=outdoor_temperature.to_dict(),
+            max_temp_tes=house_data["MAX_TEMP_TES"] - C_TO_K,
             heat_demand=heat_demand.to_dict(),
-            predict_tank_loss=False,
         )
 
         # Optimization

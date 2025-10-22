@@ -1,6 +1,12 @@
+"""
+A model representing a heat pump system with its parameters and constraints.
+
+Stores parameters needed to model a heat pump system for optimization
+"""
+
 import datetime
 import secrets
-from typing import List, Optional
+from typing import Optional
 import pandas as pd
 from pydantic import (
     BaseModel,
@@ -12,48 +18,18 @@ from pydantic import (
 )
 from battery_optimizer.static.heat_pump import MINIMUM_KELVIN
 from battery_optimizer.static.numbers import SECRET_LENGTH
-import hplib.hplib as hpl
-from battery_optimizer.helpers.heat_pump_profile import (
-    tank_dimensions,
-)
-
-heat_pump_data = hpl.load_database()
-two_item_list = Field(
-    default_factory=lambda: [0.0, 0.0], min_length=2, max_length=2
-)
-
-
-def _validate_distinct_item(item, group):
-    """Checks if the item is in group
-
-    -----
-    Input
-    item: any
-        the item that should be checked against the list
-    group: List[any]
-        the list the item is checked against
-
-    ------
-    Raises
-    ValueError
-        If the value is not in the list"""
-    assert item in group, f"{item} is not allowed. Allowed values: {group}"
-
-
-class _U_Values_Building(BaseModel):
-    """Building U-Values for the heat pump model
-
-    The U-Values are used to calculate the heat demand of the building.
-    The first number in each list is the surface area of the building's
-    component in m². The second number is the U-Value in W/m²K.
-    """
-    model_config = ConfigDict(extra="forbid")
-    wall: list[float] = two_item_list
-    roof: list[float] = two_item_list
-    window: list[float] = two_item_list
 
 
 class HeatPump(BaseModel):
+    """
+    A model representing a heat pump system.
+
+    Stores various parameters needed to model a heat pump system for
+    optimization. Some of the parameters can be provided as single values or
+    as dictionaries with datetime keys for time-varying inputs.
+    Some parameters can be pre-computed with the helper functions provided in
+    battery_optimizer.helpers.hplib.
+    """
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(
@@ -66,177 +42,47 @@ class HeatPump(BaseModel):
         ),
     )
 
-    """ Required Data for hplib """
-    type: str = Field(
-        title="hplib heat pump type",
+    cop_high_temp: float | dict[datetime.datetime, float] = Field(
+        title="The CoP of the heat pump at the maximum output temperature.",
         description=(
-            "Heat pump model type for the heat pump simulation. The heat pump "
-            "simulation uses [hplib](https://github.com/FZJ-IEK3-VSA/hplib) "
-            "to estimate heat pump behavior. Many commercial heat pumps can "
-            "be simulated or custom heat pumps can be specified. hplib "
-            "supports Air/Water, Water/Water and Brine/Water heat pumps. "
-            "Air/Air heat pumps are not supported by hplib and can only be "
-            "modeled with a constant CoP (see cop_air field)."
-            'Can be ["Air/Air", "Luft/Luft", "Generic"'
-            '"All other [hplib](https://github.com/FZJ-IEK3-VSA/hplib) heat '
-            'pump types available"]'
-        ),
-        examples=["AE050RXYDEG/EU & AE200RNWMEG/EU", "Air/Air", "Generic"],
-    )
-
-    @field_validator("type")
-    def validate_type(cls, v):
-        allowed_types = list(heat_pump_data["Type"].unique())
-        if "Titel" in heat_pump_data.columns:
-            allowed_types.extend(list(heat_pump_data["Titel"].unique()))
-        allowed_types.extend(list(heat_pump_data["Model"].unique()))
-        allowed_types.extend(["Air/Air", "Luft/Luft", "Generic"])
-        _validate_distinct_item(v, allowed_types)
-        return v
-
-    """Start of hplib specific data"""
-    id: Optional[int] = Field(
-        default=None,
-        title="hplib Group ID",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "[hplib](https://github.com/FZJ-IEK3-VSA/hplib#heat-pump-models-"
-            "and-group-ids) uses it to return the correct model."
-            "Available heat pump types are "
-            "[1]: Air/Water regulated, [4]: Air/Water on-off, "
-            "[2]: Brine/Water regulated, [5]: Brine/Water on-off, "
-            "[3]: Water/Water regulated and [6]: Water/Water on-off."
-        ),
-        examples=[1, 2, 3, 4, 5, 6],
-    )
-
-    @field_validator("id")
-    def validate_id(cls, v):
-        if v is None:
-            return v
-        _validate_distinct_item(v, heat_pump_data["Group"].unique())
-        return v
-
-    # These values are only needed/allowed when the type is Generic
-    t_in: Optional[float] = Field(
-        default=None,
-        title="hplib heat pump temperature cool side (outdoors) [K]",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "Temperature in K on the low temperature side of the heat pump. "
-            "Usually the outside atmosphere."
-        ),
-        ge=MINIMUM_KELVIN,
-    )
-    t_out: Optional[float] = Field(
-        default=None,
-        title="hplib heat pump temperature hot side (indoors) [K]",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "Temperature in K on the warm temperature side of the heat pump. "
-            "Usually the heat water output of the heat pump."
-        ),
-        ge=MINIMUM_KELVIN,
-    )
-    p_th: Optional[float] = Field(
-        default=None,
-        title="hplib heat pump thermal output power [kW]",
-        description=(
-            'Only needed when hplib heat pump type is "Generic"!'
-            "Thermal output power at set point t_in, t_out "
-            "(and for water/water, brine/water heat pumps t_amb = -7°C)."
-        ),
-    )
-
-    @model_validator(mode="after")
-    def validate_generic_hp_value_existence(cls, values):
-        if values.type == "Generic":
-            if not all([values.id, values.t_in, values.t_out, values.p_th]):
-                raise ValueError(
-                    "All Generic heat pump values must be provided"
-                )
-        return values
-
-    """End of hplib specific data"""
-    cop_air: Optional[float] = Field(
-        default=None,
-        title="CoP for Air/Air heat pump",
-        description=(
-            "hplib does not implement Air/Air heat pumps. "
-            "This value will be used instead and must be provided when the "
-            "type is Air/Air"
+            "The coefficient of performance (CoP) of the heat pump when the "
+            "heat pump has to reach high output temperatures to supply the "
+            "thermal energy storage. The specified CoP should be valid for "
+            "heat pump when it has to heat the water to the maximum output "
+            "temperature of the heat pump."
         ),
         examples=[1.0, 2.3, 3.1],
     )
-
-    @field_validator("cop_air")
-    def validate_cop_air(cls, v):
-        assert cls.type in [
-            "Air/Air",
-            "Luft/Luft",
-        ], 'This value is only allowed when an "Air/Air"-Heat pump is used'
-        return v
-
-    u_values_building: Optional[_U_Values_Building] = Field(
-        title="Building U-Values",
+    cop_low_temp: float | dict[datetime.datetime, float] = Field(
+        title="CoP at flow temperature",
         description=(
-            "Needed when no heat demand is provided. "
-            "Building area and U-Values used to calculate the heat demand of "
-            "the building. The first number in each list is the surface area "
-            "of the building's component in m². The second number is the "
-            "U-Value in W/m²K."
+            "The coefficient of performance (CoP) of the heat pump when the "
+            "heat pump has to reach flow temperature output temperature to "
+            "supply building directly. The specified CoP should be valid "
+            "for heat pump when it has to heat the water to the flow "
+            "temperature of the heating system. This CoP should generally be "
+            "phigher than the cop_high_temp."
         ),
-        default=None,
-        examples=[
-            {
-                "wall": [159.4, 0.8],
-                "roof": [100.8, 0.5],
-                "window": [27, 1.3],
-            }
-        ],
+        examples=[3.0, 4.3, 5.1],
     )
-
-    living_area: float = Field(
-        title="Living area [m²]",
-        description=(
-            "Needed when no heat demand is provided. "
-            "The living area in m² of the building."
-        ),
-        default=None,
-        examples=[100.0, 150.0, 200.0],
-    )
-
-    @model_validator(mode="after")
-    def energy_estimation_or_heat_demand(cls, values):
-        if not (
-            (values.u_values_building and values.living_area)
-            or values.heat_demand
-        ):
-            raise ValueError(
-                "Either u_values_building and living_area or heat_demand must "
-                "be provided"
-            )
-        return values
-
-    # End of values for estimating the heat demand of the building
 
     flow_temperature: float = Field(
-        title="Flow temperature [K]",
+        title="Flow temperature [C]",
         description=(
-            "The flow temperature of the heating circuit in Kelvin. "
+            "The flow temperature of the heating circuit in Celsius. "
             "This is the temperature of the water as it leaves the heat "
             "pump/temperature energy storage and enters the heating system, "
             "such as radiators or underfloor heating."
         ),
-        ge=MINIMUM_KELVIN,
-        examples=[303.15, 308.15, 313.15, 318.15],
+        le=MINIMUM_KELVIN,
+        examples=[30, 35, 40, 45],
     )
     temp_room: float | dict[datetime.datetime, float] = Field(
-        default=293.15,
-        title="Room temperature [K]",
+        default=20,
+        title="Room temperature [C]",
         description=(
             "The desired room temperature heated by the heating system in "
-            "Kelvin. "
+            "Celsius. "
             "This can be a single value or a dictionary with datetime keys "
             "and float values. When a dictionary is used, the keys must be "
             "timezone aware. When the keys do not match a period start in the "
@@ -247,34 +93,34 @@ class HeatPump(BaseModel):
 
     hp_switch_off_temperature: Optional[float] = Field(
         default=None,
-        title="Outdoor temperature switch off [K]",
+        title="Outdoor temperature switch off [C]",
         description=(
-            "The outdoor temperature in Kelvin at which the heat pump is "
+            "The outdoor temperature in Celsius at which the heat pump is "
             "switched off. If not provided, the heat pump can always run."
         ),
-        ge=MINIMUM_KELVIN,
-        examples=[268.15, 263.15, 258.15],
+        le=MINIMUM_KELVIN,
+        examples=[-5, -10, -15],
     )
     bivalent_temp: Optional[float] = Field(
         default=None,
-        title="Bivalent temperature [K]",
+        title="Bivalent temperature [C]",
         description=(
-            "The outdoor temperature in Kelvin below which the heat pump only "
+            "The outdoor temperature in Celsius below which the heat pump only "
             "provides 70% of the building heat demand. The remaining 30% are "
             "provided by a backup heater."
         ),
-        ge=MINIMUM_KELVIN,
+        le=MINIMUM_KELVIN,
     )
 
     output_temperature: float = Field(
-        title="Heat pump output temperature [K]",
+        title="Heat pump output temperature [C]",
         description=(
-            "The high side output temperature of the heat pump in Kelvin. "
+            "The high side output temperature of the heat pump in Celsius. "
             "This is the maximum temperature the heat pump can provide. "
             "Charging the TES above this temperature must be done by the "
             "backup heater."
         ),
-        ge=MINIMUM_KELVIN,
+        le=MINIMUM_KELVIN,
     )
 
     min_electric_power_hp: Optional[float] = Field(
@@ -310,7 +156,29 @@ class HeatPump(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_electric_power(cls, values):
+    def validate_electric_power(cls, values: "HeatPump") -> "HeatPump":
+        """
+        Validate electric power values.
+
+        Validate that the minimum electric power for both the heat pump and
+        the electric heater are less than or equal to their respective maximum
+        electric power values.
+
+        Parameters
+        ----------
+        values : HeatPump
+            The instance of the HeatPump model after initial validation.
+
+        Returns
+        -------
+        HeatPump
+            The validated HeatPump instance.
+
+        Raises
+        ------
+        ValueError
+            If minimum electric power is greater than maximum for either device.
+        """
         if values.min_electric_power_hp > values.max_electric_power_hp:
             raise ValueError(
                 "Minimum electric power for heat pump must be less than or "
@@ -324,32 +192,29 @@ class HeatPump(BaseModel):
         return values
 
     max_temp_tes: float = Field(
-        default=363.15,
-        title="Maximum temperature of the TES [K]",
+        default=90,
+        title="Maximum temperature of the TES [C]",
         description=(
-            "The maximum temperature of the thermal energy storage in Kelvin."
+            "The maximum temperature of the thermal energy storage in Celsius. "
+            "This is required for the soc calculation of the thermal energy "
+            "storage (TES). The TES cannot be charged above this temperature."
         ),
-        ge=MINIMUM_KELVIN,
+        le=MINIMUM_KELVIN,
     )
 
-    predict_tank_loss: Optional[bool] = Field(
-        default=True,
-        title="Predict tank heat losses",
+    heat_loss_tank: Optional[float] = Field(
+        default=0,
+        ge=0,
+        title="Heat loss of the tank [W/K]",
         description=(
-            "If enabled, the heat losses of the tank are predicted based on "
-            "its dimensions. If disabled, the heat losses of the tank are not "
-            "being considered in the model."
+            "The heat loss of the thermal energy storage tank in W/K. "
+            "This value represents the heat loss per Kelvin temperature "
+            "difference between the tank and the surrounding environment "
+            "(room temperature). Methods to estimate this value based on tank "
+            "dimensions are provided in the module"
+            "battery_optimizer.helpers.heat_pump_profile by the methods "
+            "tank_dimensions and heat_loss_tank."
         ),
-    )
-    tank_u_value: Optional[float] = Field(
-        default=0.6,
-        title="U-Value of the tank",
-        description=(
-            "The U-Value of the tank in W/m²K. This is used to calculate the "
-            "heat losses of the tank. "
-            "If predict_tank_loss is disabled, this value is not used."
-        ),
-        examples=[0.3, 0.5, 0.7],
     )
 
     tank_volume: float = Field(
@@ -365,32 +230,46 @@ class HeatPump(BaseModel):
         examples=[0.0, 0.5, 1.0],
     )
 
-    outdoor_temperature: float | dict[datetime.datetime, float] = Field(
-        title="Outdoor temperature [K]",
-        description=(
-            "The outdoor temperature in Kelvin. This can be a single value "
-            "or a dictionary with datetime keys and float values. "
-            "When a dictionary is used, the keys must be timezone aware. "
-            "When the keys do not match a period start in the model, the "
-            "temperature is linearly interpolated between the two closest "
-            "values."
-        ),
-    )
-    heat_source_temperature: float | dict[datetime.datetime, float] = Field(
-        title="Heat source temperature [K]",
-        description=(
-            "The temperature in Kelvin of the heat source "
-            "(e.g. air or water). This can be a single value "
-            "or a dictionary with datetime keys and float values. "
-            "When a dictionary is used, the keys must be timezone aware. "
-            "When the keys do not match a period start in the model, the "
-            "temperature is linearly interpolated between the two closest "
-            "values."
-        ),
+    outdoor_temperature: Optional[float | dict[datetime.datetime, float]] = (
+        Field(
+            default=None,
+            title="Outdoor temperature [C]",
+            description=(
+                "The outdoor temperature in Celsius. This can be a single "
+                "value or a dictionary with datetime keys and float values. "
+                "When a dictionary is used, the keys must be timezone aware. "
+                "When the keys do not match a period start in the model, the "
+                "temperature is linearly interpolated between the two closest "
+                "values."
+            ),
+        )
     )
 
-    heat_demand: Optional[dict[datetime.datetime, float]] = Field(
-        default=None,
+    @model_validator(mode="after")
+    def enforce_outdoor_temperature(self) -> "HeatPump":
+        """
+        Ensure outdoor temperature is set when needed.
+
+        Ensure that outdoor_temperature is provided if either
+        hp_switch_off_temperature or bivalent_temp is set, as these
+        parameters depend on outdoor temperature to correctly control
+        the operation of the heat pump in low temperature conditions.
+
+        Returns
+        -------
+        "HeatPump"
+            The validated HeatPump instance.
+        """
+        if (
+            self.hp_switch_off_temperature or self.bivalent_temp
+        ) and self.outdoor_temperature is None:
+            raise ValueError(
+                "outdoor_temperature must be provided if either "
+                "hp_switch_off_temperature or bivalent_temp is set."
+            )
+        return self
+
+    heat_demand: dict[datetime.datetime, float] = Field(
         title="Heat demand of the building [kW]",
         description=(
             "An optional heat demand of the building in kW. "
@@ -413,28 +292,53 @@ class HeatPump(BaseModel):
         ),
     )
 
-    @field_validator(
-        "outdoor_temperature", "heat_source_temperature", "temp_room"
-    )
-    def validate_temperature_lists(cls, v):
+    @field_validator("outdoor_temperature", "temp_room")
+    def validate_temperature_lists(
+        cls, v: float | dict[datetime.datetime, float] | None
+    ) -> float | pd.Series | None:
+        """
+        Validate temperature inputs.
+
+        This validator checks if the temperature input is either a float,
+        None, or a dictionary with datetime keys and float values. It ensures
+        that all datetime keys are timezone aware and that all temperature
+        values are in Celsius (less than 200K).
+
+        Parameters
+        ----------
+        v : float | dict[datetime.datetime, float] | None
+            The temperature input to validate.
+
+        Returns
+        -------
+        float | pd.Series | None
+            Returns the input as is if it's None or a float. If it's a
+            dictionary, it converts it to a pandas Series for easier handling
+            later in the model.
+
+        Raises
+        ------
+        ValueError
+            If the input is not None, a float, or a valid dictionary with
+            timezone-aware datetime keys and Celsius temperature values.
+        """
         if v is None:
             return v
         # Just a float value
         if isinstance(v, float):
-            if v < 200:
-                raise ValueError("All temperatures must be in Kelvin")
+            if v > 200:
+                raise ValueError("All temperatures must be in Celsius")
             return v
         # A dictionary with datetime keys and float values
-        else:
-            if not all(
-                isinstance(dt, datetime.datetime) and dt.tzinfo is not None
-                for dt in v.keys()
-            ):
-                raise ValueError("All datetime keys must be timezone aware")
-            # Values should be in Kelvin
-            if any(temp < 200 for temp in v.values()):
-                raise ValueError("All temperatures must be in Kelvin")
-            return pd.Series(v)
+        if not all(
+            isinstance(dt, datetime.datetime) and dt.tzinfo is not None
+            for dt in v.keys()
+        ):
+            raise ValueError("All datetime keys must be timezone aware")
+        # Values should be in Celsius
+        if any(temp > 200 for temp in v.values()):
+            raise ValueError("All temperatures must be in Celsius")
+        return v
 
     enforce_end_soc: Optional[bool] = Field(
         default=False,
@@ -453,22 +357,34 @@ class HeatPump(BaseModel):
     @computed_field
     @property
     def max_heat_supply_hp(self) -> float:
+        """
+        The maximum heat that can be supplied by the heat pump in kW.
+
+        Calculate the maximum heat that can be supplied by the heat pump in kW
+        for use as an upper bound in the optimization model.
+
+        Returns
+        -------
+        float
+            The maximum heat that can be supplied by the heat pump in kW.
+        """
         return 10 * self.max_electric_power_hp
-
-    @computed_field
-    @property
-    def tank_height(self) -> float:
-        return tank_dimensions((self.tank_volume / 1000))[1]
-
-    @computed_field
-    @property
-    def tank_radius(self) -> float:
-        return tank_dimensions((self.tank_volume / 1000))[0]
 
     # The maximum energy that can be stored in the TES
     @computed_field
     @property
     def max_heat_energy_tes(self) -> float:
+        """
+        The maximum heat energy that can be stored in the TES in kWh.
+
+        Calculate the maximum heat energy that can be stored in the TES in kWh
+        for use as bounds in the soc calculation of the TES.
+
+        Returns
+        -------
+        float
+            The maximum heat energy that can be stored in the TES in kWh.
+        """
         return (
             (
                 (self.max_temp_tes - self.flow_temperature)
@@ -481,6 +397,17 @@ class HeatPump(BaseModel):
     @computed_field
     @property
     def max_heat_supply_tes(self) -> float:
+        """
+        The maximum heat that can be supplied by the TES in kW.
+
+        Calculate the maximum heat that can be supplied by the TES in kW for
+        use as an upper bound in the optimization model.
+
+        Returns
+        -------
+        float
+            The maximum heat that can be supplied by the TES in kW.
+        """
         return (
             self.tank_volume
             * 4186
