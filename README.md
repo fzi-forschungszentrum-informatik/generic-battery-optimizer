@@ -131,6 +131,38 @@ interpolate_heat_energy and interpolate_temperature, provided by the module batt
 The heat pump model relies on two data series that provide CoP information to the model based on the heat output temperature (high or low) and the time step in the simulation. Many external factors can influence the CoP like outdoor temperatures or the temperature the heat pump has to heat to. One option is to estimate these CoP values using [hplib](https://github.com/FZJ-IEK3-VSA/hplib).
 A wrapper around this package is provided by this package from the module battery_optimizer.helpers.hplib. This module abstracts some of the hplib functionality to allow for simple estimation of the two required CoP time-series.
 
+Create a HpLibProfile  model with the heat pumps information and pass it into the HpLibWrapper:
+```python
+from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper
+hplib = HpLibWrapper(
+    HpLibProfile(
+        type="i-SHWAK V4 12",
+        flow_temperature=35,
+        output_temperature=55,
+    )
+)
+```
+
+Run the prediction of the cop values with:
+```python
+cop_high = hplib.get_cop_high_temp(
+    heat_source_temperature, outdoor_temperature
+)
+cop_low = hplib.get_cop_low_temp(
+    heat_source_temperature, outdoor_temperature
+)
+```
+
+Alternatively both cop time series can be generated simultaneously with:
+```python
+cop_low, cop_low = hplib.get_cop_values(
+    heat_source_temperature, outdoor_temperature
+)
+```
+
+
+More helping methods of the heat pump
+
 The `HpLibWrapper` class from this module takes a `HpLibProfile` model as an input and provides the methods `get_cop_low_temp`, `get_cop_high_temp` and `get_cop_values`. 
 All three methods accept two inputs. Both can be either a float or a dictionary with datetime keys and floats as values. The `source_temperature` specifies the 
 `get_cop_low_temp` ta
