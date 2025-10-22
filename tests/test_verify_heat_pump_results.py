@@ -221,7 +221,6 @@ def test_scenarios(data: dict[str, Any]):
             tes_start_soc=house_data["TES_START_VALUE"],
             max_temp_tes=house_data["MAX_TEMP_TES"] - C_TO_K,
             heat_demand=heat_demand.to_dict(),
-            predict_tank_loss=False,
         )
 
         # Optimization
