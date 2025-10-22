@@ -7,10 +7,9 @@ in a single data structure.
 
 from datetime import datetime
 from typing import Optional
-from math import isnan
 import secrets
 import logging
-from pydantic import field_validator, BaseModel, Field
+from pydantic import BaseModel, Field
 from battery_optimizer.static.numbers import SECRET_LENGTH
 
 log = logging.getLogger(__name__)
