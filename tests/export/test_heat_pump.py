@@ -10,6 +10,10 @@ values returned by the Exporter class.
 import pandas as pd
 import pytest
 from battery_optimizer.export import Exporter
+from battery_optimizer.helpers.heat_pump_profile import (
+    heat_loss_tank,
+    tank_dimensions,
+)
 from battery_optimizer.model import Model
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.solver import Solver
@@ -85,6 +89,7 @@ class TestHeatPumpSoC:
             time_series[2]: 0,
         },
         outdoor_temperature=outdoor_temperature,
+        heat_loss_tank=heat_loss_tank(*tank_dimensions(100)),
         tank_volume=100,
         max_temp_tes=60,
     )

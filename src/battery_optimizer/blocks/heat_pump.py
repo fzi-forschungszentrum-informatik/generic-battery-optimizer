@@ -12,7 +12,6 @@ import logging
 import pyomo.environ as pyo
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.helpers.heat_pump_profile import (
-    heat_loss_tank,
     interpolate_temperature,
     interpolate_heat_energy,
 )
@@ -611,7 +610,7 @@ class HeatPumpBlock:
             Calculate the heat loss of the tank.
 
             Calculates the heat loss for this period of the tank based on its
-            dimensions, U-value, and the temperature difference between the
+            relative heat loss [W/K] and the temperature difference between the
             tank and the room temperature.
 
             Parameters
@@ -624,13 +623,10 @@ class HeatPumpBlock:
             pyo.Expression
                 An expression representing the tank heat loss for this period.
             """
-            if not self.heat_pump.predict_tank_loss:
-                return block.heat_loss_tank == 0
-            return block.heat_loss_tank == heat_loss_tank(
-                self.heat_pump.tank_height,
-                self.heat_pump.tank_radius,
-                self.heat_pump.tank_u_value,
-                (block.temp_TES - temp_room),
+            return block.heat_loss_tank == (
+                self.heat_pump.heat_loss_tank
+                / 1000  # Convert W to kW
+                * (block.temp_TES - temp_room)
             )
 
         block.heat_loss_tank_cons = pyo.Constraint(
@@ -646,36 +642,6 @@ class HeatPumpBlock:
             block.temp_TES_cons = pyo.Constraint(
                 rule=(block.temp_TES >= self.heat_pump.flow_temperature)
             )
-
-        def heat_loss_tank_ub_rule(block: pyo.Block) -> pyo.Expression:
-            """
-            Upper bound for the heat loss of the tank.
-
-            Calculates the maximum possible heat loss from the tank based on
-            its dimensions, U-value, and the temperature difference
-            between the tank and the room temperature.
-
-            Parameters
-            ----------
-            block : pyo.Block
-                The Pyomo block containing the tank parameters and variables.
-
-            Returns
-            -------
-            pyo.Expression
-                An expression representing the upper bound of the tank heat
-                loss.
-            """
-            if not self.heat_pump.predict_tank_loss:
-                return block.heat_loss_tank <= 0
-            return block.heat_loss_tank <= heat_loss_tank(
-                self.heat_pump.tank_height,
-                self.heat_pump.tank_radius,
-                self.heat_pump.tank_u_value,
-                (self.heat_pump.max_temp_tes - temp_room),
-            )
-
-        block.heat_loss_tank_ub = pyo.Constraint(rule=heat_loss_tank_ub_rule)
 
         # #weitere Restriktionen
 

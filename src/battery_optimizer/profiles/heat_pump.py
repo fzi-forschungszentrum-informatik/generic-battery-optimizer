@@ -18,9 +18,6 @@ from pydantic import (
 )
 from battery_optimizer.static.heat_pump import MINIMUM_KELVIN
 from battery_optimizer.static.numbers import SECRET_LENGTH
-from battery_optimizer.helpers.heat_pump_profile import (
-    tank_dimensions,
-)
 
 
 class HeatPump(BaseModel):
@@ -205,31 +202,21 @@ class HeatPump(BaseModel):
         le=MINIMUM_KELVIN,
     )
 
-    # TODO All tank information should be a separate model that can be added
-    # to the heat pump model to enable tank loss prediction. Probably
-    # specifying just the heat loss in W/K(^2) would be sufficient.
-    predict_tank_loss: Optional[bool] = Field(
-        default=True,
-        title="Predict tank heat losses",
+    heat_loss_tank: Optional[float] = Field(
+        default=0,
+        ge=0,
+        title="Heat loss of the tank [W/K]",
         description=(
-            "If enabled, the heat losses of the tank are predicted based on "
-            "its dimensions. If disabled, the heat losses of the tank are not "
-            "being considered in the model."
+            "The heat loss of the thermal energy storage tank in W/K. "
+            "This value represents the heat loss per Kelvin temperature "
+            "difference between the tank and the surrounding environment "
+            "(room temperature). Methods to estimate this value based on tank "
+            "dimensions are provided in the module"
+            "battery_optimizer.helpers.heat_pump_profile by the methods "
+            "tank_dimensions and heat_loss_tank."
         ),
-    )
-    tank_u_value: Optional[float] = Field(
-        default=0.6,
-        title="U-Value of the tank",
-        description=(
-            "The U-Value of the tank in W/m²K. This is used to calculate the "
-            "heat losses of the tank. "
-            "If predict_tank_loss is disabled, this value is not used."
-        ),
-        examples=[0.3, 0.5, 0.7],
     )
 
-    # TODO specify surface area and provide methods to calculate surface area
-    # from volume and height/radius
     tank_volume: float = Field(
         title="Mass of the TES [l]",
         description="The volume of the thermal energy storage in litres.",
@@ -382,38 +369,6 @@ class HeatPump(BaseModel):
             The maximum heat that can be supplied by the heat pump in kW.
         """
         return 10 * self.max_electric_power_hp
-
-    @computed_field
-    @property
-    def tank_height(self) -> float:
-        """
-        The estimated height of the TES in meters.
-
-        Calculate the estimated height of the TES in meters based on its
-        volume for use in the tank loss calculation.
-
-        Returns
-        -------
-        float
-            The estimated height of the TES in meters.
-        """
-        return tank_dimensions((self.tank_volume / 1000))[1]
-
-    @computed_field
-    @property
-    def tank_radius(self) -> float:
-        """
-        The estimated radius of the TES in meters.
-
-        Calculate the estimated radius of the TES in meters based on its
-        volume for use in the tank loss calculation.
-
-        Returns
-        -------
-        float
-            The estimated radius of the TES in meters.
-        """
-        return tank_dimensions((self.tank_volume / 1000))[0]
 
     # The maximum energy that can be stored in the TES
     @computed_field

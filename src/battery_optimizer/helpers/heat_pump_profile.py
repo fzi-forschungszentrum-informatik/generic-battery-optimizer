@@ -26,32 +26,33 @@ def tank_dimensions(volume: int | float):
     Parameters
     ----------
     volume : int | float
-        The volume of the tank in m^3.
+        The volume of the tank in l.
 
     Returns
     -------
-    radius : float
-        The radius of the tank in m.
     height : float
         The height of the tank in m.
+    radius : float
+        The radius of the tank in m.
     """
     if volume <= 0:
         return 0, 0
 
-    h2r = (volume / (4 * np.pi)) ** (1 / 3)
-    h3r = (volume / (6 * np.pi)) ** (1 / 3)
+    volume_m3 = volume / 1000  # Convert l to m^3
+
+    h2r = (volume_m3 / (4 * np.pi)) ** (1 / 3)
+    h3r = (volume_m3 / (6 * np.pi)) ** (1 / 3)
 
     radius = (h2r + h3r) / 2
 
-    height = volume / (np.pi * radius**2)
-    return radius, height
+    height = volume_m3 / (np.pi * radius**2)
+    return height, radius
 
 
 def heat_loss_tank(
     height: int | float,
     radius: int | float,
-    u_value_material: int | float,
-    temperature_difference: int | float,
+    u_value_material: int | float = 0.6,
 ) -> float:
     """
     Transmission heat losses of the tank.
@@ -68,20 +69,13 @@ def heat_loss_tank(
     u_value_material : int | float
         The U-value of the insulation material of the tank in W/(m^2*K)
         This is usually between 0.3 and 0.7 W/(m^2*K).
-    temperature_difference : int | float
-        The temperature difference between the tank and the room temperature
-        in K.
 
     Returns
     -------
     float
-        The heat loss of the tank in kW.
+        The heat loss of the tank in W/K.
     """
-    return (
-        (2 * np.pi * radius * (radius + height))
-        * u_value_material
-        * temperature_difference
-    ) / 1000
+    return (2 * np.pi * radius * (radius + height)) * u_value_material
 
 
 def reverse_resolution(scale: int | float):

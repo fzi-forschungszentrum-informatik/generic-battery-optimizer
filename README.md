@@ -131,7 +131,10 @@ interpolate_heat_energy and interpolate_temperature, provided by the module batt
 The heat pump model relies on two data series that provide CoP information to the model based on the heat output temperature (high or low) and the time step in the simulation. Many external factors can influence the CoP like outdoor temperatures or the temperature the heat pump has to heat to. One option is to estimate these CoP values using [hplib](https://github.com/FZJ-IEK3-VSA/hplib).
 A wrapper around this package is provided by this package from the module battery_optimizer.helpers.hplib. This module abstracts some of the hplib functionality to allow for simple estimation of the two required CoP time-series.
 
-Create a HpLibProfile  model with the heat pumps information and pass it into the HpLibWrapper:
+The `HpLibWrapper` class from this module takes a `HpLibProfile` model as an input and provides the methods `get_cop_low_temp`, `get_cop_high_temp` and `get_cop_values`. 
+All three methods accept two inputs. Both can be either a float or a dictionary with datetime keys and floats as values. The `source_temperature` specifies the source temperature the heat pump extracts heat from. This is usually the outdoor temperature for air-water heat pumps or the ground/water temperature for brine-water heat pumps. The `output_temperature` specifies the temperature the heat pump has to heat to. This is usually the flow temperature of the heating system or the temperature the heat pump has to heat the storage tank to.
+
+To use these helping classes create a HpLibProfile  model with the heat pumps information and pass it into the HpLibWrapper:
 ```python
 from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper
 hplib = HpLibWrapper(
@@ -160,12 +163,23 @@ cop_low, cop_low = hplib.get_cop_values(
 )
 ```
 
+Estimating tank heat losses:
 
-More helping methods of the heat pump
+Warm water tanks usually do not retain heat perfectly. To model these heat losses the heat pump model requires a tank heat loss value specified when creating a heat pump model with the parameter `tank_heat_loss` in W/K. This value can be estimated with the helper methods `tank_dimensions` and `heat_loss_tank` provided by the module battery_optimizer.helpers.heat_pump_profile. The tank dimension estimation takes in a tank volume in liters and estimates the tanks height and radius in meters. These dimensions can then be used to estimate the tanks heat loss in W/K with the heat_loss_tank method.
 
-The `HpLibWrapper` class from this module takes a `HpLibProfile` model as an input and provides the methods `get_cop_low_temp`, `get_cop_high_temp` and `get_cop_values`. 
-All three methods accept two inputs. Both can be either a float or a dictionary with datetime keys and floats as values. The `source_temperature` specifies the 
-`get_cop_low_temp` ta
+```python
+from battery_optimizer.profiles.heat_pump import HeatPump
+from battery_optimizer.helpers.heat_pump_profile import (
+    heat_loss_tank,
+    tank_dimensions,
+)
+
+heat_pump = HeatPump(
+    ...,
+    heat_loss_tank=heat_loss_tank(*tank_dimensions(100)),
+    tank_volume=100,
+)
+```
 
 #### Step 3: Generate energy paths
 After all profiles and devices have been added the energy paths have to be generated with: 
