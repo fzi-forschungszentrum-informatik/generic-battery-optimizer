@@ -39,6 +39,13 @@ build:
     paths:
       - dist/
 
+
+.test_job_template: &test_job_template
+  stage: test
+  parallel:
+    matrix:
+      - PYTHON_VERSION: *python_versions
+
 .run-tests: &run-tests
   - pip install pytest pyyaml pytest-cov
   - pip install -r requirements.txt
@@ -47,18 +54,15 @@ build:
   - pytest --cov-report term-missing --cov=src tests/
 
 glpk:
-  stage: test
+  <<: *test_job_template
   variables:
     SOLVER: glpk
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - *run-tests
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
 
 scip:
-  stage: test
+  <<: *test_job_template
   variables:
     SOLVER: scip
     SCIP_VERSION: 9.2.3
@@ -69,12 +73,9 @@ scip:
     - echo "$SHASUM  scipopt.deb" | sha256sum --check -
     - apt install -y --no-install-recommends ./scipopt.deb && rm -rf /var/lib/apt/lists/*
     - *run-tests
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
 
 gurobi:
-  stage: test
+  <<: *test_job_template
   variables:
     SOLVER: gurobi
   script:
@@ -83,12 +84,9 @@ gurobi:
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - pip install gurobipy
     - *run-tests
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
 
 gurobi-prerelease:
-  stage: test
+  <<: *test_job_template
   allow_failure: true
   variables:
     SOLVER: gurobi
@@ -103,9 +101,6 @@ gurobi-prerelease:
     - pip install --no-deps dist/*.whl
     - export PYTHONPATH=src
     - pytest --cov-report term-missing --cov=src tests/
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
 
 
 publish:
