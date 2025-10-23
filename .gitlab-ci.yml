@@ -5,10 +5,11 @@
   - "3.11"
   - "3.12"
   - "3.13"
+  - "3.14"
 
 variables:
   # Python version for build/publish
-  LATEST_PYTHON: "3.13"
+  LATEST_PYTHON: "3.14"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
 
 default:
