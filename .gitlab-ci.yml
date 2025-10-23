@@ -42,16 +42,17 @@ build:
 
 .test_job_template: &test_job_template
   stage: test
+  before_script:
+    - python --version
+    - pip install pytest pyyaml pytest-cov
+    - pip install -r requirements.txt
+    - pip install dist/*.whl
   parallel:
     matrix:
       - PYTHON_VERSION: *python_versions
 
 .run-tests: &run-tests
-  - pip install pytest pyyaml pytest-cov
-  - pip install -r requirements.txt
-  - pip install dist/*.whl
-  - export PYTHONPATH=src
-  - pytest --cov-report term-missing --cov=src tests/
+  - PYTHONPATH=src pytest --cov-report term-missing --cov=src tests/
 
 glpk:
   <<: *test_job_template
@@ -95,12 +96,10 @@ gurobi-prerelease:
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - pip install --pre gurobipy
-    - pip install pytest pyyaml pytest-cov
     # Install prerelease versions without upper version limits
     - pip install --pre --upgrade --upgrade-strategy eager -r <(sed 's/,<[^[:space:]]*//g' requirements.txt)
     - pip install --no-deps dist/*.whl
-    - export PYTHONPATH=src
-    - pytest --cov-report term-missing --cov=src tests/
+    - *run-tests
 
 
 publish:
