@@ -44,9 +44,7 @@ build:
   stage: test
   before_script:
     - python --version
-    - pip install pytest pyyaml pytest-cov
-    - pip install -r requirements.txt
-    - pip install dist/*.whl
+    - pip install dist/*.whl battery_optimizer[dev,hplib]
   parallel:
     matrix:
       - PYTHON_VERSION: *python_versions
@@ -83,7 +81,7 @@ gurobi:
     - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
-    - pip install gurobipy
+    - pip install dist/*.whl battery_optimizer[gurobi]
     - *run-tests
 
 gurobi-prerelease:
