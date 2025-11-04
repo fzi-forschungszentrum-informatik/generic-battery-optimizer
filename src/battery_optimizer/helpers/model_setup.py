@@ -181,3 +181,54 @@ def reindex_profile(
     reindexed_series = series.reindex(datetime_index, method="ffill")
     reindexed_series = reindexed_series.fillna(fill_value)
     return reindexed_series.to_dict()
+
+
+def adjust_battery_timestamps(
+    battery: Battery,
+    index: list[datetime.datetime],
+) -> Battery:
+    """
+    Adjust the battery's start and end SoC timestamps to match the given index.
+
+    The start soc will be set to the closest successor of its value in the
+    index. The end soc will be set to the closest predecessor of its value in
+    the index. This ensures that the battery's operation period is not extended
+    beyond its original limits.
+
+    Parameters
+    ----------
+    battery : Battery
+        The battery to adjust.
+    index : list[datetime.datetime]
+        The target index to adjust the battery's timestamps to.
+
+    Returns
+    -------
+    Battery
+        The battery with adjusted timestamps.
+    """
+    datetime_index = pd.to_datetime(index).sort_values()
+
+    if battery.start_soc_time:
+        candidates = [
+            time for time in datetime_index if time >= battery.start_soc_time
+        ]
+        if not candidates:
+            raise ValueError(
+                "start_soc_time must be before the last timestamp of the index"
+            )
+        battery.start_soc_time = min(candidates)
+
+    if battery.end_soc_time:
+        candidates = [
+            time for time in datetime_index if time <= battery.end_soc_time
+        ]
+        if not candidates:
+            raise ValueError(
+                "end_soc_time must be after the first timestamp of the index"
+            )
+        battery.end_soc_time = max(candidates)
+
+    return battery
+
+

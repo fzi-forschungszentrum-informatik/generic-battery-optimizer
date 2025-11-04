@@ -9,9 +9,11 @@ values, raises for missing leading data and tests rounding of timestamps.
 
 import datetime
 import pandas as pd
+import pytest
 from battery_optimizer.helpers.model_setup import (
     generate_common_time_series,
     reindex_profile,
+    adjust_battery_timestamps,
 )
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
@@ -490,4 +492,139 @@ class Test_Reindex_Profile:
             )
             == result
         )
+
+
+class Test_Adjust_Battery_Timestamps:
+    def test_timestamps_aligned(self):
+        """
+        Test battery with timestamps already aligned to index.
+
+        Test that a battery with start and end SoC times already aligned to
+        the index remains unchanged.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        battery = Battery(
+            start_soc_time=index[0],
+            end_soc_time=index[1],
+            start_soc=0.5,
+            end_soc=0.5,
+            capacity=1000,
+            max_charge_power=500,
+        )
+
+        assert adjust_battery_timestamps(battery, index) == battery
+
+    def test_forward_adjustment(self):
+        """
+        Test battery with timestamps needing forward adjustment.
+
+        Test that a battery with start SoC times slightly before the
+        index timestamps are adjusted forward correctly. The end SoC time
+        is already aligned.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        battery = Battery(
+            start_soc_time=index[0] - datetime.timedelta(minutes=10),
+            end_soc_time=index[1],
+            start_soc=0.5,
+            end_soc=0.5,
+            capacity=1000,
+            max_charge_power=500,
+        )
+
+        adjusted_battery = battery.model_copy(
+            update={
+                "start_soc_time": index[0],
+            }
+        )
+
+        assert adjust_battery_timestamps(battery, index) == adjusted_battery
+
+    def test_backward_adjustment(self):
+        """
+        Test battery with timestamps needing backward adjustment.
+
+        Test that a battery with end SoC times slightly after the
+        index timestamps are adjusted backward correctly. The start SoC time
+        is already aligned.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        battery = Battery(
+            start_soc_time=index[0],
+            end_soc_time=index[1] + datetime.timedelta(minutes=10),
+            start_soc=0.5,
+            end_soc=0.5,
+            capacity=1000,
+            max_charge_power=500,
+        )
+
+        adjusted_battery = battery.model_copy(
+            update={
+                "end_soc_time": index[1],
+            }
+        )
+
+        assert adjust_battery_timestamps(battery, index) == adjusted_battery
+
+    def test_start_after_end(self):
+        """
+        Test battery with start SoC time after the last index timestamp.
+
+        Test that a battery with start SoC time after the last index timestamp
+        raises an error.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        battery = Battery(
+            start_soc_time=index[1] + datetime.timedelta(minutes=10),
+            end_soc_time=index[1] + datetime.timedelta(minutes=20),
+            start_soc=0.5,
+            end_soc=0.5,
+            capacity=1000,
+            max_charge_power=500,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="start_soc_time must be before the last timestamp",
+        ):
+            adjust_battery_timestamps(battery, index)
+
+    def test_end_before_start(self):
+        """
+        Test battery with end SoC time before the first index timestamp.
+
+        Test that a battery with end SoC time before the first index timestamp
+        raises an error.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        battery = Battery(
+            start_soc_time=index[0] - datetime.timedelta(minutes=20),
+            end_soc_time=index[0] - datetime.timedelta(minutes=10),
+            start_soc=0.5,
+            end_soc=0.5,
+            capacity=1000,
+            max_charge_power=500,
+        )
+
+        with pytest.raises(
+            ValueError,
+            match="end_soc_time must be after the first timestamp",
+        ):
+            adjust_battery_timestamps(battery, index)
+
 
