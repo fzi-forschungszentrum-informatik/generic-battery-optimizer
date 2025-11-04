@@ -186,6 +186,7 @@ def reindex_profile(
 def adjust_battery_timestamps(
     battery: Battery,
     index: list[datetime.datetime],
+    tolerance: datetime.timedelta = datetime.timedelta(0),
 ) -> Battery:
     """
     Adjust the battery's start and end SoC timestamps to match the given index.
@@ -201,6 +202,9 @@ def adjust_battery_timestamps(
         The battery to adjust.
     index : list[datetime.datetime]
         The target index to adjust the battery's timestamps to.
+    tolerance : datetime.timedelta | None, optional
+        The maximum allowed difference between timestamps to consider them
+        equal, by default no tolerance is accepted.
 
     Returns
     -------
@@ -210,24 +214,49 @@ def adjust_battery_timestamps(
     datetime_index = pd.to_datetime(index).sort_values()
 
     if battery.start_soc_time:
+        # get all candidates that are after or equal to the start_soc_time
         candidates = [
-            time for time in datetime_index if time >= battery.start_soc_time
+            time
+            for time in datetime_index
+            if time >= battery.start_soc_time - tolerance
         ]
         if not candidates:
             raise ValueError(
                 "start_soc_time must be before the last timestamp of the index"
             )
-        battery.start_soc_time = min(candidates)
+
+        # find the closest candidate to the original start_soc_time
+        closest_time = min(
+            candidates, key=lambda x: abs(x - battery.start_soc_time)
+        )
+
+        # if the closest candidate is within the tolerance, use it
+        if abs(closest_time - battery.start_soc_time) <= tolerance:
+            battery.start_soc_time = closest_time
+        else:
+            battery.start_soc_time = min(candidates)
 
     if battery.end_soc_time:
+        # get all candidates that are before or equal to the end_soc_time
         candidates = [
-            time for time in datetime_index if time <= battery.end_soc_time
+            time
+            for time in datetime_index
+            if time <= battery.end_soc_time + tolerance
         ]
         if not candidates:
             raise ValueError(
                 "end_soc_time must be after the first timestamp of the index"
             )
-        battery.end_soc_time = max(candidates)
+
+        # find the closest candidate to the original end_soc_time
+        closest_time = min(
+            candidates, key=lambda x: abs(x - battery.end_soc_time)
+        )
+        # if the closest candidate is within the tolerance, use it
+        if abs(closest_time - battery.end_soc_time) <= tolerance:
+            battery.end_soc_time = closest_time
+        else:
+            battery.end_soc_time = max(candidates)
 
     return battery
 

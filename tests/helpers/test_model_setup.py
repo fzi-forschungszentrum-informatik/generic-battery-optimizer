@@ -627,4 +627,41 @@ class Test_Adjust_Battery_Timestamps:
         ):
             adjust_battery_timestamps(battery, index)
 
+    def test_rounding(self):
+        """
+        Test battery with timestamps needing rounding.
+
+        Test that a battery with start and end SoC times slightly off the
+        index timestamps are adjusted correctly using rounding.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        battery = Battery(
+            start_soc_time=index[0] + datetime.timedelta(minutes=5),
+            end_soc_time=index[1] - datetime.timedelta(minutes=5),
+            start_soc=0.5,
+            end_soc=0.5,
+            capacity=1000,
+            max_charge_power=500,
+        )
+
+        adjusted_battery = battery.model_copy(
+            update={
+                "start_soc_time": index[0],
+                "end_soc_time": index[1],
+            }
+        )
+
+        assert (
+            adjust_battery_timestamps(
+                battery,
+                index,
+                tolerance=datetime.timedelta(minutes=10),
+            )
+            == adjusted_battery
+        )
+
+
 
