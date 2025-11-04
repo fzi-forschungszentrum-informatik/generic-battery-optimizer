@@ -264,6 +264,7 @@ def adjust_battery_timestamps(
 def adjust_heat_pump_timestamps(
     heat_pump: HeatPump,
     index: list[datetime.datetime],
+    tolerance: datetime.timedelta = datetime.timedelta(0),
 ) -> HeatPump:
     """
     Adjust the heat pump's timestamps to match the given index.
@@ -277,6 +278,9 @@ def adjust_heat_pump_timestamps(
         The heat pump to adjust.
     index : list[datetime.datetime]
         The target index to adjust the heat pump's timestamps to.
+    tolerance : datetime.timedelta | None, optional
+        The maximum allowed difference between timestamps to consider them
+        equal, by default no tolerance is accepted.
 
     Returns
     -------
@@ -294,7 +298,7 @@ def adjust_heat_pump_timestamps(
     ]:
         if isinstance(getattr(heat_pump, parameter), dict):
             adjusted_profile = reindex_profile(
-                getattr(heat_pump, parameter), index
+                getattr(heat_pump, parameter), index, tolerance=tolerance
             )
             setattr(heat_pump, parameter, adjusted_profile)
     return heat_pump

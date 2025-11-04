@@ -832,4 +832,92 @@ class Test_Adjust_Heat_Pump_Timestamps:
             adjust_heat_pump_timestamps(heat_pump, index) == expected_heat_pump
         )
 
+    def test_rounding(self):
+        """
+        Test heat pump with timestamps needing rounding.
 
+        Test that a heat pump with time series parameters slightly off the
+        index timestamps are adjusted correctly using rounding.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        heat_pump = HeatPump(
+            cop_high_temp={
+                pd.Timestamp("2024-01-01 00:05+00:00"): 4.0,
+                pd.Timestamp("2024-01-01 01:05+00:00"): 5.0,
+            },
+            cop_low_temp={
+                pd.Timestamp("2024-01-01 00:05+00:00"): 3.5,
+                pd.Timestamp("2024-01-01 01:05+00:00"): 4.5,
+            },
+            temp_room={
+                pd.Timestamp("2024-01-01 00:05+00:00"): 20.0,
+                pd.Timestamp("2024-01-01 01:05+00:00"): 22.0,
+            },
+            outdoor_temperature={
+                pd.Timestamp("2024-01-01 00:05+00:00"): 15.0,
+                pd.Timestamp("2024-01-01 01:05+00:00"): 17.0,
+            },
+            heat_demand={
+                pd.Timestamp("2024-01-01 00:05+00:00"): 10.0,
+                pd.Timestamp("2024-01-01 01:05+00:00"): 12.0,
+            },
+            warm_water_demand={
+                pd.Timestamp("2024-01-01 00:05+00:00"): 5.0,
+                pd.Timestamp("2024-01-01 01:05+00:00"): 6.0,
+            },
+            flow_temperature=35,
+            output_temperature=55,
+            max_electric_power_hp=2,
+            max_electric_power_hr=0,
+            tank_volume=300,
+        )
+
+        expected_heat_pump = HeatPump(
+            cop_high_temp={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 4.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 5.0,
+            },
+            cop_low_temp={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 3.5,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 4.5,
+            },
+            temp_room={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 20.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 22.0,
+            },
+            outdoor_temperature={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 15.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 17.0,
+            },
+            heat_demand={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 10.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 12.0,
+            },
+            warm_water_demand={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 5.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 6.0,
+            },
+            flow_temperature=35,
+            output_temperature=55,
+            max_electric_power_hp=2,
+            max_electric_power_hr=0,
+            tank_volume=300,
+        )
+
+        assert (
+            adjust_heat_pump_timestamps(
+                heat_pump,
+                index,
+                tolerance=datetime.timedelta(minutes=10),
+            )
+            == expected_heat_pump
+        )
+
+
+class Test_Mixed_Timestamp_Adjustments:
+    # Test a models with profiles, batteries and heat pumps together
+    # create unified index, round it and then apply it to the profiles
+    pass
