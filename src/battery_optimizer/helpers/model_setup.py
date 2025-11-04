@@ -123,6 +123,7 @@ def reindex_profile(
     profile: dict[str | datetime.datetime | pd.Timestamp, Any],
     index: list[str | datetime.datetime | pd.Timestamp],
     fill_value: Any = 0,
+    tolerance: datetime.timedelta = datetime.timedelta(0),
 ) -> dict[pd.Timestamp, Any]:
     """
     Reindex a profile to match the given index.
@@ -132,6 +133,13 @@ def reindex_profile(
     will be filled with the given fill_value (by default 0).
     WARNiNG: If there are timestamps in the profile that are not in the index,
     they may be ignored and profiles WILL NOT have the same information.
+    The tolerance is used to set a gap between a timestamp in the profile and
+    the index where it is assumed that these timestamps are close enough to be
+    considered equal. If the difference between a timestamp in the profile and
+    the index is less than or equal to the tolerance, the timestamp from the
+    profile will be replaced by the one from the index regardless of whether
+    the index from the profile is later or earlier. This is useful when dealing
+    with profiles that have been recorded with slight time shifts.
 
     Parameters
     ----------
@@ -141,6 +149,9 @@ def reindex_profile(
         The target index to reindex the profile to.
     fill_value : Any, optional
         The value to use for missing timestamps in the profile, by default 0.
+    tolerance : datetime.timedelta | None, optional
+        The maximum allowed difference between timestamps to consider them
+        equal, by default no tolerance is accepted.
 
     Returns
     -------
@@ -149,6 +160,21 @@ def reindex_profile(
     """
     # Convert keys to datetime if they are strings
     datetime_index = pd.to_datetime(index).sort_values()
+    if tolerance > datetime.timedelta(0):
+        adjusted_profile = {}
+        for time, value in profile.items():
+            original_time = pd.to_datetime(time)
+            # Find if there is a time in the index within the tolerance
+            closest_time = min(
+                datetime_index,
+                key=lambda x: abs(x - original_time),
+            )
+            if abs(closest_time - original_time) <= tolerance:
+                adjusted_profile[closest_time] = value
+            else:
+                adjusted_profile[original_time] = value
+        profile = adjusted_profile
+
     series = pd.Series(
         {pd.to_datetime(time): value for time, value in profile.items()}
     )
