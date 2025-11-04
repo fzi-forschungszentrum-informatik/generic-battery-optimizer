@@ -918,6 +918,168 @@ class Test_Adjust_Heat_Pump_Timestamps:
 
 
 class Test_Mixed_Timestamp_Adjustments:
-    # Test a models with profiles, batteries and heat pumps together
-    # create unified index, round it and then apply it to the profiles
-    pass
+
+    def test_profiles_batteries_heat_pumps(self):
+        """
+        Test adjustment of profiles, batteries and heat pumps together.
+
+        Test that profiles, batteries and heat pumps are all adjusted to a
+        common index correctly.
+        """
+        profile = {
+            pd.Timestamp("2024-01-01 00:05+00:00"): 10,
+            pd.Timestamp("2024-01-01 01:15+00:00"): 20,
+            pd.Timestamp("2024-01-01 02:05+00:00"): 30,
+            pd.Timestamp("2024-01-01 03:00+00:00"): 40,
+        }
+
+        battery = Battery(
+            start_soc_time=pd.Timestamp("2024-01-01 01:20+00:00"),
+            end_soc_time=pd.Timestamp("2024-01-01 02:30+00:00"),
+            start_soc=0.5,
+            end_soc=0.5,
+            capacity=1000,
+            max_charge_power=500,
+        )
+
+        heat_pump = HeatPump(
+            cop_high_temp={
+                pd.Timestamp("2024-01-01 00:45+00:00"): 4.0,
+                pd.Timestamp("2024-01-01 01:45+00:00"): 5.0,
+            },
+            cop_low_temp={
+                pd.Timestamp("2024-01-01 00:45+00:00"): 3.5,
+                pd.Timestamp("2024-01-01 01:45+00:00"): 4.5,
+            },
+            temp_room={
+                pd.Timestamp("2024-01-01 00:45+00:00"): 20.0,
+                pd.Timestamp("2024-01-01 01:45+00:00"): 22.0,
+            },
+            outdoor_temperature={
+                pd.Timestamp("2024-01-01 00:45+00:00"): 15.0,
+                pd.Timestamp("2024-01-01 01:45+00:00"): 17.0,
+            },
+            heat_demand={
+                pd.Timestamp("2024-01-01 00:45+00:00"): 10.0,
+                pd.Timestamp("2024-01-01 01:45+00:00"): 12.0,
+            },
+            warm_water_demand={
+                pd.Timestamp("2024-01-01 00:45+00:00"): 5.0,
+                pd.Timestamp("2024-01-01 01:45+00:00"): 6.0,
+            },
+            flow_temperature=35,
+            output_temperature=55,
+            max_electric_power_hp=2,
+            max_electric_power_hr=0,
+            tank_volume=300,
+        )
+
+        index = generate_common_time_series(
+            profiles=[profile],
+            batteries=[battery],
+            heat_pumps=[heat_pump],
+            round_freq="30min",
+        )
+
+        expected_index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+            pd.Timestamp("2024-01-01 01:30+00:00"),
+            pd.Timestamp("2024-01-01 02:00+00:00"),
+            pd.Timestamp("2024-01-01 02:30+00:00"),
+            pd.Timestamp("2024-01-01 03:00+00:00"),
+        ]
+
+        assert index == expected_index
+
+        # profile
+        assert reindex_profile(profile, index) == {
+            pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+            pd.Timestamp("2024-01-01 01:00+00:00"): 10,
+            pd.Timestamp("2024-01-01 01:30+00:00"): 20,
+            pd.Timestamp("2024-01-01 02:00+00:00"): 20,
+            pd.Timestamp("2024-01-01 02:30+00:00"): 30,
+            pd.Timestamp("2024-01-01 03:00+00:00"): 40,
+        }
+
+        # battery
+        assert adjust_battery_timestamps(battery, index) == battery.model_copy(
+            update={
+                "start_soc_time": pd.Timestamp("2024-01-01 01:30+00:00"),
+                "end_soc_time": pd.Timestamp("2024-01-01 02:30+00:00"),
+            }
+        )
+        assert (
+            adjust_battery_timestamps(battery, index).start_soc_time in index
+        )
+        assert adjust_battery_timestamps(battery, index).end_soc_time in index
+
+        # heat pump
+        assert adjust_heat_pump_timestamps(
+            heat_pump, index
+        ) == heat_pump.model_copy(
+            update={
+                "cop_high_temp": {
+                    pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                    pd.Timestamp("2024-01-01 01:00+00:00"): 4.0,
+                    pd.Timestamp("2024-01-01 01:30+00:00"): 4.0,
+                    pd.Timestamp("2024-01-01 02:00+00:00"): 5.0,
+                    pd.Timestamp("2024-01-01 02:30+00:00"): 5.0,
+                    pd.Timestamp("2024-01-01 03:00+00:00"): 5.0,
+                },
+                "cop_low_temp": {
+                    pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                    pd.Timestamp("2024-01-01 01:00+00:00"): 3.5,
+                    pd.Timestamp("2024-01-01 01:30+00:00"): 3.5,
+                    pd.Timestamp("2024-01-01 02:00+00:00"): 4.5,
+                    pd.Timestamp("2024-01-01 02:30+00:00"): 4.5,
+                    pd.Timestamp("2024-01-01 03:00+00:00"): 4.5,
+                },
+                "temp_room": {
+                    pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                    pd.Timestamp("2024-01-01 01:00+00:00"): 20.0,
+                    pd.Timestamp("2024-01-01 01:30+00:00"): 20.0,
+                    pd.Timestamp("2024-01-01 02:00+00:00"): 22.0,
+                    pd.Timestamp("2024-01-01 02:30+00:00"): 22.0,
+                    pd.Timestamp("2024-01-01 03:00+00:00"): 22.0,
+                },
+                "outdoor_temperature": {
+                    pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                    pd.Timestamp("2024-01-01 01:00+00:00"): 15.0,
+                    pd.Timestamp("2024-01-01 01:30+00:00"): 15.0,
+                    pd.Timestamp("2024-01-01 02:00+00:00"): 17.0,
+                    pd.Timestamp("2024-01-01 02:30+00:00"): 17.0,
+                    pd.Timestamp("2024-01-01 03:00+00:00"): 17.0,
+                },
+                "heat_demand": {
+                    pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                    pd.Timestamp("2024-01-01 01:00+00:00"): 10.0,
+                    pd.Timestamp("2024-01-01 01:30+00:00"): 10.0,
+                    pd.Timestamp("2024-01-01 02:00+00:00"): 12.0,
+                    pd.Timestamp("2024-01-01 02:30+00:00"): 12.0,
+                    pd.Timestamp("2024-01-01 03:00+00:00"): 12.0,
+                },
+                "warm_water_demand": {
+                    pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                    pd.Timestamp("2024-01-01 01:00+00:00"): 5.0,
+                    pd.Timestamp("2024-01-01 01:30+00:00"): 5.0,
+                    pd.Timestamp("2024-01-01 02:00+00:00"): 6.0,
+                    pd.Timestamp("2024-01-01 02:30+00:00"): 6.0,
+                    pd.Timestamp("2024-01-01 03:00+00:00"): 6.0,
+                },
+            }
+        )
+        for parameter in [
+            "cop_high_temp",
+            "cop_low_temp",
+            "temp_room",
+            "outdoor_temperature",
+            "heat_demand",
+            "warm_water_demand",
+        ]:
+            assert all(
+                t in index
+                for t in getattr(
+                    adjust_heat_pump_timestamps(heat_pump, index), parameter
+                ).keys()
+            )
