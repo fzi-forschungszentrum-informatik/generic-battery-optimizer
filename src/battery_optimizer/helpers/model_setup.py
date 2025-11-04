@@ -120,29 +120,31 @@ def generate_common_time_series(
 
 # What happens when the profile contains indices that are not in the index
 def reindex_profile(
-    profile: dict[str | datetime.datetime, Any],
-    index: list[datetime.datetime],
+    profile: dict[str | datetime.datetime | pd.Timestamp, Any],
+    index: list[str | datetime.datetime | pd.Timestamp],
     fill_value: Any = 0,
-) -> dict[datetime.datetime, Any]:
+) -> dict[pd.Timestamp, Any]:
     """
     Reindex a profile to match the given index.
 
     All values after the first time step in the profile will be forward filled.
     Values in the index that precede the first time step in the profile
     will be filled with the given fill_value (by default 0).
+    WARNiNG: If there are timestamps in the profile that are not in the index,
+    they may be ignored and profiles WILL NOT have the same information.
 
     Parameters
     ----------
-    profile : dict[str | datetime.datetime, Any]
+    profile : dict[str | datetime.datetime | pd.Timestamp, Any]
         A profile as a dictionary with datetimes as keys.
-    index : list[datetime.datetime]
+    index : list[str | datetime.datetime | pd.Timestamp]
         The target index to reindex the profile to.
     fill_value : Any, optional
         The value to use for missing timestamps in the profile, by default 0.
 
     Returns
     -------
-    dict[datetime.datetime, Any]
+    dict[pd.Timestamp, Any]
         The reindexed profile as a dictionary with datetimes as keys.
     """
     # Convert keys to datetime if they are strings

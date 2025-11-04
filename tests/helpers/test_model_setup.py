@@ -7,6 +7,7 @@ The reindex_profile method is tested to ensure it correctly forward fills
 values, raises for missing leading data and tests rounding of timestamps.
 """
 
+import datetime
 import pandas as pd
 from battery_optimizer.helpers.model_setup import (
     generate_common_time_series,
@@ -14,6 +15,7 @@ from battery_optimizer.helpers.model_setup import (
 )
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
+from zoneinfo import ZoneInfo
 
 
 class Test_Generate_Common_Time_Series:
@@ -216,3 +218,276 @@ class Test_Generate_Common_Time_Series:
         ]
 
         assert index == expected_index
+
+
+class Test_Reindex_Profile:
+    def test_identical_index_str(self):
+        """Test identical index and profile.
+
+        Test that reindexing a profile with the same index returns the same
+        profile.
+        """
+        index = [
+            "2024-01-01 00:00+01:00",
+            "2024-01-01 01:00+01:00",
+            "2024-01-01 02:00+01:00",
+        ]
+
+        profile = {
+            "2024-01-01 00:00+01:00": 10,
+            "2024-01-01 01:00+01:00": 20,
+            "2024-01-01 02:00+01:00": 30,
+        }
+
+        result = {
+            pd.to_datetime("2024-01-01 00:00+01:00"): 10,
+            pd.to_datetime("2024-01-01 01:00+01:00"): 20,
+            pd.to_datetime("2024-01-01 02:00+01:00"): 30,
+        }
+
+        assert reindex_profile(profile, index) == result
+
+    def test_identical_index_datetime(self):
+        """Test identical index and profile with datetime objects.
+
+        Test that reindexing a profile with the same index returns the same
+        profile.
+        """
+        index = pd.date_range(
+            start="2024-01-01 00:00+01:00",
+            end="2024-01-01 02:00+01:00",
+            freq="h",
+        ).to_pydatetime()
+        assert all(isinstance(t, datetime.datetime) for t in index)
+
+        tz = ZoneInfo("Europe/Berlin")
+        profile = {
+            datetime.datetime(2024, 1, 1, 0, 0, tzinfo=tz): 10,
+            datetime.datetime(2024, 1, 1, 1, 0, tzinfo=tz): 20,
+            datetime.datetime(2024, 1, 1, 2, 0, tzinfo=tz): 30,
+        }
+        assert all(isinstance(t, datetime.datetime) for t in profile.keys())
+
+        assert reindex_profile(profile, index) == {
+            pd.to_datetime(k): v for k, v in profile.items()
+        }
+
+    def test_identical_index_timestamp(self):
+        """Test identical index and profile with Timestamps.
+
+        Test that reindexing a profile with the same index returns the same
+        profile.
+        """
+        index = pd.date_range(
+            start="2024-01-01 00:00+01:00",
+            end="2024-01-01 02:00+01:00",
+            freq="h",
+        )
+        assert all(isinstance(t, pd.Timestamp) for t in index)
+
+        profile = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 20,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 30,
+        }
+        assert all(isinstance(t, pd.Timestamp) for t in profile.keys())
+
+        assert reindex_profile(profile, index) == profile
+
+    def test_identical_index_mixed(self):
+        """Test identical index and profile with mixed datetime types.
+
+        Test that reindexing a profile with the same index returns the same
+        profile.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+01:00"),
+            pd.Timestamp("2024-01-01 01:00+01:00"),
+            pd.Timestamp("2024-01-01 02:00+01:00"),
+        ]
+        assert all(isinstance(t, pd.Timestamp) for t in index)
+
+        profile = {
+            "2024-01-01 00:00+01:00": 10,
+            "2024-01-01 01:00+01:00": 20,
+            "2024-01-01 02:00+01:00": 30,
+        }
+        assert all(isinstance(t, str) for t in profile.keys())
+
+        assert reindex_profile(profile, index) == {
+            pd.to_datetime(k): v for k, v in profile.items()
+        }
+
+    def test_missing_timestamps(self):
+        """
+        Test profile missing some timestamps.
+
+        Test that reindexing a profile with missing timestamps adds the time
+        step and forward fills the values.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+01:00"),
+            pd.Timestamp("2024-01-01 01:00+01:00"),
+            pd.Timestamp("2024-01-01 02:00+01:00"),
+        ]
+
+        profile = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 30,
+        }
+
+        result = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 30,
+        }
+
+        assert reindex_profile(profile, index) == result
+
+    def test_extra_timestamps(self):
+        """
+        Test profile with extra timestamps.
+
+        Test that reindexing a profile with extra timestamps ignores the extra
+        timestamps.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+01:00"),
+            pd.Timestamp("2024-01-01 01:00+01:00"),
+            pd.Timestamp("2024-01-01 02:00+01:00"),
+        ]
+
+        profile = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 20,
+            pd.Timestamp("2024-01-01 01:30+01:00"): 25,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 30,
+        }
+
+        result = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 20,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 30,
+        }
+
+        assert reindex_profile(profile, index) == result
+
+    def test_different_timestamps(self):
+        """
+        Test profile with different timestamps than index.
+
+        Test with profile having different timesteps than index
+        (e.g. index on the hour and profile 3 min past the hour).
+        """
+        index = pd.date_range(
+            start="2024-01-01 00:00+01:00",
+            end="2024-01-01 04:00+01:00",
+            freq="h",
+        )
+        profile = {
+            pd.Timestamp("2024-01-01 00:03+01:00"): 10,
+            pd.Timestamp("2024-01-01 01:03+01:00"): 20,
+            pd.Timestamp("2024-01-01 02:03+01:00"): 30,
+            pd.Timestamp("2024-01-01 03:03+01:00"): 40,
+            pd.Timestamp("2024-01-01 04:03+01:00"): 50,
+        }
+
+        result = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 0,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 20,
+            pd.Timestamp("2024-01-01 03:00+01:00"): 30,
+            pd.Timestamp("2024-01-01 04:00+01:00"): 40,
+        }
+
+        assert reindex_profile(profile, index, fill_value=0) == result
+
+    def test_trailing_missing_timestamps(self):
+        """
+        Test profile missing trailing timestamps.
+
+        Test that reindexing a profile missing trailing timestamps adds the
+        time steps and forward fills the values.
+        """
+        index = pd.date_range(
+            start="2024-01-01 00:00+01:00",
+            end="2024-01-01 04:00+01:00",
+            freq="h",
+        )
+
+        profile = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 20,
+        }
+
+        result = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 10,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 20,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 20,
+            pd.Timestamp("2024-01-01 03:00+01:00"): 20,
+            pd.Timestamp("2024-01-01 04:00+01:00"): 20,
+        }
+
+        assert reindex_profile(profile, index) == result
+
+    def test_leading_missing_timestamps(self):
+        """
+        Test profile missing leading timestamps.
+
+        Test that reindexing a profile missing leading timestamps fills them
+        with the fill value (0).
+        """
+        index = pd.date_range(
+            start="2024-01-01 00:00+01:00",
+            end="2024-01-01 04:00+01:00",
+            freq="h",
+        )
+
+        profile = {
+            pd.Timestamp("2024-01-01 02:00+01:00"): 30,
+            pd.Timestamp("2024-01-01 03:00+01:00"): 40,
+            pd.Timestamp("2024-01-01 04:00+01:00"): 50,
+        }
+
+        result = {
+            pd.Timestamp("2024-01-01 00:00+01:00"): 0,
+            pd.Timestamp("2024-01-01 01:00+01:00"): 0,
+            pd.Timestamp("2024-01-01 02:00+01:00"): 30,
+            pd.Timestamp("2024-01-01 03:00+01:00"): 40,
+            pd.Timestamp("2024-01-01 04:00+01:00"): 50,
+        }
+
+        assert reindex_profile(profile, index, fill_value=0) == result
+
+    def test_rounding(self):
+        """
+        Test profile with timestamps needing rounding.
+
+        Test that reindexing a profile with timestamps that are close to the
+        index timestamps rounds them correctly.
+        """
+        index = pd.date_range(
+            start="2024-01-01 00:00+00:00",
+            end="2024-01-01 04:00+00:00",
+            freq="h",
+        )
+
+        profile_index = pd.date_range(
+            start="2024-01-01 00:05+00:00",
+            end="2024-01-01 04:05+00:00",
+            freq="h",
+        )
+        profile = {t: (i + 1) * 10 for i, t in enumerate(profile_index)}
+
+        result = {t: (i + 1) * 10 for i, t in enumerate(index)}
+
+        assert (
+            reindex_profile(
+                profile,
+                index,
+                fill_value=0,
+                tolerance=datetime.timedelta(minutes=5),
+            )
+            == result
+        )
+
