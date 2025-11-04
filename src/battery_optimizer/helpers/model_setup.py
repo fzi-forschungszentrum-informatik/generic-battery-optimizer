@@ -261,3 +261,40 @@ def adjust_battery_timestamps(
     return battery
 
 
+def adjust_heat_pump_timestamps(
+    heat_pump: HeatPump,
+    index: list[datetime.datetime],
+) -> HeatPump:
+    """
+    Adjust the heat pump's timestamps to match the given index.
+
+    The timestamps in all timeseries attributes will be rounded to the closest
+    timestamp in the index.
+
+    Parameters
+    ----------
+    heat_pump : HeatPump
+        The heat pump to adjust.
+    index : list[datetime.datetime]
+        The target index to adjust the heat pump's timestamps to.
+
+    Returns
+    -------
+    HeatPump
+        The heat pump with adjusted timestamps.
+    """
+
+    for parameter in [
+        "cop_high_temp",
+        "cop_low_temp",
+        "temp_room",
+        "outdoor_temperature",
+        "heat_demand",
+        "warm_water_demand",
+    ]:
+        if isinstance(getattr(heat_pump, parameter), dict):
+            adjusted_profile = reindex_profile(
+                getattr(heat_pump, parameter), index
+            )
+            setattr(heat_pump, parameter, adjusted_profile)
+    return heat_pump

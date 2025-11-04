@@ -14,6 +14,7 @@ from battery_optimizer.helpers.model_setup import (
     generate_common_time_series,
     reindex_profile,
     adjust_battery_timestamps,
+    adjust_heat_pump_timestamps,
 )
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
@@ -663,5 +664,172 @@ class Test_Adjust_Battery_Timestamps:
             == adjusted_battery
         )
 
+
+class Test_Adjust_Heat_Pump_Timestamps:
+    def test_float_values(self):
+        """
+        Test heat pump with float values that are not adjusted.
+
+        Test that parameters that can have a float value instead of a time
+        series are not altered by the method.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        heat_pump = HeatPump(
+            cop_high_temp=4.0,
+            cop_low_temp=3.5,
+            temp_room=20.0,
+            outdoor_temperature=15.0,
+            heat_demand={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 10.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 10.0,
+            },
+            flow_temperature=35,
+            output_temperature=55,
+            max_electric_power_hp=2,
+            max_electric_power_hr=0,
+            tank_volume=300,
+        )
+
+        assert adjust_heat_pump_timestamps(heat_pump, index) == heat_pump
+
+    def test_timestamps_aligned(self):
+        """
+        Test heat pump with timestamps already aligned to index.
+
+        All parameters that can be a time series have timestamps aligned to
+        the index and thus remain unchanged.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+        ]
+        heat_pump = HeatPump(
+            cop_high_temp={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 4.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 4.0,
+            },
+            cop_low_temp={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 3.5,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 3.5,
+            },
+            temp_room={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 20.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 20.0,
+            },
+            outdoor_temperature={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 15.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 15.0,
+            },
+            heat_demand={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 10.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 10.0,
+            },
+            warm_water_demand={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 5.0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 5.0,
+            },
+            flow_temperature=35,
+            output_temperature=55,
+            max_electric_power_hp=2,
+            max_electric_power_hr=0,
+            tank_volume=300,
+        )
+
+        assert adjust_heat_pump_timestamps(heat_pump, index) == heat_pump
+
+    def test_adjustment(self):
+        """
+        Test that adjustment behaves like reindexing.
+
+        The heat pump parameters are time series and should each be adjusted
+        like reindexing a profile.
+        """
+        index = [
+            pd.Timestamp("2024-01-01 00:00+00:00"),
+            pd.Timestamp("2024-01-01 01:00+00:00"),
+            pd.Timestamp("2024-01-01 02:00+00:00"),
+        ]
+        heat_pump = HeatPump(
+            cop_high_temp={
+                pd.Timestamp("2024-01-01 00:30+00:00"): 4.0,
+                pd.Timestamp("2024-01-01 01:30+00:00"): 5.0,
+                pd.Timestamp("2024-01-01 02:30+00:00"): 6.0,
+            },
+            cop_low_temp={
+                pd.Timestamp("2024-01-01 00:30+00:00"): 3.5,
+                pd.Timestamp("2024-01-01 01:30+00:00"): 4.5,
+                pd.Timestamp("2024-01-01 02:30+00:00"): 5.5,
+            },
+            temp_room={
+                pd.Timestamp("2024-01-01 00:30+00:00"): 20.0,
+                pd.Timestamp("2024-01-01 01:30+00:00"): 22.0,
+                pd.Timestamp("2024-01-01 02:30+00:00"): 24.0,
+            },
+            outdoor_temperature={
+                pd.Timestamp("2024-01-01 00:30+00:00"): 15.0,
+                pd.Timestamp("2024-01-01 01:30+00:00"): 17.0,
+                pd.Timestamp("2024-01-01 02:30+00:00"): 19.0,
+            },
+            heat_demand={
+                pd.Timestamp("2024-01-01 00:30+00:00"): 10.0,
+                pd.Timestamp("2024-01-01 01:30+00:00"): 12.0,
+                pd.Timestamp("2024-01-01 02:30+00:00"): 14.0,
+            },
+            warm_water_demand={
+                pd.Timestamp("2024-01-01 00:30+00:00"): 5.0,
+                pd.Timestamp("2024-01-01 01:30+00:00"): 6.0,
+                pd.Timestamp("2024-01-01 02:30+00:00"): 7.0,
+            },
+            flow_temperature=35,
+            output_temperature=55,
+            max_electric_power_hp=2,
+            max_electric_power_hr=0,
+            tank_volume=300,
+        )
+
+        expected_heat_pump = HeatPump(
+            cop_high_temp={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 4.0,
+                pd.Timestamp("2024-01-01 02:00+00:00"): 5.0,
+            },
+            cop_low_temp={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 3.5,
+                pd.Timestamp("2024-01-01 02:00+00:00"): 4.5,
+            },
+            temp_room={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 20.0,
+                pd.Timestamp("2024-01-01 02:00+00:00"): 22.0,
+            },
+            outdoor_temperature={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 15.0,
+                pd.Timestamp("2024-01-01 02:00+00:00"): 17.0,
+            },
+            heat_demand={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 10.0,
+                pd.Timestamp("2024-01-01 02:00+00:00"): 12.0,
+            },
+            warm_water_demand={
+                pd.Timestamp("2024-01-01 00:00+00:00"): 0,
+                pd.Timestamp("2024-01-01 01:00+00:00"): 5.0,
+                pd.Timestamp("2024-01-01 02:00+00:00"): 6.0,
+            },
+            flow_temperature=35,
+            output_temperature=55,
+            max_electric_power_hp=2,
+            max_electric_power_hr=0,
+            tank_volume=300,
+        )
+
+        assert (
+            adjust_heat_pump_timestamps(heat_pump, index) == expected_heat_pump
+        )
 
 
