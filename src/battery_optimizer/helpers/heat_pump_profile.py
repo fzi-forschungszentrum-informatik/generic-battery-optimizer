@@ -131,7 +131,7 @@ def interpolate_temperature(
     Returns
     -------
     float
-        The temperature for the current period in K.
+        The temperature for the current period.
     """
     # Just return the temperature if it is a float
     if isinstance(temperature, (float, int)):
