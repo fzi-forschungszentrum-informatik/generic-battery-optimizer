@@ -150,7 +150,7 @@ class HeatPumpBlock:
                 initialize=interpolate_temperature(
                     self.heat_pump.outdoor_temperature, period
                 ),
-                within=pyo.NonNegativeReals,
+                within=pyo.Reals,
             )
 
         block.warm_water_demand = pyo.Param(
