@@ -70,6 +70,7 @@ class HeatPumpBlock(BaseBlock):
         pyo.Block
             A Pyomo block representing a heat pump system.
         """
+        block.energy_sink.setub(None)
         # Add old heat pump block for compatibility
         block.hp_block = pyo.Block(self.index, rule=self.get_block)
 
