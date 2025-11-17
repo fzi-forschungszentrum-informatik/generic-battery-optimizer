@@ -10,6 +10,7 @@ moderner Wärmepumpen).
 
 import logging
 import pyomo.environ as pyo
+from battery_optimizer.blocks.base import BaseBlock
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.helpers.heat_pump_profile import (
     interpolate_temperature,
@@ -21,7 +22,7 @@ from battery_optimizer.static.numbers import MAX_COP
 log = logging.getLogger(__name__)
 
 
-class HeatPumpBlock:
+class HeatPumpBlock(BaseBlock):
     """
     A Pyomo block representing a heat pump system.
 
@@ -51,10 +52,10 @@ class HeatPumpBlock:
         heat_pump : HeatPump
             The heat pump profile containing parameters and settings.
         """
-        self.index = index
+        super().__init__(index)
         self.heat_pump = heat_pump
 
-    def build_block(self) -> pyo.Block:
+    def _populate_block(self, block: pyo.Block) -> pyo.Block:
         """
         Build the heat pump block.
 
@@ -69,20 +70,6 @@ class HeatPumpBlock:
         pyo.Block
             A Pyomo block representing a heat pump system.
         """
-        block = pyo.Block()
-        # DEFAULT
-        # Source in Matrix
-        block.energy_source = pyo.Var(self.index, initialize=0)
-        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
-        # Sink in matrix
-        block.energy_sink = pyo.Var(self.index, initialize=0)
-        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
-        # DEFAULT
-        block.energy_source.construct()
-        block.price_source.construct()
-        block.energy_sink.construct()
-        block.price_sink.construct()
-
         # Add old heat pump block for compatibility
         block.hp_block = pyo.Block(self.index, rule=self.get_block)
 
