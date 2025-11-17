@@ -100,7 +100,7 @@ class Model:
             The name of the fixed consumption profile.
         power : dict[datetime, float]
             A dictionary of power values mapped to datetime objects,
-            representing the maximum power that can be bought at each
+            representing the maximum power [W] that can be bought at each
             timestamp.
         price : dict[datetime, float]
             A dictionary of price values mapped to datetime objects,
@@ -130,7 +130,7 @@ class Model:
         name : str
             The name of the fixed consumption profile.
         power : dict[datetime, float]
-            A dictionary of power values mapped to datetime objects,
+            A dictionary of power values [W] mapped to datetime objects,
             representing the maximum power that can be sold at each timestamp.
         price : dict[datetime, float]
             A dictionary of price values mapped to datetime objects,

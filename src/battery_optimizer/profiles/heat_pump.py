@@ -105,9 +105,9 @@ class HeatPump(BaseModel):
         default=None,
         title="Bivalent temperature [C]",
         description=(
-            "The outdoor temperature in Celsius below which the heat pump only "
-            "provides 70% of the building heat demand. The remaining 30% are "
-            "provided by a backup heater."
+            "The outdoor temperature in Celsius below which the heat pump "
+            "only provides 70% of the building heat demand. The remaining 30% "
+            "are provided by a backup heater."
         ),
         le=MINIMUM_KELVIN,
     )
@@ -121,10 +121,12 @@ class HeatPump(BaseModel):
             "backup heater."
         ),
         le=MINIMUM_KELVIN,
+        examples=[55, 60, 65, 70],
     )
 
     min_electric_power_hp: Optional[float] = Field(
         default=0.0,
+        # TODO Specify units in W instead of kW (uniformity across the model)
         title="Minimum electric consumption heat pump [kW]",
         description=(
             "The minimum electric consumption of the heat pump in kW. "
@@ -177,7 +179,8 @@ class HeatPump(BaseModel):
         Raises
         ------
         ValueError
-            If minimum electric power is greater than maximum for either device.
+            If minimum electric power is greater than maximum for either
+            device.
         """
         if values.min_electric_power_hp > values.max_electric_power_hp:
             raise ValueError(
@@ -195,9 +198,10 @@ class HeatPump(BaseModel):
         default=90,
         title="Maximum temperature of the TES [C]",
         description=(
-            "The maximum temperature of the thermal energy storage in Celsius. "
-            "This is required for the soc calculation of the thermal energy "
-            "storage (TES). The TES cannot be charged above this temperature."
+            "The maximum temperature of the thermal energy storage in "
+            "Celsius. This is required for the soc calculation of the thermal "
+            "energy storage (TES). The TES cannot be charged above this "
+            "temperature."
         ),
         le=MINIMUM_KELVIN,
     )
@@ -279,6 +283,24 @@ class HeatPump(BaseModel):
             "Use df.to_dict() to convert a pandas dataframe to a suitable "
             "pydantic dictionary."
         ),
+        examples=[
+            {
+                datetime.datetime(
+                    2022, 1, 3, 18, 0, 0, 0, tzinfo=datetime.timezone.utc
+                ): 2.5,
+                datetime.datetime(
+                    2022, 1, 3, 18, 15, 0, 0, tzinfo=datetime.timezone.utc
+                ): 3.0,
+                datetime.datetime(
+                    2022, 1, 3, 18, 30, 0, 0, tzinfo=datetime.timezone.utc
+                ): 0,
+            },
+            {
+                "2022-01-03T18:00:00+00:00": 2.5,
+                "2022-01-03T18:15:00+00:00": 3.0,
+                "2022-01-03T18:30:00+00:00": 0,
+            },
+        ],
     )
 
     warm_water_demand: Optional[dict[datetime.datetime, float]] = Field(

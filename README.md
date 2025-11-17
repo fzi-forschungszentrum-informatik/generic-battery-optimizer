@@ -11,6 +11,9 @@ It takes PowerPriceProfiles and technical data of batteries as input and gives b
 PowerPriceProfiles cointain information about electricity prices and available power at a certain time period of an energy source or sink and can be used to model both dynamic tariffs from the grid, feed-in remuneration,
 and PV generation.
 ![image](overview-ppp-bems.png)
+
+While working with the optimizer make sure to use consistent units throughout the model. As long as consistent units are used for power and price the optimizer will work correctly and the resulting power profiles will be in the same unit as the input power profiles. Note: The heat pump currently uses kW for its input values instead of the default W used by the rest of the model. Make sure to account for this when using heat pumps in the model.
+
 # Getting started
 ## Installing an optimization backend
 To run an optimizer an external Optimizer like GLPK, CPLEX or GUROBI is required. By default the optimizer uses the GLPK optimizer but others may be specified during optimization.
