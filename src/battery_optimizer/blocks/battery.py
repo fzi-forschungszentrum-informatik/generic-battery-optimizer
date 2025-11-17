@@ -1,30 +1,17 @@
 import pyomo.environ as pyo
 # from battery_optimizer.blocks.base import Base
+from battery_optimizer.blocks.base import BaseBlock
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.profiles.battery import Battery
 
 
-class BatteryBlock:
+class BatteryBlock(BaseBlock):
     def __init__(self, index: pyo.Set, battery: Battery):
-        self.index = index
+        super().__init__(index)
         self.battery = battery
 
-    def build_block(self) -> pyo.Block:
+    def _populate_block(self, block: pyo.Block) -> pyo.Block:
         """Build the battery block"""
-        block = pyo.Block()
-        # DEFAULT
-        # Source in Matrix
-        block.energy_source = pyo.Var(self.index, bounds=(0, 0), initialize=0)
-        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
-        # Sink in matrix
-        block.energy_sink = pyo.Var(self.index, bounds=(0, 0), initialize=0)
-        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
-        # DEFAULT
-        block.energy_source.construct()
-        block.price_source.construct()
-        block.energy_sink.construct()
-        block.price_sink.construct()
-
         for i in self.index:
             period_conversion_factor = get_period_length(i, self.index)[1]
             # Energy in
