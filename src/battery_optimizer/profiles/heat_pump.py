@@ -219,6 +219,7 @@ class HeatPump(BaseModel):
             "battery_optimizer.helpers.heat_pump_profile by the methods "
             "tank_dimensions and heat_loss_tank."
         ),
+        examples=[0.4, 0.8, 1.2],
     )
 
     tank_volume: float = Field(
