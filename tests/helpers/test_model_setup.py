@@ -126,7 +126,7 @@ class Test_Generate_Common_Time_Series:
         """
         heat_pump = HeatPump(
             cop_output_temperature={pd.Timestamp("2024-01-01 01:00+00:00"): 4.0},
-            cop_flow_temperature{pd.Timestamp("2024-01-01 02:00+00:00"): 3.5},
+            cop_flow_temperature={pd.Timestamp("2024-01-01 02:00+00:00"): 3.5},
             temp_room={pd.Timestamp("2024-01-01 03:00+00:00"): 20.0},
             outdoor_temperature={pd.Timestamp("2024-01-01 04:00+00:00"): 5.0},
             heat_demand={pd.Timestamp("2024-01-01 05:00+00:00"): 15.0},
