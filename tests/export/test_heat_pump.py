@@ -76,8 +76,8 @@ class TestHeatPumpSoC:
 
     heat_pump = HeatPump(
         name="test-heat-pump",
-        cop_high_temp=cop_high,
-        cop_low_temp=cop_low,
+        cop_output_temperature=cop_high,
+        cop_flow_temperature=cop_low,
         flow_temperature=35,
         output_temperature=55,
         max_electric_power_hp=10,
