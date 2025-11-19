@@ -42,7 +42,7 @@ class HeatPump(BaseModel):
         ),
     )
 
-    cop_high_temp: float | dict[datetime.datetime, float] = Field(
+    cop_output_temperature: float | dict[datetime.datetime, float] = Field(
         title="The CoP of the heat pump at the maximum output temperature.",
         description=(
             "The coefficient of performance (CoP) of the heat pump when the "
@@ -53,7 +53,7 @@ class HeatPump(BaseModel):
         ),
         examples=[1.0, 2.3, 3.1],
     )
-    cop_low_temp: float | dict[datetime.datetime, float] = Field(
+    cop_flow_temperature: float | dict[datetime.datetime, float] = Field(
         title="CoP at flow temperature",
         description=(
             "The coefficient of performance (CoP) of the heat pump when the "
@@ -61,7 +61,7 @@ class HeatPump(BaseModel):
             "supply building directly. The specified CoP should be valid "
             "for heat pump when it has to heat the water to the flow "
             "temperature of the heating system. This CoP should generally be "
-            "phigher than the cop_high_temp."
+            "phigher than the cop_output_temperature."
         ),
         examples=[3.0, 4.3, 5.1],
     )
