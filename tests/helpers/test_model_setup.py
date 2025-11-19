@@ -125,8 +125,8 @@ class Test_Generate_Common_Time_Series:
         contain all time stamps from the input.
         """
         heat_pump = HeatPump(
-            cop_high_temp={pd.Timestamp("2024-01-01 01:00+00:00"): 4.0},
-            cop_low_temp={pd.Timestamp("2024-01-01 02:00+00:00"): 3.5},
+            cop_output_temperature={pd.Timestamp("2024-01-01 01:00+00:00"): 4.0},
+            cop_flow_temperature{pd.Timestamp("2024-01-01 02:00+00:00"): 3.5},
             temp_room={pd.Timestamp("2024-01-01 03:00+00:00"): 20.0},
             outdoor_temperature={pd.Timestamp("2024-01-01 04:00+00:00"): 5.0},
             heat_demand={pd.Timestamp("2024-01-01 05:00+00:00"): 15.0},
@@ -157,8 +157,8 @@ class Test_Generate_Common_Time_Series:
         the output to contain one timestamp because the input has one.
         """
         heat_pump = HeatPump(
-            cop_high_temp=4.0,
-            cop_low_temp=3.5,
+            cop_output_temperature=4.0,
+            cop_flow_temperature=3.5,
             temp_room=20.0,
             outdoor_temperature=5.0,
             heat_demand={pd.Timestamp("2024-01-01 05:00+00:00"): 15.0},
@@ -191,8 +191,8 @@ class Test_Generate_Common_Time_Series:
         )
 
         heat_pump = HeatPump(
-            cop_high_temp={pd.Timestamp("2024-01-01 01:00+00:00"): 4.0},
-            cop_low_temp={pd.Timestamp("2024-01-01 02:00+00:00"): 3.5},
+            cop_output_temperature={pd.Timestamp("2024-01-01 01:00+00:00"): 4.0},
+            cop_flow_temperature={pd.Timestamp("2024-01-01 02:00+00:00"): 3.5},
             temp_room={pd.Timestamp("2024-01-01 03:00+00:00"): 20.0},
             outdoor_temperature={pd.Timestamp("2024-01-01 04:00+00:00"): 5.0},
             heat_demand={pd.Timestamp("2024-01-01 05:00+00:00"): 15.0},
@@ -678,8 +678,8 @@ class Test_Adjust_Heat_Pump_Timestamps:
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
         heat_pump = HeatPump(
-            cop_high_temp=4.0,
-            cop_low_temp=3.5,
+            cop_output_temperature=4.0,
+            cop_flow_temperature=3.5,
             temp_room=20.0,
             outdoor_temperature=15.0,
             heat_demand={
@@ -707,11 +707,11 @@ class Test_Adjust_Heat_Pump_Timestamps:
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
         heat_pump = HeatPump(
-            cop_high_temp={
+            cop_output_temperature={
                 pd.Timestamp("2024-01-01 00:00+00:00"): 4.0,
                 pd.Timestamp("2024-01-01 01:00+00:00"): 4.0,
             },
-            cop_low_temp={
+            cop_flow_temperature={
                 pd.Timestamp("2024-01-01 00:00+00:00"): 3.5,
                 pd.Timestamp("2024-01-01 01:00+00:00"): 3.5,
             },
@@ -753,12 +753,12 @@ class Test_Adjust_Heat_Pump_Timestamps:
             pd.Timestamp("2024-01-01 02:00+00:00"),
         ]
         heat_pump = HeatPump(
-            cop_high_temp={
+            cop_output_temperature={
                 pd.Timestamp("2024-01-01 00:30+00:00"): 4.0,
                 pd.Timestamp("2024-01-01 01:30+00:00"): 5.0,
                 pd.Timestamp("2024-01-01 02:30+00:00"): 6.0,
             },
-            cop_low_temp={
+            cop_flow_temperature={
                 pd.Timestamp("2024-01-01 00:30+00:00"): 3.5,
                 pd.Timestamp("2024-01-01 01:30+00:00"): 4.5,
                 pd.Timestamp("2024-01-01 02:30+00:00"): 5.5,
@@ -791,12 +791,12 @@ class Test_Adjust_Heat_Pump_Timestamps:
         )
 
         expected_heat_pump = HeatPump(
-            cop_high_temp={
+            cop_output_temperature={
                 pd.Timestamp("2024-01-01 00:00+00:00"): 0,
                 pd.Timestamp("2024-01-01 01:00+00:00"): 4.0,
                 pd.Timestamp("2024-01-01 02:00+00:00"): 5.0,
             },
-            cop_low_temp={
+            cop_flow_temperature={
                 pd.Timestamp("2024-01-01 00:00+00:00"): 0,
                 pd.Timestamp("2024-01-01 01:00+00:00"): 3.5,
                 pd.Timestamp("2024-01-01 02:00+00:00"): 4.5,
@@ -844,11 +844,11 @@ class Test_Adjust_Heat_Pump_Timestamps:
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
         heat_pump = HeatPump(
-            cop_high_temp={
+            cop_output_temperature={
                 pd.Timestamp("2024-01-01 00:05+00:00"): 4.0,
                 pd.Timestamp("2024-01-01 01:05+00:00"): 5.0,
             },
-            cop_low_temp={
+            cop_flow_temperature={
                 pd.Timestamp("2024-01-01 00:05+00:00"): 3.5,
                 pd.Timestamp("2024-01-01 01:05+00:00"): 4.5,
             },
@@ -876,11 +876,11 @@ class Test_Adjust_Heat_Pump_Timestamps:
         )
 
         expected_heat_pump = HeatPump(
-            cop_high_temp={
+            cop_output_temperature={
                 pd.Timestamp("2024-01-01 00:00+00:00"): 4.0,
                 pd.Timestamp("2024-01-01 01:00+00:00"): 5.0,
             },
-            cop_low_temp={
+            cop_flow_temperature={
                 pd.Timestamp("2024-01-01 00:00+00:00"): 3.5,
                 pd.Timestamp("2024-01-01 01:00+00:00"): 4.5,
             },
@@ -943,11 +943,11 @@ class Test_Mixed_Timestamp_Adjustments:
         )
 
         heat_pump = HeatPump(
-            cop_high_temp={
+            cop_output_temperature={
                 pd.Timestamp("2024-01-01 00:45+00:00"): 4.0,
                 pd.Timestamp("2024-01-01 01:45+00:00"): 5.0,
             },
-            cop_low_temp={
+            cop_flow_temperature={
                 pd.Timestamp("2024-01-01 00:45+00:00"): 3.5,
                 pd.Timestamp("2024-01-01 01:45+00:00"): 4.5,
             },
@@ -1019,7 +1019,7 @@ class Test_Mixed_Timestamp_Adjustments:
             heat_pump, index
         ) == heat_pump.model_copy(
             update={
-                "cop_high_temp": {
+                "cop_output_temperature": {
                     pd.Timestamp("2024-01-01 00:00+00:00"): 0,
                     pd.Timestamp("2024-01-01 01:00+00:00"): 4.0,
                     pd.Timestamp("2024-01-01 01:30+00:00"): 4.0,
@@ -1027,7 +1027,7 @@ class Test_Mixed_Timestamp_Adjustments:
                     pd.Timestamp("2024-01-01 02:30+00:00"): 5.0,
                     pd.Timestamp("2024-01-01 03:00+00:00"): 5.0,
                 },
-                "cop_low_temp": {
+                "cop_flow_temperature": {
                     pd.Timestamp("2024-01-01 00:00+00:00"): 0,
                     pd.Timestamp("2024-01-01 01:00+00:00"): 3.5,
                     pd.Timestamp("2024-01-01 01:30+00:00"): 3.5,
@@ -1070,8 +1070,8 @@ class Test_Mixed_Timestamp_Adjustments:
             }
         )
         for parameter in [
-            "cop_high_temp",
-            "cop_low_temp",
+            "cop_output_temperature",
+            "cop_flow_temperature",
             "temp_room",
             "outdoor_temperature",
             "heat_demand",

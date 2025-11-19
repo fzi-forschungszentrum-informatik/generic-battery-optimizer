@@ -322,7 +322,7 @@ class HpLibWrapper:
             parameters = hpl.get_parameters(model=self.heat_pump.type)
             self.hpl_heat_pump = hpl.HeatPump(parameters)
 
-    def get_cop_low_temp(
+    def get_cop_flow_temperature(
         self,
         source_temperature: dict[datetime.datetime, float] | float | int,
         outdoor_temperature: dict[datetime.datetime, float] | float | int,
@@ -368,7 +368,7 @@ class HpLibWrapper:
             return cop[0]
         return cop
 
-    def get_cop_high_temp(
+    def get_cop_output_temperature(
         self,
         source_temperature: dict[datetime.datetime, float] | float | int,
         outdoor_temperature: dict[datetime.datetime, float] | float | int,
