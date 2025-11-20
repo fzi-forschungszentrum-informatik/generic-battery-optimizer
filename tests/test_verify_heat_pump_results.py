@@ -195,18 +195,18 @@ def test_scenarios(data: dict[str, Any]):
         )
         # living_area=house_data["SURFACE_BUILDING"],
 
-        cop_high = hplib.get_cop_high_temp(
+        cop_high = hplib.get_cop_output_temperature(
             outdoor_temperature.to_dict(), outdoor_temperature.to_dict()
         )
-        cop_low = hplib.get_cop_low_temp(
+        cop_low = hplib.get_cop_flow_temperature(
             outdoor_temperature.to_dict(), outdoor_temperature.to_dict()
         )
 
         # Heat pump
         hp = HeatPump(
             name="Heat Pump",
-            cop_high_temp=cop_high,
-            cop_low_temp=cop_low,
+            cop_output_temperature=cop_high,
+            cop_flow_temperature=cop_low,
             flow_temperature=house_data["TEMP_SUPPLY_DEMAND"] - C_TO_K,
             output_temperature=house_data["TEMP_HP"] - C_TO_K,
             temp_room=house_data["TEMP_ROOM"] - C_TO_K,
