@@ -1,4 +1,11 @@
-from datetime import datetime
+"""
+Tests for device power constraints in battery optimization models.
+
+These tests verify that constraints for multiple devices (e.g., batteries,
+buy/sell profiles) are correctly implemented in the optimization model.
+"""
+
+from typing import Literal
 import pandas as pd
 import pytest
 from tests.helpers import find_solver
@@ -10,6 +17,13 @@ from pandas.testing import assert_frame_equal
 
 
 class TestDevicePowerConstraints:
+    """
+    Tests for multi-device power constraints.
+
+    Test the constraint_device_power(a, b) method of the optimization model
+    to ensure that it correctly restricts simultaneous power flows between
+    multiple devices (e.g., batteries, buy/sell profiles) within the model.
+    """
     time_series = pd.date_range(
         start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h"
     )
@@ -21,10 +35,13 @@ class TestDevicePowerConstraints:
             ("buy_block", "battery_block"),
         ],
     )
-    def test_buy_sell_battery_sell_restriction(self, block1, block2):
+    def test_buy_sell_battery_sell_restriction(
+        self,
+        block1: Literal["battery_block"] | Literal["buy_block"],
+        block2: Literal["sell_block"] | Literal["battery_block"],
+    ):
         """
-        Test the restriction of simultaneous buying and selling of energy
-        for a battery within an optimization model.
+        Test the restriction of buying and selling of energy for a battery.
 
         This test verifies that the optimization model correctly applies
         constraints to prevent a battery from buying or selling energy
@@ -32,35 +49,39 @@ class TestDevicePowerConstraints:
         It uses predefined buy and sell profiles, a battery configuration, and
         a time series to simulate the scenario.
 
-        Args:
-            block1 (str): The name of the first block to be
-                          constrained in the optimization model.
-            block2 (str): The name of the second block to be
-                          constrained in the optimization model.
-
         Test Steps:
-            1. Define a time series for the optimization.
-            2. Create expected buy and sell profiles with energy and price
-               data.
-            3. Configure a battery with specific parameters such as capacity
-               and efficiency.
-            4. Initialize the optimization model and add the buy, sell, and
-               battery profiles.
-            5. Apply a constraint to restrict simultaneous buying and selling
-               using the `constraint_device_power` method.
-            6. Solve the optimization model and export the results.
-            7. Compare the resulting buy, sell, and battery profiles with
-               expected results using assertions.
+        1. Define a time series for the optimization.
+        2. Create expected buy and sell profiles with energy and price
+            data.
+        3. Configure a battery with specific parameters such as capacity
+            and efficiency.
+        4. Initialize the optimization model and add the buy, sell, and
+            battery profiles.
+        5. Apply a constraint to restrict simultaneous buying and selling
+            using the `constraint_device_power` method.
+        6. Solve the optimization model and export the results.
+        7. Compare the resulting buy, sell, and battery profiles with
+            expected results using assertions.
 
         Assertions:
-            - The resulting buy and sell profiles should match the expected
-              profiles, ensuring no simultaneous buying and selling occurs.
-            - The resulting battery power and state of charge (SOC) profiles
-              should match the expected profiles.
+        - The resulting buy and sell profiles should match the expected
+            profiles, ensuring no simultaneous buying and selling occurs.
+        - The resulting battery power and state of charge (SOC) profiles
+            should match the expected profiles.
 
-        Raises:
-            AssertionError: If the resulting profiles do not match the expected
-                            profiles.
+        Parameters
+        ----------
+        block1 :  str
+            The name of the first block to be constrained in the optimization
+            model.
+        block2 : str
+            The name of the second block to be constrained in the optimization
+            model.
+
+        Raises
+        ------
+        AssertionError
+            If the resulting profiles do not match the expected profiles.
         """
         # Input data
         buy_power = {
@@ -157,12 +178,26 @@ class TestDevicePowerConstraints:
             check_freq=False,
         )
 
-    @pytest.mark.parametrize(
-        "power",
-        range(0, 100 - 12, 10),
-    )
-    def test_consumption_from_pv_and_restrict_sell(self, power):
-        """Home consumption from PV (rest (limited) sold to grid)"""
+    @pytest.mark.parametrize("power", range(0, 100 - 12, 10))
+    def test_consumption_from_pv_and_restrict_sell(self, power: int):
+        """
+        Home consumption from PV (rest (limited) sold to grid).
+
+        This test verifies that the optimization model correctly applies
+        constraints to limit the power sold from PV to the grid while
+        ensuring that home consumption energy is provided by the PV system
+        because it is the cheapest energy option.
+
+        Parameters
+        ----------
+        power : int
+            The maximum power that can be sold from the PV system to the grid.
+
+        Raises
+        ------
+        AssertionError
+            If the resulting profiles do not match the expected profiles.
+        """
         pv_power = {
             self.time_series[0]: 100,
             self.time_series[1]: 100,
@@ -249,7 +284,19 @@ class TestDevicePowerConstraints:
         )
 
     def test_multi_source_restriction(self):
-        """Test restriction of multiple sources (PV, battery, grid)"""
+        """
+        Test restriction of multiple sources (PV, battery, grid).
+
+        This test verifies that the optimization model correctly applies
+        constraints to limit the combined power output from multiple sources
+        (PV and battery) to a sell profile, ensuring that the total power
+        sold does not exceed a specified limit.
+
+        Raises
+        ------
+        AssertionError
+            If the resulting profiles do not match the expected profiles.
+        """
         pv_power = {
             self.time_series[0]: 5,
             self.time_series[1]: 20,
@@ -317,6 +364,184 @@ class TestDevicePowerConstraints:
             pd.DataFrame(
                 data={
                     "test-battery": [-15, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+        assert_frame_equal(
+            sell_result,
+            pd.DataFrame(
+                data={
+                    "pv": [0, 0, 0],
+                    "sell": [20, 20, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+
+class TestSourcePowerConstraints:
+    """
+    Test that method constraint_device_power_source is implemented correctly.
+
+    The method limits all power from a list of source devices to a maximum
+    power value for all sink devices combined.
+    """
+
+    time_series = pd.date_range(
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h"
+    )
+
+    def test_single_source_single_sink(self):
+        """
+        Test single source and single sink power constraint.
+
+        Test that a model with a single source (PV) and a single sink (grid)
+        correctly applies a power constraint between them. The PV system can
+        provide more power than allowed to be sold to the grid.
+
+        Raises
+        ------
+        AssertionError
+            If the resulting profiles do not match the expected profiles.
+        """
+        pv_power = {
+            self.time_series[0]: 50,
+            self.time_series[1]: 50,
+            self.time_series[2]: 0,
+        }
+        pv_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+
+        sell_power = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+        sell_price = {
+            self.time_series[0]: 30,
+            self.time_series[1]: 30,
+            self.time_series[2]: 0,
+        }
+
+        # Optimization
+        opt = Model(self.time_series)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
+        sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
+        opt.add_energy_paths()
+
+        # Apply constraint
+        opt.constraint_device_power_source(pv_block, 20)
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+        export = Exporter(opt).to_df()
+        buy_result = export.to_buy()
+        sell_result = export.to_sell()
+
+        assert_frame_equal(
+            buy_result,
+            pd.DataFrame(
+                data={
+                    "pv": [20, 20, 0],
+                    "sell": [0, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+        assert_frame_equal(
+            sell_result,
+            pd.DataFrame(
+                data={
+                    "pv": [0, 0, 0],
+                    "sell": [20, 20, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+
+class TestSinkPowerConstraints:
+    """
+    Test that method constraint_device_power_sink is implemented correctly.
+
+    The method restricts a list of sink devices to a maximum power value for
+    all source devices combined.
+    """
+
+    time_series = pd.date_range(
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h"
+    )
+
+    def test_single_source_single_sink(self):
+        """
+        Test single source and single sink power constraint.
+
+        Test that a model with a single source (PV) and a single sink (grid)
+        correctly applies a power constraint between them. The PV system can
+        provide more power than allowed to be sold to the grid.
+
+        Raises
+        ------
+        AssertionError
+            If the resulting profiles do not match the expected profiles.
+        """
+        pv_power = {
+            self.time_series[0]: 50,
+            self.time_series[1]: 50,
+            self.time_series[2]: 0,
+        }
+        pv_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+
+        sell_power = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+        sell_price = {
+            self.time_series[0]: 30,
+            self.time_series[1]: 30,
+            self.time_series[2]: 0,
+        }
+
+        # Optimization
+        opt = Model(self.time_series)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
+        sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
+        opt.add_energy_paths()
+
+        # Apply constraint
+        opt.constraint_device_power_sink(sell_block, 20)
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+        export = Exporter(opt).to_df()
+        buy_result = export.to_buy()
+        sell_result = export.to_sell()
+
+        assert_frame_equal(
+            buy_result,
+            pd.DataFrame(
+                data={
+                    "pv": [20, 20, 0],
+                    "sell": [0, 0, 0],
                 },
                 index=self.time_series,
             ),

@@ -362,29 +362,36 @@ The optimization model is designed to be extensible with minimal effort. Each pr
 To implement a new block create a new file in src > battery_optimizer > blocks and add the following template to the file:
 
 ```python
-class MyBlock:
+from battery_optimizer.blocks.base import BaseBlock
+
+class MyBlock(BaseBlock):
     def __init__(self, index: pyo.Set, my_block_information: MyBlockPydantic):
         self.index = index
         self.my_block_information = my_block_information
 
-    def build_block(self) -> pyo.Block:
-        """Build the block"""
-        block = pyo.Block()
-        # DEFAULT
-        # Source in Matrix
-        block.energy_source = pyo.Var(self.index, bounds=(0, 0), initialize=0)
-        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
-        # Sink in matrix
-        block.energy_sink = pyo.Var(self.index, bounds=(0, 0), initialize=0)
-        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
-        # Construct variables and parameters
-        block.energy_source.construct()
-        block.price_source.construct()
-        block.energy_sink.construct()
-        block.price_sink.construct()
-        # DEFAULT
-
+    def _populate_block(self, block: pyo.Block) -> pyo.Block:
+        """
+        Add custom logic to the block.
+        
+        This method is called when the block is built.
+        Add all logic (constraints, variables, parameters) that the block needs
+        here.
+        
+        Parameters
+        ----------
+        block : pyo.Block
+            The block to populate with custom logic.
+            
+        Returns
+        -------
+        pyo.Block
+            The populated block.
+        """
         ### Your device implementation
+        # e.g. set energy and price limits:
+        for i in self.index:
+            block.energy_source[i].setub(5)
+            block.price_source[i].set_value(3)
 
         return block
 ```

@@ -39,7 +39,7 @@ class Battery(BaseModel):
         description="The initial SoC of the battery in percent (0-1).",
     )
     end_soc: Optional[float] = Field(
-        None,
+        default=None,
         ge=0,
         le=1,
         title="SoC at end of optimization period",
