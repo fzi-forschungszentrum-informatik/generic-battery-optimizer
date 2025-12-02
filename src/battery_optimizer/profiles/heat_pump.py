@@ -42,7 +42,7 @@ class HeatPump(BaseModel):
         ),
     )
 
-    cop_high: float | dict[datetime.datetime, float] = Field(
+    cop_high_temp: float | dict[datetime.datetime, float] = Field(
         title="The CoP of the heat pump at the maximum output temperature.",
         description=(
             "The coefficient of performance (CoP) of the heat pump when the "
@@ -69,7 +69,7 @@ class HeatPump(BaseModel):
         examples=[1.0, 2.3, 3.1],
     )
 
-    cop_low: float | dict[datetime.datetime, float] = Field(
+    cop_low_temp: float | dict[datetime.datetime, float] = Field(
         title="CoP at flow temperature",
         description=(
             "The coefficient of performance (CoP) of the heat pump when the "
@@ -103,8 +103,8 @@ class HeatPump(BaseModel):
         """
         Assign deprecated fields to new fields if they are provided.
 
-        This validator checks if the deprecated fields 'cop_high' and
-        'cop_low' are provided. If they are, their values are assigned to
+        This validator checks if the deprecated fields 'cop_high_temp' and
+        'cop_low_temp' are provided. If they are, their values are assigned to
         the new fields 'cop_output_temperature' and 'cop_flow_temperature'
         respectively.
 
@@ -113,10 +113,10 @@ class HeatPump(BaseModel):
         HeatPump
             The validated HeatPump instance with deprecated fields assigned.
         """
-        if hasattr(self, "cop_high") and self.cop_high is not None:
-            self.cop_output_temperature = self.cop_high
-        if hasattr(self, "cop_low") and self.cop_low is not None:
-            self.cop_flow_temperature = self.cop_low
+        if hasattr(self, "cop_high_temp") and self.cop_high_temp is not None:
+            self.cop_output_temperature = self.cop_high_temp
+        if hasattr(self, "cop_low_temp") and self.cop_low_temp is not None:
+            self.cop_flow_temperature = self.cop_low_temp
         return self
 
     flow_temperature: float = Field(
