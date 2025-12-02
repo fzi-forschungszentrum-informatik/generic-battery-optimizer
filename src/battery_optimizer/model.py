@@ -470,9 +470,6 @@ class Model:
         )
         return self.model.device_power_limits.component(constraint_name)
 
-        return self.constraint_device_power(
-            a, self._get_device_tuples(), power
-        )
     def constraint_device_power_source(
         self, a: list[pyo.Block], power: float
     ) -> pyo.Constraint:
@@ -496,10 +493,13 @@ class Model:
             The constraint object added to the model that enforces
             the power transfer limit.
         """
+        devices = [
+            c
+            for c in self._get_devices()
+            if any(v.ub != 0 for v in c.energy_sink.values())
+        ]
+        return self.constraint_device_power(a, devices, power)
 
-        return self.constraint_device_power(
-            self._get_device_tuples(), b, power
-        )
     def constraint_device_power_sink(
         self, b: list[pyo.Block], power: float
     ) -> pyo.Constraint:
@@ -522,6 +522,12 @@ class Model:
             The constraint object added to the model that enforces
             the power transfer limit.
         """
+        devices = [
+            c
+            for c in self._get_devices()
+            if any(v.ub != 0 for v in c.energy_source.values())
+        ]
+        return self.constraint_device_power(devices, b, power)
 
     def generate_objective(self):
         """
@@ -634,6 +640,26 @@ class Model:
             for device in devices
         ]
         return device_tuples
+
+    def _get_devices(self) -> list[pyo.Block]:
+        """
+        Get a list of all devices in the model.
+
+        Get a list of all device blocks in the model.
+
+        Returns
+        -------
+        list[pyo.Block]
+            A list of device blocks.
+        """
+        device_tree = self._get_device_tree()
+        devices = [
+            self.model.component(device_class).component(device)
+            for device_class, devices in device_tree.items()
+            for device in devices
+        ]
+        print(devices)
+        return devices
 
     @staticmethod
     def _hash_names(names: list[str], inner_separator: str = "-") -> str:
