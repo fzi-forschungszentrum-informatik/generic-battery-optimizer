@@ -383,3 +383,181 @@ class TestDevicePowerConstraints:
             check_dtype=False,
             check_freq=False,
         )
+
+
+class TestSourcePowerConstraints:
+    """
+    Test that method constraint_device_power_source is implemented correctly.
+
+    The method limits all power from a list of source devices to a maximum
+    power value for all sink devices combined.
+    """
+
+    time_series = pd.date_range(
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h"
+    )
+
+    def test_single_source_single_sink(self):
+        """
+        Test single source and single sink power constraint.
+
+        Test that a model with a single source (PV) and a single sink (grid)
+        correctly applies a power constraint between them. The PV system can
+        provide more power than allowed to be sold to the grid.
+
+        Raises
+        ------
+        AssertionError
+            If the resulting profiles do not match the expected profiles.
+        """
+        pv_power = {
+            self.time_series[0]: 50,
+            self.time_series[1]: 50,
+            self.time_series[2]: 0,
+        }
+        pv_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+
+        sell_power = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+        sell_price = {
+            self.time_series[0]: 30,
+            self.time_series[1]: 30,
+            self.time_series[2]: 0,
+        }
+
+        # Optimization
+        opt = Model(self.time_series)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
+        sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
+        opt.add_energy_paths()
+
+        # Apply constraint
+        opt.constraint_device_power_source(pv_block, 20)
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+        export = Exporter(opt).to_df()
+        buy_result = export.to_buy()
+        sell_result = export.to_sell()
+
+        assert_frame_equal(
+            buy_result,
+            pd.DataFrame(
+                data={
+                    "pv": [20, 20, 0],
+                    "sell": [0, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+        assert_frame_equal(
+            sell_result,
+            pd.DataFrame(
+                data={
+                    "pv": [0, 0, 0],
+                    "sell": [20, 20, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+
+class TestSinkPowerConstraints:
+    """
+    Test that method constraint_device_power_sink is implemented correctly.
+
+    The method restricts a list of sink devices to a maximum power value for
+    all source devices combined.
+    """
+
+    time_series = pd.date_range(
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h"
+    )
+
+    def test_single_source_single_sink(self):
+        """
+        Test single source and single sink power constraint.
+
+        Test that a model with a single source (PV) and a single sink (grid)
+        correctly applies a power constraint between them. The PV system can
+        provide more power than allowed to be sold to the grid.
+
+        Raises
+        ------
+        AssertionError
+            If the resulting profiles do not match the expected profiles.
+        """
+        pv_power = {
+            self.time_series[0]: 50,
+            self.time_series[1]: 50,
+            self.time_series[2]: 0,
+        }
+        pv_price = {
+            self.time_series[0]: 0,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+
+        sell_power = {
+            self.time_series[0]: 100,
+            self.time_series[1]: 100,
+            self.time_series[2]: 0,
+        }
+        sell_price = {
+            self.time_series[0]: 30,
+            self.time_series[1]: 30,
+            self.time_series[2]: 0,
+        }
+
+        # Optimization
+        opt = Model(self.time_series)
+        pv_block = opt.add_buy_profile("pv", pv_power, pv_price)
+        sell_block = opt.add_sell_profile("sell", sell_power, sell_price)
+        opt.add_energy_paths()
+
+        # Apply constraint
+        opt.constraint_device_power_sink(sell_block, 20)
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+        export = Exporter(opt).to_df()
+        buy_result = export.to_buy()
+        sell_result = export.to_sell()
+
+        assert_frame_equal(
+            buy_result,
+            pd.DataFrame(
+                data={
+                    "pv": [20, 20, 0],
+                    "sell": [0, 0, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
+
+        assert_frame_equal(
+            sell_result,
+            pd.DataFrame(
+                data={
+                    "pv": [0, 0, 0],
+                    "sell": [20, 20, 0],
+                },
+                index=self.time_series,
+            ),
+            check_dtype=False,
+            check_freq=False,
+        )
