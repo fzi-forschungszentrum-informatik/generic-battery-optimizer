@@ -35,7 +35,11 @@ class TestDevicePowerConstraints:
             ("buy_block", "battery_block"),
         ],
     )
-    def test_buy_sell_battery_sell_restriction(self, block1, block2):
+    def test_buy_sell_battery_sell_restriction(
+        self,
+        block1: Literal["battery_block"] | Literal["buy_block"],
+        block2: Literal["sell_block"] | Literal["battery_block"],
+    ):
         """
         Test the restriction of buying and selling of energy for a battery.
 
