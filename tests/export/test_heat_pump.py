@@ -67,17 +67,17 @@ class TestHeatPumpSoC:
             output_temperature=55,
         )
     )
-    cop_high = hplib.get_cop_high_temp(
+    cop_high = hplib.get_cop_output_temperature(
         heat_source_temperature, outdoor_temperature
     )
-    cop_low = hplib.get_cop_low_temp(
+    cop_low = hplib.get_cop_flow_temperature(
         heat_source_temperature, outdoor_temperature
     )
 
     heat_pump = HeatPump(
         name="test-heat-pump",
-        cop_high_temp=cop_high,
-        cop_low_temp=cop_low,
+        cop_output_temperature=cop_high,
+        cop_flow_temperature=cop_low,
         flow_temperature=35,
         output_temperature=55,
         max_electric_power_hp=10,

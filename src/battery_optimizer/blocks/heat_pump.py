@@ -159,9 +159,9 @@ class HeatPumpBlock(BaseBlock):
 
         block.cop_high = pyo.Param(
             initialize=(
-                self.heat_pump.cop_high_temp[period]
-                if isinstance(self.heat_pump.cop_high_temp, dict)
-                else self.heat_pump.cop_high_temp
+                self.heat_pump.cop_output_temperature[period]
+                if isinstance(self.heat_pump.cop_output_temperature, dict)
+                else self.heat_pump.cop_output_temperature
             ),
             doc=(
                 "The COP of the heat pump at the maximum output temperature."
@@ -169,9 +169,9 @@ class HeatPumpBlock(BaseBlock):
         )
         block.cop_low = pyo.Param(
             initialize=(
-                self.heat_pump.cop_low_temp[period]
-                if isinstance(self.heat_pump.cop_low_temp, dict)
-                else self.heat_pump.cop_low_temp
+                self.heat_pump.cop_flow_temperature[period]
+                if isinstance(self.heat_pump.cop_flow_temperature, dict)
+                else self.heat_pump.cop_flow_temperature
             ),
             doc=("The COP of the heat pump at the flow output temperature."),
         )

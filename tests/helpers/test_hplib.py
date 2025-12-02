@@ -52,7 +52,7 @@ class TestHpLibWrapper:
         """
         Test the COP calculation for dictionary-based inputs.
 
-        This method tests the `get_cop_high_temp` and `get_cop_low_temp` methods
+        This method tests the `get_cop_output_temperature` and `get_cop_flow_temperature` methods
         of the HpLibWrapper class using dictionary inputs for outdoor and heat
         source temperatures. It verifies that the COP values are within the
         expected range and that `cop_high` is less than `cop_low` for all
@@ -74,10 +74,10 @@ class TestHpLibWrapper:
             self.time_series[1]: 0,
             self.time_series[2]: 0,
         }
-        cop_high = self.hplib.get_cop_high_temp(
+        cop_high = self.hplib.get_cop_output_temperature(
             heat_source_temperature, outdoor_temperature
         )
-        cop_low = self.hplib.get_cop_low_temp(heat_source_temperature, outdoor_temperature)
+        cop_low = self.hplib.get_cop_flow_temperature(heat_source_temperature, outdoor_temperature)
 
         # Check that for all timestamps, cop_high < cop_low
         for t in cop_high:
@@ -89,7 +89,7 @@ class TestHpLibWrapper:
         """
         Test the COP calculation for single-value inputs.
 
-        This method tests the `get_cop_high_temp` method of the HpLibWrapper
+        This method tests the `get_cop_output_temperature` method of the HpLibWrapper
         class using single-value inputs for outdoor and heat source temperatures.
         It verifies that the COP value is within the expected range.
 
@@ -98,6 +98,6 @@ class TestHpLibWrapper:
         AssertionError
             If the COP value is not within the expected range.
         """
-        cop = self.hplib.get_cop_high_temp(5, 9)
+        cop = self.hplib.get_cop_output_temperature(5, 9)
         assert 1 < cop < 10
         assert isinstance(cop, float)

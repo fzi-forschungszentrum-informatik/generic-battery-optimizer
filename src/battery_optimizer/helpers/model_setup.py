@@ -102,10 +102,10 @@ def generate_common_time_series(
     # Heat pump
     for hp in heat_pumps:
         index.update(hp.heat_demand.keys())
-        if isinstance(hp.cop_high_temp, dict):
-            index.update(hp.cop_high_temp.keys())
-        if isinstance(hp.cop_low_temp, dict):
-            index.update(hp.cop_low_temp.keys())
+        if isinstance(hp.cop_output_temperature, dict):
+            index.update(hp.cop_output_temperature.keys())
+        if isinstance(hp.cop_flow_temperature, dict):
+            index.update(hp.cop_flow_temperature.keys())
         if isinstance(hp.temp_room, dict):
             index.update(hp.temp_room.keys())
         if isinstance(hp.outdoor_temperature, dict):
@@ -289,8 +289,8 @@ def adjust_heat_pump_timestamps(
     """
 
     for parameter in [
-        "cop_high_temp",
-        "cop_low_temp",
+        "cop_output_temperature",
+        "cop_flow_temperature",
         "temp_room",
         "outdoor_temperature",
         "heat_demand",
