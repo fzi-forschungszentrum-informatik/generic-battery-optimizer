@@ -77,7 +77,7 @@ class HeatPump(BaseModel):
             "supply building directly. The specified CoP should be valid "
             "for heat pump when it has to heat the water to the flow "
             "temperature of the heating system. This CoP should generally be "
-            "phigher than the cop_output_temperature."
+            "phigher than the cop_high_temp."
         ),
         examples=[3.0, 4.3, 5.1],
         deprecated=(
