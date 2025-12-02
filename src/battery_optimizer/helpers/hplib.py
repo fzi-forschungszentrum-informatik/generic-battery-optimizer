@@ -100,6 +100,7 @@ class HpLibProfile(BaseModel):
             "backup heater."
         ),
         le=MINIMUM_KELVIN,
+        examples=[55, 60, 65, 70],
     )
 
     """Start of hplib specific data"""
