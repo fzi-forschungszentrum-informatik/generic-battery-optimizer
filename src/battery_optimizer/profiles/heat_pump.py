@@ -42,7 +42,7 @@ class HeatPump(BaseModel):
         ),
     )
 
-    cop_high_temp: float | dict[datetime.datetime, float] = Field(
+    cop_high_temp: Optional[float | dict[datetime.datetime, float]] = Field(
         title="The CoP of the heat pump at the maximum output temperature.",
         description=(
             "The coefficient of performance (CoP) of the heat pump when the "
@@ -52,12 +52,17 @@ class HeatPump(BaseModel):
             "temperature of the heat pump."
         ),
         examples=[1.0, 2.3, 3.1],
+        default=None,
         deprecated=(
             "This field is deprecated and will be removed in version 5.0.0. "
             "Please use 'cop_output_temperature' instead."
         ),
     )
-    cop_output_temperature: float | dict[datetime.datetime, float] = Field(
+    # TODO v5.0.0 remove cop_high_temp and this is not optional
+    cop_output_temperature: Optional[
+        float | dict[datetime.datetime, float]
+    ] = Field(
+        default=None,
         title="The CoP of the heat pump at the maximum output temperature.",
         description=(
             "The coefficient of performance (CoP) of the heat pump when the "
@@ -69,7 +74,7 @@ class HeatPump(BaseModel):
         examples=[1.0, 2.3, 3.1],
     )
 
-    cop_low_temp: float | dict[datetime.datetime, float] = Field(
+    cop_low_temp: Optional[float | dict[datetime.datetime, float]] = Field(
         title="CoP at flow temperature",
         description=(
             "The coefficient of performance (CoP) of the heat pump when the "
@@ -80,22 +85,27 @@ class HeatPump(BaseModel):
             "phigher than the cop_high_temp."
         ),
         examples=[3.0, 4.3, 5.1],
+        default=None,
         deprecated=(
             "This field is deprecated and will be removed in version 5.0.0. "
             "Please use 'cop_flow_temperature' instead."
         ),
     )
-    cop_flow_temperature: float | dict[datetime.datetime, float] = Field(
-        title="CoP at flow temperature",
-        description=(
-            "The coefficient of performance (CoP) of the heat pump when the "
-            "heat pump has to reach flow temperature output temperature to "
-            "supply building directly. The specified CoP should be valid "
-            "for heat pump when it has to heat the water to the flow "
-            "temperature of the heating system. This CoP should generally be "
-            "higher than the cop_output_temperature."
-        ),
-        examples=[3.0, 4.3, 5.1],
+    # TODO v5.0.0 remove cop_low_temp and this is not optional
+    cop_flow_temperature: Optional[float | dict[datetime.datetime, float]] = (
+        Field(
+            default=None,
+            title="CoP at flow temperature",
+            description=(
+                "The coefficient of performance (CoP) of the heat pump when the "
+                "heat pump has to reach flow temperature output temperature to "
+                "supply building directly. The specified CoP should be valid "
+                "for heat pump when it has to heat the water to the flow "
+                "temperature of the heating system. This CoP should generally be "
+                "higher than the cop_output_temperature."
+            ),
+            examples=[3.0, 4.3, 5.1],
+        )
     )
 
     @model_validator(mode="after")
@@ -113,10 +123,22 @@ class HeatPump(BaseModel):
         HeatPump
             The validated HeatPump instance with deprecated fields assigned.
         """
+        # Assign deprecated fields if they are provided
         if hasattr(self, "cop_high_temp") and self.cop_high_temp is not None:
             self.cop_output_temperature = self.cop_high_temp
         if hasattr(self, "cop_low_temp") and self.cop_low_temp is not None:
             self.cop_flow_temperature = self.cop_low_temp
+        # Ensure that the new fields are populated
+        if self.cop_output_temperature is None:
+            raise ValueError(
+                "cop_output_temperature must be provided either via the new "
+                "field or the deprecated cop_high_temp field."
+            )
+        if self.cop_flow_temperature is None:
+            raise ValueError(
+                "cop_flow_temperature must be provided either via the new "
+                "field or the deprecated cop_low_temp field."
+            )
         return self
 
     flow_temperature: float = Field(
