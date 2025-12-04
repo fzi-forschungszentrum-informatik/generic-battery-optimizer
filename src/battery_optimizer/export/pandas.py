@@ -69,9 +69,7 @@ class ModelDataFrame:
         buy_df = pd.DataFrame(
             {
                 device: values["source"]
-                for device, values in self._model_dict[
-                    "power_profiles"
-                ].items()
+                for device, values in self._model_dict["buy_profiles"].items()
             }
         )
         return ModelDataFrame.__convert_to_power(buy_df)
@@ -94,9 +92,7 @@ class ModelDataFrame:
         sell_df = pd.DataFrame(
             {
                 device: values["sink"]
-                for device, values in self._model_dict[
-                    "power_profiles"
-                ].items()
+                for device, values in self._model_dict["sell_profiles"].items()
             }
         )
         return ModelDataFrame.__convert_to_power(sell_df)

@@ -33,7 +33,7 @@ class PowerProfile(RootModel):
     root: dict[datetime.datetime, float]
 
 
-class PowerProfileBlock(BaseBlock):
+class _PowerProfileBlock(BaseBlock):
     """
     Base class for power profile blocks.
 
@@ -128,3 +128,91 @@ class PowerProfileBlock(BaseBlock):
                 block.energy_sink[i].setub(energy)
                 block.price_sink[i].set_value(self.sink_price[i])
         return block
+
+
+class BuyProfileBlock(_PowerProfileBlock):
+    """
+    Energy buy profile for optimization model.
+
+    Power profile that can be used to obtain energy from a source. This source
+    is not modelled itself. It is assumed that energy can be bought at the
+    specified power and price without further restriction.
+
+    Parameters
+    ----------
+    index : pyo.Set
+        List of indices of the model the block will be added to.
+    source : tuple[
+            dict[datetime.datetime, float],
+            dict[datetime.datetime, float]
+        ]
+        The power and price profile.
+    """
+    def __init__(
+        self,
+        index: pyo.Set,
+        source: tuple[
+            dict[datetime.datetime, float],
+            dict[datetime.datetime, float],
+        ],
+    ):
+        """
+        Initialize buy profile block.
+
+        Validate and store data of the profile and initialize the base block.
+
+        Parameters
+        ----------
+        index : pyo.Set
+            List of indices of the model the block will be added to.
+        source : tuple[
+                dict[datetime.datetime, float],
+                dict[datetime.datetime, float]
+            ]
+            The power and price profile.
+        """
+        super().__init__(index, source=source, sink=({}, {}))
+
+
+class SellProfileBlock(_PowerProfileBlock):
+    """
+    Energy sell profile for optimization model.
+
+    Power profile that can be used to sell energy to a sink. This sink is not
+    modelled itself. It is assumed that energy can be sold at the specified
+    power and price without further restriction.
+
+    Parameters
+    ----------
+    index : pyo.Set
+        List of indices of the model the block will be added to.
+    sink : tuple[
+            dict[datetime.datetime, float],
+            dict[datetime.datetime, float]
+        ]
+        The power and price profile.
+    """
+    def __init__(
+        self,
+        index: pyo.Set,
+        sink: tuple[
+            dict[datetime.datetime, float],
+            dict[datetime.datetime, float],
+        ],
+    ):
+        """
+        Initialize sell profile block.
+
+        Validate and store data of the profile and initialize the base block.
+
+        Parameters
+        ----------
+        index : pyo.Set
+            List of indices of the model the block will be added to.
+        sink : tuple[
+                dict[datetime.datetime, float],
+                dict[datetime.datetime, float]
+            ]
+            The power and price profile.
+        """
+        super().__init__(index, source=({}, {}), sink=sink)

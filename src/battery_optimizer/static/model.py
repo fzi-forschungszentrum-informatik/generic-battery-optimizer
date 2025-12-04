@@ -9,7 +9,10 @@ string identifiers in the model dictionary.
 from battery_optimizer.blocks.battery import BatteryBlock
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
-from battery_optimizer.blocks.power_profile import PowerProfileBlock
+from battery_optimizer.blocks.power_profile import (
+    BuyProfileBlock,
+    SellProfileBlock,
+)
 from battery_optimizer.static.profiles import (
     MODEL_POWER_ABOVE,
     MODEL_POWER_BELOW,
@@ -58,7 +61,8 @@ TEXT_OBJECTIVE_NAME = "Objective"
 
 COMPONENT_MAP: dict[type, str] = {
     BatteryBlock: "batteries",
-    PowerProfileBlock: "power_profiles",
+    BuyProfileBlock: "buy_profiles",
+    SellProfileBlock: "sell_profiles",
     FixedConsumptionBlock: "fixed_consumptions",
     HeatPumpBlock: "heat_pumps",
 }
