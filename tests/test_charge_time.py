@@ -98,7 +98,6 @@ class TestChargeTime(unittest.TestCase):
             data={
                 "pv": [5, 5, 5, 5, 0],
                 "grid_buy": [0, 0, 0, 0, 0],
-                "grid_sell": [0, 0, 0, 0, 0],
             },
             index=self.time_series,
         )
@@ -112,8 +111,6 @@ class TestChargeTime(unittest.TestCase):
 
         sell_result = pd.DataFrame(
             data={
-                "pv": [0, 0, 0, 0, 0],
-                "grid_buy": [0, 0, 0, 0, 0],
                 "grid_sell": [2, 2, 0, 0, 0],
             },
             index=self.time_series,

@@ -110,14 +110,12 @@ class TestChargeDischarge:
         buy_result = pd.DataFrame(
             data={
                 "buy": [10, 0, 0],
-                "sell": [0, 0, 0],
             },
             index=time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "buy": [0, 0, 0],
                 "sell": [0, 10, 0],
             },
             index=time_series,
@@ -227,14 +225,12 @@ class TestChargeDischarge:
         buy_result = pd.DataFrame(
             data={
                 "supplier_price": [7, 0, 0],
-                "feed_in_price": [0, 0, 0],
             },
             index=time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "supplier_price": [0, 0, 0],
                 "feed_in_price": [0, 6.7228, 0],
             },
             index=time_series,

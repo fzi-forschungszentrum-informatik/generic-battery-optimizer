@@ -125,12 +125,12 @@ class TestHomeConsumption:
         )
 
         buy_result = pd.DataFrame(
-            data={"pv": [100, 100, 0], "sell": [0, 0, 0]},
+            data={"pv": [100, 100, 0]},
             index=self.time_series,
         )
 
         sell_result = pd.DataFrame(
-            data={"pv": [0, 0, 0], "sell": [93, 88, 0]},
+            data={"sell": [93, 88, 0]},
             index=self.time_series,
         )
 
