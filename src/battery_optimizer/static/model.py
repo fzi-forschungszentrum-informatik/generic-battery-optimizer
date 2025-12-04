@@ -1,3 +1,11 @@
+"""
+Static texts and component mapping for the optimization model.
+
+This module defines static text constants used throughout the battery
+optimizer, as well as a mapping between component classes and their
+string identifiers in the model dictionary.
+"""
+
 from battery_optimizer.blocks.battery import BatteryBlock
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
