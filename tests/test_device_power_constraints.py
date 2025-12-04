@@ -145,7 +145,6 @@ class TestDevicePowerConstraints:
             pd.DataFrame(
                 data={
                     "buy": [0, 0, 0],
-                    "sell": [0, 0, 0],
                 },
                 index=self.time_series,
             ),
@@ -156,7 +155,6 @@ class TestDevicePowerConstraints:
             result[1],
             pd.DataFrame(
                 data={
-                    "buy": [0, 0, 0],
                     "sell": [0, 0, 0],
                 },
                 index=self.time_series,
@@ -250,12 +248,12 @@ class TestDevicePowerConstraints:
         )
 
         buy_result = pd.DataFrame(
-            data={"pv": [7 + power, 12 + power, 0], "sell": [0, 0, 0]},
+            data={"pv": [7 + power, 12 + power, 0]},
             index=self.time_series,
         )
 
         sell_result = pd.DataFrame(
-            data={"pv": [0, 0, 0], "sell": [power, power, 0]},
+            data={"sell": [power, power, 0]},
             index=self.time_series,
         )
 
@@ -351,7 +349,6 @@ class TestDevicePowerConstraints:
             pd.DataFrame(
                 data={
                     "pv": [5, 20, 0],
-                    "sell": [0, 0, 0],
                 },
                 index=self.time_series,
             ),
@@ -375,7 +372,6 @@ class TestDevicePowerConstraints:
             sell_result,
             pd.DataFrame(
                 data={
-                    "pv": [0, 0, 0],
                     "sell": [20, 20, 0],
                 },
                 index=self.time_series,
@@ -452,7 +448,6 @@ class TestSourcePowerConstraints:
             pd.DataFrame(
                 data={
                     "pv": [20, 20, 0],
-                    "sell": [0, 0, 0],
                 },
                 index=self.time_series,
             ),
@@ -464,7 +459,6 @@ class TestSourcePowerConstraints:
             sell_result,
             pd.DataFrame(
                 data={
-                    "pv": [0, 0, 0],
                     "sell": [20, 20, 0],
                 },
                 index=self.time_series,
@@ -541,7 +535,6 @@ class TestSinkPowerConstraints:
             pd.DataFrame(
                 data={
                     "pv": [20, 20, 0],
-                    "sell": [0, 0, 0],
                 },
                 index=self.time_series,
             ),
@@ -553,7 +546,6 @@ class TestSinkPowerConstraints:
             sell_result,
             pd.DataFrame(
                 data={
-                    "pv": [0, 0, 0],
                     "sell": [20, 20, 0],
                 },
                 index=self.time_series,

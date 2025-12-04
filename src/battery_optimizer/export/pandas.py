@@ -1,3 +1,10 @@
+"""
+DataFrame export for pandas from model results.
+
+This module provides functionality to convert optimization model results
+into pandas DataFrames for easy analysis and visualization.
+"""
+
 import datetime
 import logging
 import pandas as pd
@@ -10,27 +17,43 @@ POWER_POSTFIX = TEXT_ENERGY.replace("energy", "power")
 
 # Könnte man den jetzt von einem DF erben lassen
 class ModelDataFrame:
-    """Dataframe with all data from a model"""
+    """
+    Dataframe with all data from a model.
+
+    This class provides methods to extract various data from the model results
+    and convert them into pandas DataFrames.
+
+    Parameters
+    ----------
+    model_dict : dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]]
+        The dict export from the optimization model.
+    soc : dict[str, dict[datetime.datetime, float]]
+        The state of charge of the batteries.
+    """
 
     def __init__(
         self,
         model_dict: dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]],
         soc: dict[str, dict[datetime.datetime, float]],
     ):
-        """Create a new model dataframe
+        """
+        Create a new model dataframe.
 
-        Variables
-        ---------
+        Store data from model export for DataFrame conversion.
+
+        Parameters
+        ----------
         model_dict : dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]]
-            The DataFrame exported from the model
+            The dict export from the optimization model.
         soc : dict[str, dict[datetime.datetime, float]]
-            The state of charge of the batteries
+            The state of charge of the batteries.
         """
         self._model_dict = model_dict
         self._soc = soc
 
     def to_buy(self) -> pd.DataFrame:
-        """Create a DataFrame with all buy power profiles
+        """
+        Create a DataFrame with all buy power profiles.
 
         Contains all devices that draw. Each value represents the
         total constant power the device consumes during a time period.
@@ -46,15 +69,14 @@ class ModelDataFrame:
         buy_df = pd.DataFrame(
             {
                 device: values["source"]
-                for device, values in self._model_dict[
-                    "power_profiles"
-                ].items()
+                for device, values in self._model_dict["buy_profiles"].items()
             }
         )
         return ModelDataFrame.__convert_to_power(buy_df)
 
     def to_sell(self) -> pd.DataFrame:
-        """Create a DataFrame with all sell power profiles
+        """
+        Create a DataFrame with all sell power profiles.
 
         Contains all devices that feed in power. Each value represents the
         total constant power the device consumes during a time period.
@@ -70,15 +92,14 @@ class ModelDataFrame:
         sell_df = pd.DataFrame(
             {
                 device: values["sink"]
-                for device, values in self._model_dict[
-                    "power_profiles"
-                ].items()
+                for device, values in self._model_dict["sell_profiles"].items()
             }
         )
         return ModelDataFrame.__convert_to_power(sell_df)
 
     def to_battery_power(self) -> pd.DataFrame:
-        """Create a DataFrame with all battery power profiles
+        """
+        Create a DataFrame with all battery power profiles.
 
         Contains all batteries that draw or feed in power. Each value
         represents the total constant power the battery consumes during a time
@@ -105,7 +126,8 @@ class ModelDataFrame:
         )
 
     def to_fixed_consumption(self) -> pd.DataFrame:
-        """Create a DataFrame with all fixed consumptions
+        """
+        Create a DataFrame with all fixed consumptions.
 
         This is just to get a simplified list because as these devices are not
         flexible they are not optimized and are the same before and after the
@@ -130,7 +152,8 @@ class ModelDataFrame:
         return ModelDataFrame.__convert_to_power(fixed_consumption_df)
 
     def to_heat_pump_power(self) -> pd.DataFrame:
-        """Create a DataFrame with all heat pump power profiles
+        """
+        Create a DataFrame with all heat pump power profiles.
 
         Contains all heat pumps that draw power. Each heat pump has an inverter
         power and a heating element. Each value represents the total constant
@@ -156,7 +179,8 @@ class ModelDataFrame:
         )
 
     def to_battery_soc(self) -> pd.DataFrame:
-        """Create a DataFrame with all battery SoC profiles
+        """
+        Create a DataFrame with all battery SoC profiles.
 
         Contains all battery SoC profiles. Each value represents the SoC of the
         battery at the end of each time step just before the next time step
@@ -171,27 +195,39 @@ class ModelDataFrame:
 
     @staticmethod
     def __convert_to_power(df: pd.DataFrame) -> pd.DataFrame:
-        """Converts a DataFrame with energy units to power units
+        """
+        Convert a DataFrame with energy units to power units.
 
         Power is converted by assuming a constant power between each set of two
         timestamps.
 
-        Variables
-        ---------
+        Parameters
+        ----------
         df : pd.DataFrame
-            The DataFrame to convert
+            The DataFrame to convert.
 
         Returns
         -------
         pd.DataFrame
-            The DataFrame with power values
+            The DataFrame with power values.
         """
 
         def calculate_power(column: pd.Series) -> pd.Series:
-            """Calculate power for each row
+            """
+            Calculate power for each row.
 
             Power in the last row will be 0 because no period can be
             calculated.
+
+            Parameters
+            ----------
+            column : pd.Series
+                The column to calculate power for.
+
+            Returns
+            -------
+            pd.Series
+                The column with power values.
             """
             # Iterate over all but the last row
             for i in range(column.size - 1):

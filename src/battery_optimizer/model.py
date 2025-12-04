@@ -18,7 +18,10 @@ from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.static.model import COMPONENT_MAP, TEXT_OBJECTIVE_NAME
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
-from battery_optimizer.blocks.power_profile import PowerProfileBlock
+from battery_optimizer.blocks.power_profile import (
+    BuyProfileBlock,
+    SellProfileBlock,
+)
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
 from battery_optimizer.blocks.battery import BatteryBlock
@@ -178,13 +181,13 @@ class Model:
         """
         log.debug("Adding buy profile %s to model", name)
         # add a new price profile to the model
-        self.model.power_profiles.add_component(
+        self.model.buy_profiles.add_component(
             name=name,
-            val=PowerProfileBlock(
+            val=BuyProfileBlock(
                 self.model.i, source=(power, price)
             ).build_block(),
         )
-        return self.model.power_profiles.component(name)
+        return self.model.buy_profiles.component(name)
 
     def add_sell_profile(
         self,
@@ -219,13 +222,13 @@ class Model:
         log.debug("Adding sell profile %s to model", name)
         # This adds a energy target to the energy matrix and yields revenue in
         # Objective
-        self.model.power_profiles.add_component(
+        self.model.sell_profiles.add_component(
             name=name,
-            val=PowerProfileBlock(
+            val=SellProfileBlock(
                 self.model.i, sink=(power, price)
             ).build_block(),
         )
-        return self.model.power_profiles.component(name)
+        return self.model.sell_profiles.component(name)
 
     def add_fixed_consumption(
         self, name: str, power: dict[datetime.datetime, float]

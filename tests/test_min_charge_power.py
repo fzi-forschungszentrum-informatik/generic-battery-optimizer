@@ -1,3 +1,13 @@
+"""
+Unit tests for minimum charge power behavior of the battery.
+
+Test cases:
+- test_min_charge_power: Tests that the battery charges only when available
+  power is above the minimum charge power.
+- test_charging_infeasible: Tests that the battery does not charge when the
+  available power is below the minimum charge power.
+"""
+
 from datetime import datetime
 import unittest
 import pandas as pd
@@ -7,6 +17,15 @@ from tests.helpers import find_solver, get_profiles
 
 
 class TestMinChargePower(unittest.TestCase):
+    """
+    Tests for battery minimum charge power behavior.
+
+    Test cases:
+    - test_min_charge_power: Tests that the battery charges only when available
+      power is above the minimum charge power.
+    - test_charging_infeasible: Tests that the battery does not charge when the
+      available power is below the minimum charge power.
+    """
     time_series = pd.DatetimeIndex(
         [
             datetime(2021, 1, 1, 8, 0, 0),
@@ -18,7 +37,16 @@ class TestMinChargePower(unittest.TestCase):
     )
 
     def test_min_charge_power(self):
-        """Battery is charged from PV above min charge power"""
+        """
+        Battery is charged from PV above min charge power.
+
+        Test that the battery only charges when the available power from PV
+        is above the minimum charge power. In this test case the min charge
+        power is set to 7. Therefore the battery should only charge in the
+        second and third time step where the available power from PV is 10.
+        In the first and fourth time step the battery should not charge since
+        the available power is below the min charge power.
+        """
         buy = {
             "pv": pd.DataFrame(
                 data={
@@ -78,7 +106,6 @@ class TestMinChargePower(unittest.TestCase):
             data={
                 "pv": [5, 10, 10, 5, 0],
                 "grid_buy": [0, 0, 0, 0, 0],
-                "grid_sell": [0, 0, 0, 0, 0],
             },
             index=self.time_series,
         )
@@ -92,8 +119,6 @@ class TestMinChargePower(unittest.TestCase):
 
         sell_result = pd.DataFrame(
             data={
-                "pv": [0, 0, 0, 0, 0],
-                "grid_buy": [0, 0, 0, 0, 0],
                 "grid_sell": [3, 0, 0, 0, 0],
             },
             index=self.time_series,
@@ -109,7 +134,13 @@ class TestMinChargePower(unittest.TestCase):
         )
 
     def test_charging_infeasible(self):
-        """The battery will not be charged because min charge power is too high"""
+        """
+        The battery will not be charged because min charge power is too high.
+
+        Battery min charge power is 15, but available power from PV is max 10.
+        Therefore the battery should not charge at all.
+        Excess power should be sold to the grid.
+        """
         buy = {
             "pv": pd.DataFrame(
                 data={
@@ -170,15 +201,12 @@ class TestMinChargePower(unittest.TestCase):
             data={
                 "pv": [5, 5, 5, 5, 0],
                 "grid_buy": [0, 0, 0, 9, 0],
-                "grid_sell": [0, 0, 0, 0, 0],
             },
             index=self.time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "pv": [0, 0, 0, 0, 0],
-                "grid_buy": [0, 0, 0, 0, 0],
                 "grid_sell": [3, 3, 3, 0, 0],
             },
             index=self.time_series,

@@ -1,3 +1,11 @@
+"""
+Unit tests for charge start and end time behavior of the battery.
+
+Test cases:
+- test_start_time: Tests that the battery starts charging only after the
+  specified start time.
+"""
+
 from datetime import datetime
 import unittest
 import pandas as pd
@@ -7,6 +15,12 @@ from tests.helpers import find_solver, get_profiles
 
 
 class TestChargeTime(unittest.TestCase):
+    """
+    Tests for battery charge start and end time behavior.
+
+    Tests the battery parameters start_soc_time and end_soc_time to ensure
+    that the battery only charges within the specified time frame.
+    """
     time_series = pd.DatetimeIndex(
         [
             datetime(2021, 1, 1, 8, 0, 0),
@@ -18,7 +32,13 @@ class TestChargeTime(unittest.TestCase):
     )
 
     def test_start_time(self):
-        """Battery is charged from PV from 3rd timestep"""
+        """
+        Battery is charged from PV from 3rd time step.
+
+        Test that the battery will not charge before the specified
+        start_soc_time. This is the third time step in this test case.
+        At and after this time step the battery should charge.
+        """
         buy = {
             "pv": pd.DataFrame(
                 data={
@@ -78,7 +98,6 @@ class TestChargeTime(unittest.TestCase):
             data={
                 "pv": [5, 5, 5, 5, 0],
                 "grid_buy": [0, 0, 0, 0, 0],
-                "grid_sell": [0, 0, 0, 0, 0],
             },
             index=self.time_series,
         )
@@ -92,8 +111,6 @@ class TestChargeTime(unittest.TestCase):
 
         sell_result = pd.DataFrame(
             data={
-                "pv": [0, 0, 0, 0, 0],
-                "grid_buy": [0, 0, 0, 0, 0],
                 "grid_sell": [2, 2, 0, 0, 0],
             },
             index=self.time_series,

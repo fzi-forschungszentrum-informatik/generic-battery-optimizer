@@ -1,3 +1,12 @@
+"""
+Unit tests for charge and discharge behavior of the battery.
+
+Test cases:
+- test_buy_sell: Tests buying when buy price is low and selling when sell price
+  is high.
+- test_buy_sell_soc_check: test_buy_sell with soc checking.
+"""
+
 from tests.helpers import find_solver, get_profiles
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer import optimize
@@ -6,7 +15,22 @@ import pandas as pd
 
 
 class TestChargeDischarge:
+    """
+    Tests for charging and discharging a battery in an optimization cycle.
+
+    Test cases:
+    - test_buy_sell: Test buying when buy price is low and selling when sell price
+      is high.
+    - test_buy_sell_soc_check: test_buy_sell with soc checking.
+    """
     def test_buy_sell(self):
+        """
+        Test buying when buy price is low and selling when sell price is high.
+
+        Run optimization where in the first time step the buy price is very low
+        and in the second time step the sell price is very high. The battery
+        should buy in the first time step and sell in the second time step.
+        """
         # Test Data
         time_series = pd.DatetimeIndex(
             [
@@ -86,14 +110,12 @@ class TestChargeDischarge:
         buy_result = pd.DataFrame(
             data={
                 "buy": [10, 0, 0],
-                "sell": [0, 0, 0],
             },
             index=time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "buy": [0, 0, 0],
                 "sell": [0, 10, 0],
             },
             index=time_series,
@@ -112,6 +134,11 @@ class TestChargeDischarge:
             result[2], result_batteries, check_dtype=False)
 
     def test_buy_sell_soc_check(self):
+        """
+        Test buying when buy price is low and selling when sell price is high.
+
+        Run the above test with state of charge checking.
+        """
         # Test Data
         time_series = pd.DatetimeIndex(
             [
@@ -198,14 +225,12 @@ class TestChargeDischarge:
         buy_result = pd.DataFrame(
             data={
                 "supplier_price": [7, 0, 0],
-                "feed_in_price": [0, 0, 0],
             },
             index=time_series,
         )
 
         sell_result = pd.DataFrame(
             data={
-                "supplier_price": [0, 0, 0],
                 "feed_in_price": [0, 6.7228, 0],
             },
             index=time_series,

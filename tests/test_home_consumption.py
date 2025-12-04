@@ -1,3 +1,13 @@
+"""
+Unit tests for fixed consumption behavior.
+
+Test cases:
+- test_consumption_from_grid: Tests home consumption from grid.
+- test_consumption_from_pv: Tests home consumption from PV.
+- test_consumption_from_pv_and_grid: Tests home consumption from both PV and
+  grid.
+"""
+
 from battery_optimizer import optimize
 from tests.helpers import find_solver, get_profiles
 from datetime import datetime
@@ -5,6 +15,15 @@ import pandas as pd
 
 
 class TestHomeConsumption:
+    """
+    Tests for fixed home consumption behavior.
+
+    Test cases:
+    - test_consumption_from_grid: Tests home consumption from grid.
+    - test_consumption_from_pv: Tests home consumption from PV.
+    - test_consumption_from_pv_and_grid: Tests home consumption from both PV and
+      grid.
+    """
     time_series = pd.DatetimeIndex(
         [
             datetime(2021, 1, 1, 8, 0, 0),
@@ -14,7 +33,12 @@ class TestHomeConsumption:
     )
 
     def test_consumption_from_grid(self):
-        """Home consumption from grid"""
+        """
+        Home consumption from grid.
+
+        The household has a fixed consumption and buys all its power from the
+        grid since there is no other source available.
+        """
         buy = {
             "buy": pd.DataFrame(
                 data={
@@ -55,7 +79,12 @@ class TestHomeConsumption:
         )
 
     def test_consumption_from_pv(self):
-        """Home consumption from PV (rest sold to grid)"""
+        """
+        Home consumption from PV (rest sold to grid).
+
+        The PV price is lower than the grid price, so all consumption is from
+        PV and the rest (not needed for home consumption) is sold to the grid.
+        """
         buy = {
             "pv": pd.DataFrame(
                 data={
@@ -96,12 +125,12 @@ class TestHomeConsumption:
         )
 
         buy_result = pd.DataFrame(
-            data={"pv": [100, 100, 0], "sell": [0, 0, 0]},
+            data={"pv": [100, 100, 0]},
             index=self.time_series,
         )
 
         sell_result = pd.DataFrame(
-            data={"pv": [0, 0, 0], "sell": [93, 88, 0]},
+            data={"sell": [93, 88, 0]},
             index=self.time_series,
         )
 
@@ -118,8 +147,11 @@ class TestHomeConsumption:
         )
 
     def test_consumption_from_pv_and_grid(self):
-        """Home consumption from PV and grid
-        The grid price is higher than the PV price, so the PV is used first"""
+        """
+        Home consumption from PV and grid.
+
+        The grid price is higher than the PV price, so the PV is used first.
+        """
         buy = {
             "pv": pd.DataFrame(
                 data={
