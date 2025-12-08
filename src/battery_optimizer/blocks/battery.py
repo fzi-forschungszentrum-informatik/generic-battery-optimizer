@@ -203,8 +203,8 @@ class BatteryBlock(BaseBlock):
                     """
                     Prevent discharging before start_soc_time.
 
-                    This constraint ensures that the battery cannot be discharged
-                    before the specified start_soc_time.
+                    This constraint ensures that the battery cannot be
+                    discharged before the specified start_soc_time.
 
                     Parameters
                     ----------
@@ -216,8 +216,8 @@ class BatteryBlock(BaseBlock):
                     Returns
                     -------
                     pyo.Constraint | pyo.Constraint.Skip
-                        The constraint enforcing the discharging prevention or a skip
-                        constraint.
+                        The constraint enforcing the discharging prevention or
+                        a skip constraint.
                     """
                     if i < self.battery.start_soc_time:
                         return (
@@ -388,8 +388,8 @@ class BatteryBlock(BaseBlock):
             Returns
             -------
             pyo.Constraint | pyo.Constraint.Skip
-                The constraint enforcing the minimum discharging power or a skip
-                constraint.
+                The constraint enforcing the minimum discharging power or a
+                skip constraint.
             """
             return (
                 block.energy_source[i]
