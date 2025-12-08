@@ -224,8 +224,16 @@ class Test_Generate_Common_Time_Series:
 
 
 class Test_Reindex_Profile:
+    """
+    Test reindexing of profiles to a given index.
+
+    Test that reindexing works in various scenarios including identical
+    indices, missing timestamps, extra timestamps, different timestamps,
+    trailing missing timestamps, and leading missing timestamps.
+    """
     def test_identical_index_str(self):
-        """Test identical index and profile.
+        """
+        Test identical index and profile.
 
         Test that reindexing a profile with the same index returns the same
         profile.
@@ -251,7 +259,8 @@ class Test_Reindex_Profile:
         assert reindex_profile(profile, index) == result
 
     def test_identical_index_datetime(self):
-        """Test identical index and profile with datetime objects.
+        """
+        Test identical index and profile with datetime objects.
 
         Test that reindexing a profile with the same index returns the same
         profile.
@@ -276,7 +285,8 @@ class Test_Reindex_Profile:
         }
 
     def test_identical_index_timestamp(self):
-        """Test identical index and profile with Timestamps.
+        """
+        Test identical index and profile with Timestamps.
 
         Test that reindexing a profile with the same index returns the same
         profile.
@@ -298,7 +308,8 @@ class Test_Reindex_Profile:
         assert reindex_profile(profile, index) == profile
 
     def test_identical_index_mixed(self):
-        """Test identical index and profile with mixed datetime types.
+        """
+        Test identical index and profile with mixed datetime types.
 
         Test that reindexing a profile with the same index returns the same
         profile.
@@ -496,6 +507,12 @@ class Test_Reindex_Profile:
 
 
 class Test_Adjust_Battery_Timestamps:
+    """
+    Test adjustment of battery timestamps to a given index.
+
+    This class contains tests for the adjustment of battery timestamps to
+    ensure they align correctly with a specified index.
+    """
     def test_timestamps_aligned(self):
         """
         Test battery with timestamps already aligned to index.
@@ -666,6 +683,12 @@ class Test_Adjust_Battery_Timestamps:
 
 
 class Test_Adjust_Heat_Pump_Timestamps:
+    """
+    Test adjustment of heat pump timestamps to a given index.
+
+    This class contains tests for the adjustment of heat pump timestamps to
+    ensure they align correctly with a specified index.
+    """
     def test_float_values(self):
         """
         Test heat pump with float values that are not adjusted.
@@ -918,7 +941,12 @@ class Test_Adjust_Heat_Pump_Timestamps:
 
 
 class Test_Mixed_Timestamp_Adjustments:
+    """
+    Test adjustment of profiles, batteries and heat pumps together.
 
+    This class contains tests for the adjustment of profiles, batteries and
+    heat pumps to a common index.
+    """
     def test_profiles_batteries_heat_pumps(self):
         """
         Test adjustment of profiles, batteries and heat pumps together.

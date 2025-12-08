@@ -18,7 +18,6 @@ class TestPowerConversion:
     """
     Test conversion of energy to power with different period lengths.
 
-
     This test ensures that energy values are correctly converted to power
     values based on the length of the time periods.
     Time series with hourly time periods are trivial to convert from energy
