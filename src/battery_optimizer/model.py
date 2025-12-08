@@ -14,7 +14,9 @@ import hashlib
 import logging
 from pandas import infer_freq
 import pyomo.environ as pyo
+from battery_optimizer.blocks.ev import EVBlock
 from battery_optimizer.helpers.blocks import get_period_length
+from battery_optimizer.profiles.ev import EV
 from battery_optimizer.static.model import COMPONENT_MAP, TEXT_OBJECTIVE_NAME
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
@@ -102,6 +104,33 @@ class Model:
             val=BatteryBlock(self.model.i, battery).build_block(),
         )
         return self.model.batteries.component(battery.name)
+
+    def add_ev(self, ev: EV) -> pyo.Block:
+        """
+        Add a new electric vehicle to the model.
+
+        Add all necessary constraints to the model to implement the electric
+        vehicle. This includes charge and discharge constraints, state of
+        charge (SoC) calculation end SoC (if needed) and availability times
+        of the EV.
+
+        Parameters
+        ----------
+        ev : EV
+            The electric vehicle to add to the model.
+
+        Returns
+        -------
+        pyo.Block
+            The block created from the electric vehicle model.
+        """
+        log.debug("Adding %s to the model", ev.name)
+        log.debug(ev)
+        self.model.evs.add_component(
+            name=ev.name,
+            val=EVBlock(self.model.i, ev).build_block(),
+        )
+        return self.model.evs.component(ev.name)
 
     def add_heat_pump(self, heat_pump: HeatPump) -> pyo.Block:
         """

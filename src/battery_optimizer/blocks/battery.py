@@ -121,7 +121,7 @@ class BatteryBlock(BaseBlock):
         block.soc_constraint = pyo.Constraint(self.index, expr=soc_rule)
 
         # make sure the charging is complete at the required timestamp
-        if self.battery.end_soc_time is not None:
+        if getattr(self.battery, "end_soc_time", None) is not None:
 
             # BUG This ensures soc at the end of the end_soc_time timestamp
             # but should enforce it at the beginning of the timestamp (t-1
@@ -162,7 +162,7 @@ class BatteryBlock(BaseBlock):
             )
 
         # do not use the battery until its start
-        if self.battery.start_soc_time is not None:
+        if getattr(self.battery, "start_soc_time", None) is not None:
             # Prevent charge
             def charge_start(
                 _, i: datetime.datetime

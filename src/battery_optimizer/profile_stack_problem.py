@@ -12,6 +12,7 @@ from battery_optimizer.helpers.parse_profile_stacks import (
 )
 from battery_optimizer.model import Model
 from battery_optimizer.profiles.battery import Battery
+from battery_optimizer.profiles.ev import EV
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
 
@@ -36,6 +37,8 @@ class ProfileStackProblem:
         All fixed consumption data for the model.
     batteries : List[Battery]
         All batteries that can be used.
+    evs : List[EV]
+        All electric vehicles that can be used.
     heat_pumps : List[HeatPump]
         All heat pumps that can be used.
     """
@@ -51,6 +54,7 @@ class ProfileStackProblem:
         sell_prices: ProfileStack | None = None,
         fixed_consumption: ProfileStack | None = None,
         batteries: list[Battery] | None = None,
+        evs: list[EV] | None = None,
         heat_pumps: list[HeatPump] | None = None,
     ) -> None:
         """
@@ -84,6 +88,8 @@ class ProfileStackProblem:
             for the electricity during this time period (unused here).
         batteries : List[Battery]
             A list of batteries that can be used in the optimization.
+        evs : List[EV]
+            A list of electric vehicles that can be used in the optimization.
         heat_pumps : List[HeatPump]
             A list of heat pumps that provide heating energy for a household.
 
@@ -117,6 +123,13 @@ class ProfileStackProblem:
                     temp_index.append(battery.end_soc_time)
                 if battery.start_soc_time is not None:
                     temp_index.append(battery.start_soc_time)
+
+        if evs is not None:
+            for ev in evs:
+                if ev.charge_end_time is not None:
+                    temp_index.append(ev.charge_end_time)
+                if ev.charge_start_time is not None:
+                    temp_index.append(ev.charge_start_time)
         log.debug("Temporary Index:")
         log.debug(temp_index)
 
@@ -156,6 +169,13 @@ class ProfileStackProblem:
             log.debug(self.batteries)
         else:
             self.batteries = []
+
+        log.debug("Initializing electric vehicles")
+        if evs is not None:
+            self.evs = evs
+            log.debug(self.evs)
+        else:
+            self.evs = []
 
         log.debug("Initializing heat pumps")
         if heat_pumps is not None:
@@ -203,6 +223,11 @@ class ProfileStackProblem:
         log.debug("Adding all batteries to the model")
         for battery in self.batteries:
             self.model.add_battery(battery)
+
+        # add each ev to the model
+        log.debug("Adding all electric vehicles to the model")
+        for ev in self.evs:
+            self.model.add_ev(ev)
 
         log.debug("Adding all heat pumps to the model")
         for heat_pump in self.heat_pumps:

@@ -7,6 +7,7 @@ Test cases:
 - test_buy_sell_soc_check: test_buy_sell with soc checking.
 """
 
+from battery_optimizer.profiles.ev import EV
 from tests.helpers import find_solver, get_profiles
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer import optimize
@@ -182,12 +183,12 @@ class TestChargeDischarge:
             )
         }
 
-        battery = Battery(
+        battery = EV(
             name="byd",
             start_soc=0.5,
             end_soc=0.5,
-            end_soc_time="2022-01-03T18:30:00+00:00",
-            start_soc_time=None,
+            charge_start_time="2022-01-03T18:00:00+00:00",
+            charge_end_time="2022-01-03T18:30:00+00:00",
             capacity=7,
             max_charge_power=7,
             max_discharge_power=7,
@@ -204,7 +205,7 @@ class TestChargeDischarge:
             buy_prices=get_profiles(time_series, buy),
             sell_prices=get_profiles(time_series, sell),
             fixed_consumption=get_profiles(time_series, fixed_consumption),
-            batteries=[battery],
+            evs=[battery],
             solver=find_solver(),
         )
 
@@ -254,8 +255,8 @@ class TestChargeDischarge:
 
         # Assert battery profiles
         pd.testing.assert_frame_equal(
-            result[2], result_batteries, check_dtype=False
+            result[6], result_batteries, check_dtype=False
         )
         pd.testing.assert_frame_equal(
-            result[3], battery_soc, check_dtype=False
+            result[7], battery_soc, check_dtype=False
         )

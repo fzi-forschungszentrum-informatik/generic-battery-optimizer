@@ -27,14 +27,17 @@ class ModelDataFrame:
     ----------
     model_dict : dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]]
         The dict export from the optimization model.
-    soc : dict[str, dict[datetime.datetime, float]]
+    soc : dict[str, dict[pd.Timestamp, float]]
         The state of charge of the batteries.
+    ev_soc : dict[str, dict[pd.Timestamp, float]]
+        The state of charge of the electric vehicles.
     """
 
     def __init__(
         self,
         model_dict: dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]],
-        soc: dict[str, dict[datetime.datetime, float]],
+        soc: dict[str, dict[pd.Timestamp, float]],
+        ev_soc: dict[str, dict[pd.Timestamp, float]],
     ):
         """
         Create a new model dataframe.
@@ -45,11 +48,14 @@ class ModelDataFrame:
         ----------
         model_dict : dict[str, dict[str, dict[str, dict[pd.Timestamp, float]]]]
             The dict export from the optimization model.
-        soc : dict[str, dict[datetime.datetime, float]]
+        soc : dict[str, dict[pd.Timestamp, float]]
             The state of charge of the batteries.
+        ev_soc : dict[str, dict[pd.Timestamp, float]]
+            The state of charge of the electric vehicles.
         """
         self._model_dict = model_dict
         self._soc = soc
+        self._ev_soc = ev_soc
 
     def to_buy(self) -> pd.DataFrame:
         """
@@ -125,6 +131,34 @@ class ModelDataFrame:
             )
         )
 
+    def to_ev_power(self) -> pd.DataFrame:
+        """
+        Create a DataFrame with all electric vehicle power profiles.
+
+        Contains all electric vehicles that draw or feed back power. Each value
+        represents the total constant power the electric vehicle consumes
+        during a time period.
+        Indexed by the timestamps from which the specified power should be
+        used by a device.
+        Electric vehicles have positive power when they are charged and
+        negative power when they are discharged.
+
+        Returns
+        -------
+        pd.DataFrame
+            The power in W of each electric vehicle.
+        """
+        # Get EV power
+        return ModelDataFrame.__convert_to_power(
+            pd.DataFrame(
+                {
+                    device: pd.Series(values["sink"])
+                    - pd.Series(values["source"])
+                    for device, values in self._model_dict["evs"].items()
+                }
+            )
+        )
+
     def to_fixed_consumption(self) -> pd.DataFrame:
         """
         Create a DataFrame with all fixed consumptions.
@@ -192,6 +226,21 @@ class ModelDataFrame:
             The SoC of each battery.
         """
         return pd.DataFrame(self._soc)
+
+    def to_ev_soc(self) -> pd.DataFrame:
+        """
+        Create a DataFrame with all electric vehicle SoC profiles.
+
+        Contains all electric vehicle SoC profiles. Each value represents the
+        SoC of the electric vehicle at the end of each time step just before
+        the next time step starts.
+
+        Returns
+        -------
+        pd.DataFrame
+            The SoC of each electric vehicle.
+        """
+        return pd.DataFrame(self._ev_soc)
 
     @staticmethod
     def __convert_to_power(df: pd.DataFrame) -> pd.DataFrame:
