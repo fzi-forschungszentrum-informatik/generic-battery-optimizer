@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Optional
 import secrets
 import logging
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from battery_optimizer.static.numbers import SECRET_LENGTH
 
 log = logging.getLogger(__name__)
@@ -124,9 +124,9 @@ deprecated_string = (
 
 class Battery(NewBattery):
     """
-    Deprecated: Stores all information about a domestic/car battery.
+    Stores all information about a domestic/car battery.
 
-    Deprecated: Power and energy are assumed to be specified in W and Wh
+    Power and energy are assumed to be specified in W and Wh
     respectively.
     """
 
