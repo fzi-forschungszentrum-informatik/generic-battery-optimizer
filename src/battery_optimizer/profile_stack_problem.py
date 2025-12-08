@@ -1,6 +1,12 @@
+"""
+Optimize an energy system based on profile stacks.
+
+Provides a simple interface to optimize an energy system with batteries,
+electric vehicles and heat pumps.
+For more complex use cases please use the full model.
+"""
+
 import logging
-from typing import List
-import pandas as pd
 from battery_optimizer.helpers.parse_profile_stacks import (
     parse_profiles,
 )
@@ -13,9 +19,14 @@ log = logging.getLogger(__name__)
 
 
 class ProfileStackProblem:
-    """Optimize the energy distribution of an energy system.
+    """
+    Optimize the energy distribution of an energy system.
 
-    Attributes
+    Provides a simple interface to optimize an energy system with batteries,
+    electric vehicles and heat pumps.
+    For more complex use cases please use the full model.
+
+    Parameters
     ----------
     buy_prices : ProfileStack
         All profiles energy can be bought from.
@@ -25,6 +36,8 @@ class ProfileStackProblem:
         All fixed consumption data for the model.
     batteries : List[Battery]
         All batteries that can be used.
+    heat_pumps : List[HeatPump]
+        All heat pumps that can be used.
     """
 
     # TODO Erzeugtes Modell abspeichern können, dann kann man es mit verschiedenen Solvern nutzen
@@ -40,7 +53,8 @@ class ProfileStackProblem:
         batteries: list[Battery] | None = None,
         heat_pumps: list[HeatPump] | None = None,
     ) -> None:
-        """Format all input data and set up the base model
+        """
+        Format all input data and set up the base model.
 
         Creates lists from all input data sources to be used with the model and
         initializes the base structure of the model. Before using the model it
@@ -50,8 +64,8 @@ class ProfileStackProblem:
         another profile or battery the power is assumed to be the same as the
         previous power.
 
-        Variables
-        ---------
+        Parameters
+        ----------
         buy_prices : ProfileStack
             All profiles to buy energy from.
             Price is assumed to be in ct/kWh.
@@ -70,6 +84,8 @@ class ProfileStackProblem:
             for the electricity during this time period (unused here).
         batteries : List[Battery]
             A list of batteries that can be used in the optimization.
+        heat_pumps : List[HeatPump]
+            A list of heat pumps that provide heating energy for a household.
 
         Raises
         ------
@@ -154,13 +170,14 @@ class ProfileStackProblem:
             self.model.model.display()
 
     def set_up(self):
-        """Set up the model for optimization
+        """
+        Set up the model for optimization.
 
         This will add all buy price profiles, sell price profiles,
         fixed consumptions and batteries to the model.
         All Energy paths are created and the objective is generated.
 
-        The model will be saved to model.log when running in debug mode
+        The model will be saved to model.log when running in debug mode.
         """
         log.info("Generating model structure")
         # for each profile in prices add it to the model
