@@ -1,3 +1,12 @@
+"""
+Battery block for optimization model.
+
+This block models a household battery with charging and discharging
+capabilities. Charging and discharging efficiencies as well as maximum
+charge and discharge power are taken into account.
+"""
+
+import datetime
 import pyomo.environ as pyo
 # from battery_optimizer.blocks.base import Base
 from battery_optimizer.blocks.base import BaseBlock
@@ -6,12 +15,55 @@ from battery_optimizer.profiles.battery import Battery
 
 
 class BatteryBlock(BaseBlock):
+    """
+    Battery block for optimization model.
+
+    This block models a household battery with charging and discharging
+    capabilities. Charging and discharging efficiencies as well as maximum
+    charge and discharge power are taken into account.
+
+    Parameters
+    ----------
+    index : pyo.Set
+        The index of datetimes for the optimization model.
+    battery : Battery
+        The battery profile containing all relevant information about the
+        battery.
+    """
     def __init__(self, index: pyo.Set, battery: Battery):
+        """
+        Initialize the battery block.
+
+        Store the index and battery profile and initialize the base block.
+
+        Parameters
+        ----------
+        index : pyo.Set
+            The index of datetimes for the optimization model.
+        battery : Battery
+            The battery profile containing all relevant information about the
+            battery.
+        """
         super().__init__(index)
         self.battery = battery
 
     def _populate_block(self, block: pyo.Block) -> pyo.Block:
-        """Build the battery block"""
+        """
+        Build the battery block.
+
+        Adds all necessary variables and constraints to the provided Pyomo
+        block to simulate the battery behavior.
+
+        Parameters
+        ----------
+        block : pyo.Block
+            The Pyomo block to populate with battery variables and constraints.
+
+        Returns
+        -------
+        pyo.Block
+            The populated Pyomo block with battery variables and constraints.
+        """
         for i in self.index:
             period_conversion_factor = get_period_length(i, self.index)[1]
             # Energy in
@@ -32,13 +84,27 @@ class BatteryBlock(BaseBlock):
         block.soc = pyo.Var(self.index, bounds=(0, self.battery.capacity))
 
         # soc calculation
-        def soc_rule(_, i):
-            """Calculate the SOC of the battery
+        def soc_rule(_, i: datetime.datetime) -> pyo.Expression:
+            """
+            Calculate the SOC of the battery.
 
             SOC rule calculating the current energy state of the battery and
             change in energy for the first timestamp and the change of energy
             relative to the previous timestamps energy for all other
             timestamps.
+
+            Parameters
+            ----------
+            _ : pyo.Block
+                The Pyomo block (not used).
+            i : datetime.datetime
+                The current timestamp.
+
+            Returns
+            -------
+            pyo.Expression
+                The soc expression for the current timestamp with the soc that
+                will be reached at the end of the timestamp.
             """
             # ToDo reference next period from block
             if i == self.index.at(1):
@@ -57,7 +123,31 @@ class BatteryBlock(BaseBlock):
         # make sure the charging is complete at the required timestamp
         if self.battery.end_soc_time is not None:
 
-            def charge_finished(_, i):
+            # BUG This ensures soc at the end of the end_soc_time timestamp
+            # but should enforce it at the beginning of the timestamp (t-1
+            # needs the soc already to be at end_soc)
+            def charge_finished(
+                _, i: datetime.datetime
+            ) -> pyo.Constraint | pyo.Constraint.Skip:
+                """
+                Ensure charging is finished at end_soc_time.
+
+                Adds a constraint for all timestamps at or after end_soc_time
+                to enforce the soc to be at or above the end_soc.
+
+                Parameters
+                ----------
+                _ : pyo.Block
+                    The Pyomo block (not used).
+                i : datetime.datetime
+                    The current timestamp.
+
+                Returns
+                -------
+                pyo.Constraint or pyo.Constraint.Skip
+                    The constraint enforcing the soc at end_soc_time or a skip
+                    constraint.
+                """
                 if i < self.battery.end_soc_time:
                     return pyo.Constraint.Skip
                 return (
@@ -74,7 +164,28 @@ class BatteryBlock(BaseBlock):
         # do not use the battery until its start
         if self.battery.start_soc_time is not None:
             # Prevent charge
-            def charge_start(_, i):
+            def charge_start(
+                _, i: datetime.datetime
+            ) -> pyo.Constraint | pyo.Constraint.Skip:
+                """
+                Prevent charging before start_soc_time.
+
+                This constraint ensures that the battery cannot be charged
+                before the specified start_soc_time.
+
+                Parameters
+                ----------
+                _ : pyo.Block
+                    The Pyomo block (not used).
+                i : datetime.datetime
+                    The current timestamp.
+
+                Returns
+                -------
+                pyo.Constraint | pyo.Constraint.Skip
+                    The constraint enforcing the charging prevention or a skip
+                    constraint.
+                """
                 if i < self.battery.start_soc_time:
                     return (0, block.energy_sink[i], 0)
                 return pyo.Constraint.Skip
@@ -86,7 +197,28 @@ class BatteryBlock(BaseBlock):
             # Prevent Discharge
             if self.battery.max_discharge_power > 0:
 
-                def discharge_start(_, i):
+                def discharge_start(
+                    _, i: datetime.datetime
+                ) -> pyo.Constraint | pyo.Constraint.Skip:
+                    """
+                    Prevent discharging before start_soc_time.
+
+                    This constraint ensures that the battery cannot be discharged
+                    before the specified start_soc_time.
+
+                    Parameters
+                    ----------
+                    _ : pyo.Block
+                        The Pyomo block (not used).
+                    i : datetime.datetime
+                        The current timestamp.
+
+                    Returns
+                    -------
+                    pyo.Constraint | pyo.Constraint.Skip
+                        The constraint enforcing the discharging prevention or a skip
+                        constraint.
+                    """
                     if i < self.battery.start_soc_time:
                         return (
                             0,
@@ -107,8 +239,28 @@ class BatteryBlock(BaseBlock):
         # Charging
         block.is_charging = pyo.Var(self.index, within=pyo.Binary)
 
-        def enforce_binary_charging(_, i):
-            """Enforce block.is_charging to be 1 if charge_power > 0"""
+        def enforce_binary_charging(
+            _, i: datetime.datetime
+        ) -> pyo.Constraint | pyo.Constraint.Skip:
+            """
+            Enforce block.is_charging to be 1 if charge_power > 0.
+
+            Sets the binary variable is_charging to 1 if there is any
+            charging power in the current timestamp.
+
+            Parameters
+            ----------
+            _ : pyo.Block
+                The Pyomo block (not used).
+            i : datetime.datetime
+                The current timestamp.
+
+            Returns
+            -------
+            pyo.Constraint | pyo.Constraint.Skip
+                The constraint enforcing the charging condition or a skip
+                constraint.
+            """
             # Big M Method -> delta is the time difference between two
             # timestamps
             return (
@@ -126,8 +278,25 @@ class BatteryBlock(BaseBlock):
         block.is_discharging = pyo.Var(self.index, within=pyo.Binary)
 
         def enforce_binary_discharging(_, i):
-            """Enforce block.is_discharging to be 1 if
-            discharge_power > 0"""
+            """
+            Enforce block.is_discharging to be 1 if discharge_power > 0.
+
+            Sets the binary variable is_discharging to 1 if there is any
+            discharging power in the current timestamp.
+
+            Parameters
+            ----------
+            _ : pyo.Block
+                The Pyomo block (not used).
+            i : datetime.datetime
+                The current timestamp.
+
+            Returns
+            -------
+            pyo.Constraint | pyo.Constraint.Skip
+                The constraint enforcing the discharging condition or a skip
+                constraint.
+            """
             # Big M Method -> delta is the time difference between two
             # timestamps
             return (
@@ -142,18 +311,53 @@ class BatteryBlock(BaseBlock):
         )
 
         def enforce_binary_charging_discharging(_, i):
-            """Enforce battery can only charge or discharge"""
+            """
+            Enforce battery can only charge or discharge.
+
+            Ensures that the battery can only be in a charging or discharging
+            state in the current timestamp.
+
+            Parameters
+            ----------
+            _ : pyo.Block
+                The Pyomo block (not used).
+            i : datetime.datetime
+                The current timestamp.
+
+            Returns
+            -------
+            pyo.Constraint | pyo.Constraint.Skip
+                The constraint enforcing the charging condition or a skip
+                constraint.
+            """
             return block.is_charging[i] + block.is_discharging[i] <= 1
 
         block.enforce_binary_power = pyo.Constraint(
             self.index, rule=enforce_binary_charging_discharging
         )
 
-        def min_charge_power_constraint(_, i):
-            """Constraint that ensures the battery is charged with
-            min_charge_power if it is charged"""
-            # Big M Method -> delta is the time difference between two
-            # timestamps
+        def min_charge_power_constraint(
+            _, i: datetime.datetime
+        ) -> pyo.Constraint | pyo.Constraint.Skip:
+            """
+            Ensure that battery is charged with min_charge_power if charging.
+
+            Set a lower bound on the charging power when the battery is
+            charging.
+
+            Parameters
+            ----------
+            _ : pyo.Block
+                The Pyomo block (not used).
+            i : datetime.datetime
+                The current timestamp.
+
+            Returns
+            -------
+            pyo.Constraint | pyo.Constraint.Skip
+                The constraint enforcing the minimum charging power or a skip
+                constraint.
+            """
             return (
                 block.energy_sink[i]
                 >= self.battery.min_charge_power
@@ -165,11 +369,28 @@ class BatteryBlock(BaseBlock):
             self.index, expr=min_charge_power_constraint
         )
 
-        def min_discharge_power_constraint(_, i):
-            """Constraint that ensures the battery is discharged with
-            min_discharge_power if it is discharged"""
-            # Big M Method -> delta is the time difference between two
-            # timestamps
+        def min_discharge_power_constraint(
+            _, i: datetime.datetime
+        ) -> pyo.Constraint | pyo.Constraint.Skip:
+            """
+            Ensure battery power above min_discharge_power when discharging.
+
+            Constraint that ensures the battery is discharged with
+            min_discharge_power if it is discharged.
+
+            Parameters
+            ----------
+            _ : pyo.Block
+                The Pyomo block (not used).
+            i : datetime.datetime
+                The current timestamp.
+
+            Returns
+            -------
+            pyo.Constraint | pyo.Constraint.Skip
+                The constraint enforcing the minimum discharging power or a skip
+                constraint.
+            """
             return (
                 block.energy_source[i]
                 >= self.battery.min_discharge_power
@@ -182,25 +403,3 @@ class BatteryBlock(BaseBlock):
         )
 
         return block
-
-
-# class Block(Base):
-#     """Battery Block
-
-#     This block is used to create a battery block in the optimization model.
-#     It contains the energy, soc and charge/discharge constraints for the
-#     battery.
-#     """
-
-#     def __init__(self, index: list[datetime.datetime], battery: Battery):
-#         super().__init__(index)
-#         self.battery = battery
-#         self.index = index
-
-#     def get_block(self) -> pyo.Block:
-#         """Get the block of the profile"""
-#         block = pyo.Block(self.index)
-#         for period in self.block.index_set():
-#             # add the battery block to the period
-#             block[period].transfer_attributes_from(self.block[period])
-#             block[period] = self.block_period(self.block[period])
