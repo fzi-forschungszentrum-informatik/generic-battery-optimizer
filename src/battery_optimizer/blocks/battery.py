@@ -225,6 +225,67 @@ class NewBatteryBlock(BaseBlock):
             self.index, rule=enforce_binary_charging_discharging
         )
 
+        # min and max soc constraints
+        if self.battery.min_soc > 0:
+
+            def min_soc_constraint(_, i: datetime.datetime) -> pyo.Constraint:
+                """
+                Ensure battery soc is always above min_soc.
+
+                Constraint that ensures the battery soc is always above the
+                minimum soc.
+
+                Parameters
+                ----------
+                _ : pyo.Block
+                    The Pyomo block (not used).
+                i : datetime.datetime
+                    The current timestamp.
+
+                Returns
+                -------
+                pyo.Constraint
+                    The constraint enforcing the minimum soc.
+                """
+                return (
+                    block.soc[i]
+                    >= self.battery.min_soc * self.battery.capacity
+                )
+
+            block.min_soc_constraint = pyo.Constraint(
+                self.index, expr=min_soc_constraint
+            )
+
+        if self.battery.max_soc < 1:
+
+            def max_soc_constraint(_, i: datetime.datetime) -> pyo.Constraint:
+                """
+                Ensure battery soc is always below max_soc.
+
+                Constraint that ensures the battery soc is always below the
+                maximum soc.
+
+                Parameters
+                ----------
+                _ : pyo.Block
+                    The Pyomo block (not used).
+                i : datetime.datetime
+                    The current timestamp.
+
+                Returns
+                -------
+                pyo.Constraint
+                    The constraint enforcing the maximum soc.
+                """
+                return (
+                    block.soc[i]
+                    <= self.battery.max_soc * self.battery.capacity
+                )
+
+            block.max_soc_constraint = pyo.Constraint(
+                self.index, expr=max_soc_constraint
+            )
+
         return block
 
 

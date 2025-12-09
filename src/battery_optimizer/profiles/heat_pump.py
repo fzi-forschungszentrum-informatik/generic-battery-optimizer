@@ -204,7 +204,7 @@ class HeatPump(BaseModel):
         examples=[55, 60, 65, 70],
     )
 
-    min_electric_power_hp: Optional[float] = Field(
+    min_electric_power_hp: float = Field(
         default=0.0,
         # TODO Specify units in W instead of kW (uniformity across the model)
         title="Minimum electric consumption heat pump [kW]",
@@ -221,7 +221,7 @@ class HeatPump(BaseModel):
         ),
     )
 
-    min_electric_power_hr: Optional[float] = Field(
+    min_electric_power_hr: float = Field(
         default=0.0,
         title="Minimum electric consumption backup heater [kW]",
         description=(
@@ -286,7 +286,7 @@ class HeatPump(BaseModel):
         le=MINIMUM_KELVIN,
     )
 
-    heat_loss_tank: Optional[float] = Field(
+    heat_loss_tank: float = Field(
         default=0,
         ge=0,
         title="Heat loss of the tank [W/K]",
@@ -307,7 +307,7 @@ class HeatPump(BaseModel):
         description="The volume of the thermal energy storage in litres.",
         examples=[200, 250, 300, 500],
     )
-    tes_start_soc: Optional[float] = Field(
+    tes_start_soc: float = Field(
         default=0.0,
         title="Initial SoC of the TES",
         ge=0,
@@ -443,7 +443,7 @@ class HeatPump(BaseModel):
             raise ValueError("All temperatures must be in Celsius")
         return v
 
-    enforce_end_soc: Optional[bool] = Field(
+    enforce_end_soc: bool = Field(
         default=False,
         title="Enforce end SoC to be equal to start SoC",
         description=(

@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Optional
 import secrets
 import logging
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from battery_optimizer.static.numbers import SECRET_LENGTH
 
 log = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class NewBattery(BaseModel):
     )
 
     # SoCs
-    start_soc: Optional[float] = Field(
+    start_soc: float = Field(
         default=0,
         ge=0,
         le=1,
@@ -81,7 +81,7 @@ class NewBattery(BaseModel):
     )
 
     # Minimum/Maximum SoC at any time
-    min_soc: Optional[float] = Field(
+    min_soc: float = Field(
         ge=0,
         le=1,
         default=0,
@@ -91,7 +91,7 @@ class NewBattery(BaseModel):
             "Value is given in percent. This value is optional."
         ),
     )
-    max_soc: Optional[float] = Field(
+    max_soc: float = Field(
         ge=0,
         le=1,
         default=1,
@@ -101,6 +101,36 @@ class NewBattery(BaseModel):
             "Value is given in percent. This value is optional."
         ),
     )
+
+    @model_validator(mode="after")
+    def check_soc_limits(self) -> "NewBattery":
+        """
+        Validate that the start_soc, min_soc, and max_soc are consistent.
+
+        start_soc must be between min_soc and max_soc. If it would be outside
+        this range the model would become infeasible.
+
+        Returns
+        -------
+        NewBattery
+            The validated NewBattery instance.
+
+        Raises
+        ------
+        ValueError
+            If start_soc is outside the min_soc and max_soc range.
+        ValueError
+            If min_soc is greater than max_soc.
+        """
+        if self.min_soc > self.max_soc:
+            raise ValueError("min_soc cannot be greater than max_soc.")
+
+        if self.start_soc < self.min_soc:
+            raise ValueError("start_soc cannot be less than min_soc.")
+        if self.start_soc > self.max_soc:
+            raise ValueError("start_soc cannot be greater than max_soc.")
+
+        return self
 
 
 deprecated_string = (
