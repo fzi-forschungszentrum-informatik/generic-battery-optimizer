@@ -1,3 +1,10 @@
+"""
+Module for exporting model data.
+
+Contains the Exporter class to export data from a model
+to different formats such as DataFrames or dictionaries.
+"""
+
 import datetime
 import logging
 import pandas as pd
@@ -18,16 +25,39 @@ POWER_POSTFIX = TEXT_ENERGY.replace("energy", "power")
 
 
 class Exporter:
-    """Export data from a model
+    """
+    Export data from a model.
 
     The Exporter class is used to export data from a model. The data can be
-    exported to a DataFrame or an Excel file."""
+    exported to a DataFrame or an Excel file.
+
+    Parameters
+    ----------
+    model : Model
+        The model that data shall be exported from.
+    """
 
     @staticmethod
     def _ctype_to_dict(
         ctype: pyo.Component, remove_timestamps: bool = False
     ) -> dict[str, dict[pd.Timestamp, float]]:
-        """Convert Pyomo Component to dict"""
+        """
+        Convert Pyomo Component to dict.
+
+        Convert indexed component of the model to a dictionary.
+
+        Parameters
+        ----------
+        ctype : pyo.Component
+            The Pyomo component to convert.
+        remove_timestamps : bool, optional
+            Whether to remove timezone info from timestamps, by default False.
+
+        Returns
+        -------
+        dict[str, dict[pd.Timestamp, float]]
+            The dictionary with the component data.
+        """
         items: dict[str, dict[pd.Timestamp, float]] = {}
         log.debug("Generating dictionary from %s", ctype.name)
         for index, value in ctype.items():
@@ -53,17 +83,21 @@ class Exporter:
         return items
 
     def __init__(self, model: Model):
-        """Create a new model exporter
+        """
+        Create a new model exporter.
 
-        Variables
-        ---------
+        Store the model that data shall be exported from.
+
+        Parameters
+        ----------
         model : Model
-            The model that data shall be exported from
+            The model that data shall be exported from.
         """
         self._model = model
 
     def to_dict(self) -> dict[str, dict[pd.Timestamp, float]]:
-        """Create a dictionary from the model
+        """
+        Create a dictionary from the model.
 
         Contains all devices from the model as columns. Each value represents
         the total constant power the device consumes during a time period.
@@ -81,7 +115,7 @@ class Exporter:
                 "device": {
                     "timestamp": value
                 }
-            }
+            }.
         """
         device_tree = {
             component: list(
@@ -112,23 +146,25 @@ class Exporter:
     def __extract_component_parameter(
         self, device_class: str, device_name: str, parameter: str
     ) -> dict[str, dict[datetime.datetime, float]]:
-        """Get a parameter from a device
+        """
+        Get a parameter from a device.
 
         Export an indexed component as a dictionary.
 
-        Variables
-        ---------
+        Parameters
+        ----------
         device_class : str
-            The class of the device (e.g. 'batteries')
+            The class of the device (e.g. 'batteries').
         device_name : str
-            The name of the device (e.g. 'battery1')
+            The name of the device (e.g. 'battery1').
         parameter : str
-            The parameter to extract (e.g. 'soc')
+            The parameter to extract (e.g. 'soc').
 
         Returns
         -------
         dict[str, dict[datetime.datetime, float]]
-            The dictionary with the parameter values"""
+            The dictionary with the parameter values.
+        """
 
         device: pyo.Block = self._model.model.component(device_class)
         if device is None:
@@ -152,19 +188,21 @@ class Exporter:
     def __extract_hp_parameter(
         self, parameter: str
     ) -> dict[str, dict[datetime.datetime, float]]:
-        """Get a parameter from all heat pumps
+        """
+        Get a parameter from all heat pumps.
 
         Export an indexed component as a dictionary.
 
-        Variables
-        ---------
+        Parameters
+        ----------
         parameter : str
-            The parameter to extract (e.g. 'soc')
+            The parameter to extract (e.g. 'soc').
 
         Returns
         -------
         dict[str, dict[datetime.datetime, float]]
-            The dictionary with the parameter values"""
+            The dictionary with the parameter values.
+        """
         return {
             heat_pump: {
                 index: self._model.model.heat_pumps.component(heat_pump)
@@ -179,29 +217,37 @@ class Exporter:
         }
 
     def get_heat_pump_soc(self) -> dict[str, dict[datetime.datetime, float]]:
-        """Get the state of charge of all heat pumps
+        """
+        Get the state of charge of all heat pumps.
+
+        Get the soc of the heat pumps for each time step as [0-1] value.
 
         Returns
         -------
         dict[str, dict[datetime.datetime, float]]
-            The dictionary with the state of charge values for all heat pumps
+            The dictionary with the state of charge values for all heat pumps.
         """
         return self.__extract_hp_parameter(TEXT_SOC)
 
     def get_heat_pump_tes_temperature(
         self,
     ) -> dict[str, dict[datetime.datetime, float]]:
-        """Get the temperature of the thermal energy storage of all heat pumps
+        """
+        Get the temperature of the thermal energy storage of all heat pumps.
+
+        Get the temperature of the thermal energy storage of the heat pumps
+        for each time step.
 
         Returns
         -------
         dict[str, dict[datetime.datetime, float]]
-            The dictionary with the temperature values for all heat pumps
+            The dictionary with the temperature values for all heat pumps.
         """
         return self.__extract_hp_parameter("temp_TES")
 
     def to_df(self) -> ModelDataFrame:
-        """Create a DataFrame from the model
+        """
+        Create a DataFrame from the model.
 
         Contains all devices that draw power as columns. Each value represents
         the total constant power the device consumes during a time period.
@@ -210,7 +256,7 @@ class Exporter:
 
         Returns
         ---------
-            ModelDataFrame
+        ModelDataFrame
             A DataFrame-like object containing power consumption data for all
             devices, indexed by timestamps. The DataFrame includes energy
             metrics and battery state of charge (SOC) information.
@@ -253,18 +299,28 @@ class Exporter:
                 for index in component.soc
             }
 
-        return ModelDataFrame(variables, soc)
+        # ev soc
+        ev_soc: dict[str, dict[pd.Timestamp, float]] = {}
+        for ev in variables["evs"]:
+            component = self._model.model.evs.component(ev)
+            ev_soc[ev] = {
+                index: component.soc[index].value / component.soc[index].ub
+                for index in component.soc
+            }
+
+        return ModelDataFrame(variables, soc, ev_soc)
 
     def write_excel(self, filename: str) -> None:
-        """Create an Excel file from the model
+        """
+        Create an Excel file from the model.
 
         A separate table will be created for sets, parameters, variables,
         objectives and constraints as well as the energy matrix.
 
-        Variables
-        ---------
+        Parameters
+        ----------
         filename : str
-            path and filename where the text file will be stored
+            Ppath and filename where the text file will be stored.
         """
         # Add xlsx extension if missing
         if not filename.endswith(".xlsx"):
@@ -349,10 +405,11 @@ class Exporter:
         writer.close()
 
     def _to_battery_soc(self) -> pd.DataFrame:
-        """Create a DataFrame with all battery SoC profiles
+        """
+        Create a DataFrame with all battery SoC profiles.
 
-        Contains the SoC for all batteries at the end of each time step just before
-        the next time step starts.
+        Contains the SoC for all batteries at the end of each time step just
+        before the next time step starts.
 
         Returns
         -------

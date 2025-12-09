@@ -10,12 +10,11 @@ import pytest
 from battery_optimizer.export import Exporter
 from battery_optimizer.model import Model
 from battery_optimizer.profiles.battery import Battery
-from battery_optimizer.profiles.ev import EV
 from battery_optimizer.solver import Solver
 from tests.helpers import find_solver
 
 
-class TestPowerConversion:
+class TestPowerConversionDeprecated:
     """
     Test conversion of energy to power with different period lengths.
 
@@ -48,7 +47,7 @@ class TestPowerConversion:
         ]
     )
 
-    ev = EV(
+    ev = Battery(
         name="EV",
         capacity=5000,
         max_charge_power=1000,
@@ -56,8 +55,7 @@ class TestPowerConversion:
         end_soc=1,
         # BUG should not be needed. Model should infer this if end_soc is
         # specified but no end soc time
-        charge_end_time=time_series_1h[-1],
-        charge_start_time=time_series_1h[0],
+        end_soc_time=time_series_1h[-1],
     )
 
     def test_hourly_series(self):
@@ -74,7 +72,8 @@ class TestPowerConversion:
         power[self.time_series_1h[-1]] = 0
 
         model = Model(self.time_series_1h)
-        model.add_ev(self.ev)
+        with pytest.deprecated_call():
+            model.add_battery(self.ev)
         model.add_buy_profile("buy", power, prices)
 
         model.add_energy_paths()
@@ -107,7 +106,8 @@ class TestPowerConversion:
         power[self.time_series_15min[-1]] = 0
 
         model = Model(self.time_series_15min)
-        model.add_ev(self.ev)
+        with pytest.deprecated_call():
+            model.add_battery(self.ev)
         model.add_buy_profile("buy", power, prices)
 
         model.add_energy_paths()
@@ -140,7 +140,8 @@ class TestPowerConversion:
         power[self.time_series_mixed[-1]] = 0
 
         model = Model(self.time_series_mixed)
-        model.add_ev(self.ev)
+        with pytest.deprecated_call():
+            model.add_battery(self.ev)
         model.add_buy_profile("buy", power, prices)
 
         model.add_energy_paths()

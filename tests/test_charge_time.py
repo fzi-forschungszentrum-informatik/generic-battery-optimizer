@@ -11,6 +11,7 @@ import unittest
 import pandas as pd
 from battery_optimizer import optimize
 from battery_optimizer.profiles.battery import Battery
+from battery_optimizer.profiles.ev import EV
 from tests.helpers import find_solver, get_profiles
 
 
@@ -76,11 +77,13 @@ class TestChargeTime(unittest.TestCase):
             )
         }
 
-        battery = Battery(
+        battery = EV(
             capacity=10000,
             max_charge_power=10000,
             start_soc=0,
-            start_soc_time=self.time_series[2],
+            end_soc=0,
+            charge_start_time=self.time_series[2],
+            charge_end_time=self.time_series[-1],
             max_discharge_power=10000,
         )
 
@@ -90,7 +93,7 @@ class TestChargeTime(unittest.TestCase):
             fixed_consumption=get_profiles(
                 self.time_series, fixed_consumption
             ),
-            batteries=[battery],
+            evs=[battery],
             solver=find_solver(),
         )
 

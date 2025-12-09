@@ -7,15 +7,16 @@ Test cases:
 - test_buy_sell_soc_check: test_buy_sell with soc checking.
 """
 
-from battery_optimizer.profiles.ev import EV
+import pytest
 from tests.helpers import find_solver, get_profiles
 from battery_optimizer.profiles.battery import Battery
 from battery_optimizer import optimize
 from datetime import datetime
 import pandas as pd
+import warnings
 
 
-class TestChargeDischarge:
+class TestChargeDischargeDeprecated:
     """
     Tests for charging and discharging a battery in an optimization cycle.
 
@@ -24,6 +25,8 @@ class TestChargeDischarge:
       is high.
     - test_buy_sell_soc_check: test_buy_sell with soc checking.
     """
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+
     def test_buy_sell(self):
         """
         Test buying when buy price is low and selling when sell price is high.
@@ -183,12 +186,12 @@ class TestChargeDischarge:
             )
         }
 
-        battery = EV(
+        battery = Battery(
             name="byd",
             start_soc=0.5,
             end_soc=0.5,
-            charge_start_time="2022-01-03T18:00:00+00:00",
-            charge_end_time="2022-01-03T18:30:00+00:00",
+            end_soc_time="2022-01-03T18:30:00+00:00",
+            start_soc_time=None,
             capacity=7,
             max_charge_power=7,
             max_discharge_power=7,
@@ -201,13 +204,14 @@ class TestChargeDischarge:
         )
 
         # Optimization
-        result = optimize(
-            buy_prices=get_profiles(time_series, buy),
-            sell_prices=get_profiles(time_series, sell),
-            fixed_consumption=get_profiles(time_series, fixed_consumption),
-            evs=[battery],
-            solver=find_solver(),
-        )
+        with pytest.deprecated_call():
+            result = optimize(
+                buy_prices=get_profiles(time_series, buy),
+                sell_prices=get_profiles(time_series, sell),
+                fixed_consumption=get_profiles(time_series, fixed_consumption),
+                batteries=[battery],
+                solver=find_solver(),
+            )
 
         result_batteries = pd.DataFrame(
             data={
@@ -255,8 +259,8 @@ class TestChargeDischarge:
 
         # Assert battery profiles
         pd.testing.assert_frame_equal(
-            result[6], result_batteries, check_dtype=False
+            result[2], result_batteries, check_dtype=False
         )
         pd.testing.assert_frame_equal(
-            result[7], battery_soc, check_dtype=False
+            result[3], battery_soc, check_dtype=False
         )

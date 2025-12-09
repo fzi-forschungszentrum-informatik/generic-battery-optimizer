@@ -11,7 +11,7 @@ from typing import Any
 
 import pandas as pd
 
-from battery_optimizer.profiles.battery import Battery
+from battery_optimizer.profiles.ev import EV
 from battery_optimizer.profiles.heat_pump import HeatPump
 
 
@@ -19,7 +19,7 @@ from battery_optimizer.profiles.heat_pump import HeatPump
 # possibly fit-parameters Endpoint vom esg-service
 def generate_common_time_series(
     profiles: list[dict[str | datetime.datetime, Any]] = [],
-    batteries: list[Battery] = [],
+    evs: list[EV] = [],
     heat_pumps: list[HeatPump] = [],
     round_freq: str | None = None,
 ) -> Sequence[datetime.datetime]:
@@ -33,8 +33,8 @@ def generate_common_time_series(
     ----------
     profiles : list[dict[str, datetime.datetime]]
         A list of dicts containing profiles as dicts with datetimes as keys.
-    batteries : list[Battery]
-        A list of battery components. All timestamps from the batteries will be
+    evs : list[EV]
+        A list of ev components. All timestamps from the evs will be
         included in the index.
     heat_pumps : list[HeatPump]
         A list of heat pump components. All timestamps from the heat pumps will
@@ -52,16 +52,16 @@ def generate_common_time_series(
     Examples
     --------
     >>> from datetime import datetime
-    >>> from battery_optimizer.profiles.battery import Battery
+    >>> from battery_optimizer.profiles.ev import EV
     >>> from battery_optimizer.profiles.heat_pump import HeatPump
     >>> profiles = [
     ...     {datetime(2024, 6, 1, 12, 0): 1, datetime(2024, 6, 1, 12, 5): 2},
     ...     {datetime(2024, 6, 1, 12, 10): 3}
     ... ]
-    >>> batteries = [
-    ...     Battery(
-    ...         start_soc_time = datetime(2024, 6, 1, 12, 15),
-    ...         end_soc_time = datetime(2024, 6, 1, 12, 20)
+    >>> evs = [
+    ...     EV(
+    ...         charge_start_time = datetime(2024, 6, 1, 12, 15),
+    ...         charge_end_time = datetime(2024, 6, 1, 12, 20)
     ...     )
     ... ]
     >>> heat_pumps = [
@@ -69,7 +69,7 @@ def generate_common_time_series(
     ...         heat_demand={datetime(2024, 6, 1, 12, 25): 21}
     ...     )
     ... ]
-    >>> generate_common_time_series(profiles, batteries, heat_pumps)
+    >>> generate_common_time_series(profiles, evs, heat_pumps)
     [
         datetime.datetime(2024, 6, 1, 12, 0),
         datetime.datetime(2024, 6, 1, 12, 5),
@@ -79,7 +79,7 @@ def generate_common_time_series(
         datetime.datetime(2024, 6, 1, 12, 25)
     ]
     >>> generate_common_time_series(
-    ...     profiles, batteries, heat_pumps, round_freq='10min'
+    ...     profiles, evs, heat_pumps, round_freq='10min'
     ... )
     [
         Timestamp('2024-06-01 12:00:00'),
@@ -92,12 +92,12 @@ def generate_common_time_series(
         pd.to_datetime(time) for profile in profiles for time in profile.keys()
     )
 
-    # Battery
-    for battery in batteries:
-        if battery.start_soc_time:
-            index.add(battery.start_soc_time)
-        if battery.end_soc_time:
-            index.add(battery.end_soc_time)
+    # EV
+    for ev in evs:
+        if ev.charge_start_time:
+            index.add(ev.charge_start_time)
+        if ev.charge_end_time:
+            index.add(ev.charge_end_time)
 
     # Heat pump
     for hp in heat_pumps:
@@ -183,82 +183,84 @@ def reindex_profile(
     return reindexed_series.to_dict()
 
 
-def adjust_battery_timestamps(
-    battery: Battery,
+def adjust_ev_timestamps(
+    ev: EV,
     index: list[datetime.datetime],
     tolerance: datetime.timedelta = datetime.timedelta(0),
-) -> Battery:
+) -> EV:
     """
-    Adjust the battery's start and end SoC timestamps to match the given index.
+    Adjust the ev's start and end SoC timestamps to match the given index.
 
     The start soc will be set to the closest successor of its value in the
     index. The end soc will be set to the closest predecessor of its value in
-    the index. This ensures that the battery's operation period is not extended
+    the index. This ensures that the ev's operation period is not extended
     beyond its original limits.
 
     Parameters
     ----------
-    battery : Battery
-        The battery to adjust.
+    ev : EV
+        The ev to adjust.
     index : list[datetime.datetime]
-        The target index to adjust the battery's timestamps to.
+        The target index to adjust the ev's timestamps to.
     tolerance : datetime.timedelta | None, optional
         The maximum allowed difference between timestamps to consider them
         equal, by default no tolerance is accepted.
 
     Returns
     -------
-    Battery
-        The battery with adjusted timestamps.
+    EV
+        The ev with adjusted timestamps.
     """
     datetime_index = pd.to_datetime(index).sort_values()
 
-    if battery.start_soc_time:
-        # get all candidates that are after or equal to the start_soc_time
+    if ev.charge_start_time:
+        # get all candidates that are after or equal to the charge_start_time
         candidates = [
             time
             for time in datetime_index
-            if time >= battery.start_soc_time - tolerance
+            if time >= ev.charge_start_time - tolerance
         ]
         if not candidates:
             raise ValueError(
-                "start_soc_time must be before the last timestamp of the index"
+                "charge_start_time must be before the last timestamp of the "
+                "index"
             )
 
-        # find the closest candidate to the original start_soc_time
+        # find the closest candidate to the original charge_start_time
         closest_time = min(
-            candidates, key=lambda x: abs(x - battery.start_soc_time)
+            candidates, key=lambda x: abs(x - ev.charge_start_time)
         )
 
         # if the closest candidate is within the tolerance, use it
-        if abs(closest_time - battery.start_soc_time) <= tolerance:
-            battery.start_soc_time = closest_time
+        if abs(closest_time - ev.charge_start_time) <= tolerance:
+            ev.charge_start_time = closest_time
         else:
-            battery.start_soc_time = min(candidates)
+            ev.charge_start_time = min(candidates)
 
-    if battery.end_soc_time:
-        # get all candidates that are before or equal to the end_soc_time
+    if ev.charge_end_time:
+        # get all candidates that are before or equal to the charge_end_time
         candidates = [
             time
             for time in datetime_index
-            if time <= battery.end_soc_time + tolerance
+            if time <= ev.charge_end_time + tolerance
         ]
         if not candidates:
             raise ValueError(
-                "end_soc_time must be after the first timestamp of the index"
+                "charge_end_time must be after the first timestamp of the "
+                "index"
             )
 
-        # find the closest candidate to the original end_soc_time
+        # find the closest candidate to the original charge_end_time
         closest_time = min(
-            candidates, key=lambda x: abs(x - battery.end_soc_time)
+            candidates, key=lambda x: abs(x - ev.charge_end_time)
         )
         # if the closest candidate is within the tolerance, use it
-        if abs(closest_time - battery.end_soc_time) <= tolerance:
-            battery.end_soc_time = closest_time
+        if abs(closest_time - ev.charge_end_time) <= tolerance:
+            ev.charge_end_time = closest_time
         else:
-            battery.end_soc_time = max(candidates)
+            ev.charge_end_time = max(candidates)
 
-    return battery
+    return ev
 
 
 def adjust_heat_pump_timestamps(
