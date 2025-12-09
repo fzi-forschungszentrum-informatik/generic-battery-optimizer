@@ -1,3 +1,12 @@
+"""
+Tests for the Battery profile and its optimization.
+
+Test cases:
+- test_battery_efficiency: Tests that the battery behaves correctly with
+  different charge and discharge efficiencies.
+- TestMinMaxSoc: Tests that the battery respects min_soc and max_soc limits.
+"""
+
 import pytest
 import pandas as pd
 from datetime import datetime
@@ -45,7 +54,23 @@ from tests.helpers import find_solver, get_profiles
         (1.0, 0.1),
     ],
 )
-def test_battery_efficiency(charge_efficiency, discharge_efficiency):
+def test_battery_efficiency(
+    charge_efficiency: float, discharge_efficiency: float
+):
+    """
+    Test battery behavior with different charge and discharge efficiencies.
+
+    The battery is charged and discharged with a fixed power usage. The test
+    checks that the state of charge (SoC) and power profiles are as expected
+    given the specified charge and discharge efficiencies.
+
+    Parameters
+    ----------
+    charge_efficiency : float
+        The efficiency of battery charging (0-1).
+    discharge_efficiency : float
+        The efficiency of battery discharging (0-1).
+    """
     time_series = pd.date_range(
         start="2022-01-03 18:00:00", end="2022-01-03 20:00:00", freq="h"
     )
