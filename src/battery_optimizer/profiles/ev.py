@@ -8,7 +8,7 @@ powers.
 
 import datetime
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, model_validator
 from battery_optimizer.profiles.battery import NewBattery as Battery
 
 
@@ -28,6 +28,31 @@ class EV(Battery):
             "allowed to be discharged below end_soc. This value is optional."
         ),
     )
+
+    @model_validator(mode="after")
+    def check_end_soc(self) -> "EV":
+        """
+        Validate that end_soc is within min_soc and max_soc.
+
+        end_soc must be between min_soc and max_soc. If it would be outside
+        this range the model would become infeasible.
+
+        Returns
+        -------
+        EV
+            The validated EV instance.
+
+        Raises
+        ------
+        ValueError
+            If end_soc is outside the min_soc and max_soc range.
+        """
+        if self.end_soc < self.min_soc or self.end_soc > self.max_soc:
+            raise ValueError(
+                f"end_soc ({self.end_soc}) is outside the range of "
+                f"min_soc ({self.min_soc}) and max_soc ({self.max_soc})."
+            )
+        return self
 
     # start_soc_time
     charge_start_time: datetime.datetime = Field(
