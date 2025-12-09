@@ -234,13 +234,19 @@ class TestMinChargePower(unittest.TestCase):
         )
 
         # Assert power profiles
-        pd.testing.assert_frame_equal(result[0], buy_result, check_dtype=False)
         pd.testing.assert_frame_equal(
-            result[1], sell_result, check_dtype=False
+            result[0], buy_result, check_dtype=False, rtol=1e-6, atol=1e-8
         )
         pd.testing.assert_frame_equal(
-            result[6], battery_result, check_dtype=False
+            result[1], sell_result, check_dtype=False, rtol=1e-6, atol=1e-8
         )
         pd.testing.assert_frame_equal(
-            result[4], fixed_consumption_result, check_dtype=False
+            result[6], battery_result, check_dtype=False, rtol=1e-6, atol=1e-8
+        )
+        pd.testing.assert_frame_equal(
+            result[4],
+            fixed_consumption_result,
+            check_dtype=False,
+            rtol=1e-6,
+            atol=1e-8,
         )
