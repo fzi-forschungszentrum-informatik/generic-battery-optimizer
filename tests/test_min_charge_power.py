@@ -13,6 +13,7 @@ import unittest
 import pandas as pd
 from battery_optimizer import optimize
 from battery_optimizer.profiles.battery import Battery
+from battery_optimizer.profiles.ev import EV
 from tests.helpers import find_solver, get_profiles
 
 
@@ -38,13 +39,13 @@ class TestMinChargePower(unittest.TestCase):
 
     def test_min_charge_power(self):
         """
-        Battery is charged from PV above min charge power.
+        EV is charged from PV above min charge power.
 
-        Test that the battery only charges when the available power from PV
+        Test that the ev only charges when the available power from PV
         is above the minimum charge power. In this test case the min charge
-        power is set to 7. Therefore the battery should only charge in the
+        power is set to 7. Therefore the ev should only charge in the
         second and third time step where the available power from PV is 10.
-        In the first and fourth time step the battery should not charge since
+        In the first and fourth time step the ev should not charge since
         the available power is below the min charge power.
         """
         buy = {
@@ -84,10 +85,13 @@ class TestMinChargePower(unittest.TestCase):
             )
         }
 
-        battery = Battery(
+        ev = EV(
+            charge_start_time=self.time_series[0],
+            charge_end_time=self.time_series[-1],
             capacity=10000,
             max_charge_power=10000,
             start_soc=0,
+            end_soc=0,
             min_charge_power=7,
             max_discharge_power=10000,
         )
@@ -98,7 +102,7 @@ class TestMinChargePower(unittest.TestCase):
             fixed_consumption=get_profiles(
                 self.time_series, fixed_consumption
             ),
-            batteries=[battery],
+            evs=[ev],
             solver=find_solver(),
         )
 
@@ -135,10 +139,10 @@ class TestMinChargePower(unittest.TestCase):
 
     def test_charging_infeasible(self):
         """
-        The battery will not be charged because min charge power is too high.
+        The ev will not be charged because min charge power is too high.
 
-        Battery min charge power is 15, but available power from PV is max 10.
-        Therefore the battery should not charge at all.
+        EV min charge power is 15, but available power from PV is max 10.
+        Therefore the ev should not charge at all.
         Excess power should be sold to the grid.
         """
         buy = {
@@ -178,10 +182,13 @@ class TestMinChargePower(unittest.TestCase):
             )
         }
 
-        battery = Battery(
+        ev = EV(
             capacity=10000,
             max_charge_power=10000,
             start_soc=0,
+            end_soc=0,
+            charge_start_time=self.time_series[0],
+            charge_end_time=self.time_series[-1],
             min_charge_power=15,
             max_discharge_power=10000,
             name="Battery",
@@ -193,7 +200,7 @@ class TestMinChargePower(unittest.TestCase):
             fixed_consumption=get_profiles(
                 self.time_series, fixed_consumption
             ),
-            batteries=[battery],
+            evs=[ev],
             solver=find_solver(),
         )
 
@@ -232,7 +239,7 @@ class TestMinChargePower(unittest.TestCase):
             result[1], sell_result, check_dtype=False
         )
         pd.testing.assert_frame_equal(
-            result[2], battery_result, check_dtype=False
+            result[6], battery_result, check_dtype=False
         )
         pd.testing.assert_frame_equal(
             result[4], fixed_consumption_result, check_dtype=False

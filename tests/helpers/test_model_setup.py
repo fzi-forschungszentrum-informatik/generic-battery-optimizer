@@ -13,10 +13,11 @@ import pytest
 from battery_optimizer.helpers.model_setup import (
     generate_common_time_series,
     reindex_profile,
-    adjust_battery_timestamps,
+    adjust_ev_timestamps,
     adjust_heat_pump_timestamps,
 )
 from battery_optimizer.profiles.battery import Battery
+from battery_optimizer.profiles.ev import EV
 from battery_optimizer.profiles.heat_pump import HeatPump
 from zoneinfo import ZoneInfo
 
@@ -95,22 +96,23 @@ class Test_Generate_Common_Time_Series:
             pd.Timestamp("2024-01-01 09:15:00"),
         ]
 
-    def test_battery(self):
+    def test_ev(self):
         """
-        Test index returned from a battery.
+        Test index returned from a ev.
 
-        Passes all possible timestamps to a battery and expects the output to
+        Passes all possible timestamps to a ev and expects the output to
         contain all time stamps from the input.
         """
-        battery = Battery(
-            start_soc_time=pd.Timestamp("2024-01-01 01:00"),
-            end_soc_time=pd.Timestamp("2024-01-01 03:00"),
+        ev = EV(
+            charge_start_time=pd.Timestamp("2024-01-01 01:00"),
+            charge_end_time=pd.Timestamp("2024-01-01 03:00"),
             start_soc=0.5,
+            end_soc=0.5,
             capacity=1000,
             max_charge_power=500,
         )
 
-        index = generate_common_time_series(batteries=[battery])
+        index = generate_common_time_series(evs=[ev])
 
         assert index == [
             pd.Timestamp("2024-01-01 01:00"),
@@ -175,17 +177,18 @@ class Test_Generate_Common_Time_Series:
             pd.Timestamp("2024-01-01 05:00+00:00"),
         ]
 
-    def test_batteries_and_heat_pumps(self):
+    def test_evs_and_heat_pumps(self):
         """
-        Test unification of index for a heat pump and battery.
+        Test unification of index for a heat pump and ev.
 
-        Test that the index returned from a battery and heat pump contains all
+        Test that the index returned from a ev and heat pump contains all
         timestamps from both devices.
         """
-        battery = Battery(
-            start_soc_time=pd.Timestamp("2024-01-01 01:30+00:00"),
-            end_soc_time=pd.Timestamp("2024-01-01 02:30+00:00"),
+        ev = EV(
+            charge_start_time=pd.Timestamp("2024-01-01 01:30+00:00"),
+            charge_end_time=pd.Timestamp("2024-01-01 02:30+00:00"),
             start_soc=0.5,
+            end_soc=0.5,
             capacity=1000,
             max_charge_power=500,
         )
@@ -205,7 +208,7 @@ class Test_Generate_Common_Time_Series:
         )
 
         index = generate_common_time_series(
-            batteries=[battery],
+            evs=[ev],
             heat_pumps=[heat_pump],
         )
 
@@ -524,16 +527,16 @@ class Test_Adjust_Battery_Timestamps:
             pd.Timestamp("2024-01-01 00:00+00:00"),
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
-        battery = Battery(
-            start_soc_time=index[0],
-            end_soc_time=index[1],
+        battery = EV(
+            charge_start_time=index[0],
+            charge_end_time=index[1],
             start_soc=0.5,
             end_soc=0.5,
             capacity=1000,
             max_charge_power=500,
         )
 
-        assert adjust_battery_timestamps(battery, index) == battery
+        assert adjust_ev_timestamps(battery, index) == battery
 
     def test_forward_adjustment(self):
         """
@@ -547,9 +550,9 @@ class Test_Adjust_Battery_Timestamps:
             pd.Timestamp("2024-01-01 00:00+00:00"),
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
-        battery = Battery(
-            start_soc_time=index[0] - datetime.timedelta(minutes=10),
-            end_soc_time=index[1],
+        battery = EV(
+            charge_start_time=index[0] - datetime.timedelta(minutes=10),
+            charge_end_time=index[1],
             start_soc=0.5,
             end_soc=0.5,
             capacity=1000,
@@ -558,11 +561,11 @@ class Test_Adjust_Battery_Timestamps:
 
         adjusted_battery = battery.model_copy(
             update={
-                "start_soc_time": index[0],
+                "charge_start_time": index[0],
             }
         )
 
-        assert adjust_battery_timestamps(battery, index) == adjusted_battery
+        assert adjust_ev_timestamps(battery, index) == adjusted_battery
 
     def test_backward_adjustment(self):
         """
@@ -576,9 +579,9 @@ class Test_Adjust_Battery_Timestamps:
             pd.Timestamp("2024-01-01 00:00+00:00"),
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
-        battery = Battery(
-            start_soc_time=index[0],
-            end_soc_time=index[1] + datetime.timedelta(minutes=10),
+        battery = EV(
+            charge_start_time=index[0],
+            charge_end_time=index[1] + datetime.timedelta(minutes=10),
             start_soc=0.5,
             end_soc=0.5,
             capacity=1000,
@@ -587,11 +590,11 @@ class Test_Adjust_Battery_Timestamps:
 
         adjusted_battery = battery.model_copy(
             update={
-                "end_soc_time": index[1],
+                "charge_end_time": index[1],
             }
         )
 
-        assert adjust_battery_timestamps(battery, index) == adjusted_battery
+        assert adjust_ev_timestamps(battery, index) == adjusted_battery
 
     def test_start_after_end(self):
         """
@@ -604,9 +607,9 @@ class Test_Adjust_Battery_Timestamps:
             pd.Timestamp("2024-01-01 00:00+00:00"),
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
-        battery = Battery(
-            start_soc_time=index[1] + datetime.timedelta(minutes=10),
-            end_soc_time=index[1] + datetime.timedelta(minutes=20),
+        battery = EV(
+            charge_start_time=index[1] + datetime.timedelta(minutes=10),
+            charge_end_time=index[1] + datetime.timedelta(minutes=20),
             start_soc=0.5,
             end_soc=0.5,
             capacity=1000,
@@ -615,9 +618,9 @@ class Test_Adjust_Battery_Timestamps:
 
         with pytest.raises(
             ValueError,
-            match="start_soc_time must be before the last timestamp",
+            match="charge_start_time must be before the last timestamp",
         ):
-            adjust_battery_timestamps(battery, index)
+            adjust_ev_timestamps(battery, index)
 
     def test_end_before_start(self):
         """
@@ -630,9 +633,9 @@ class Test_Adjust_Battery_Timestamps:
             pd.Timestamp("2024-01-01 00:00+00:00"),
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
-        battery = Battery(
-            start_soc_time=index[0] - datetime.timedelta(minutes=20),
-            end_soc_time=index[0] - datetime.timedelta(minutes=10),
+        battery = EV(
+            charge_start_time=index[0] - datetime.timedelta(minutes=20),
+            charge_end_time=index[0] - datetime.timedelta(minutes=10),
             start_soc=0.5,
             end_soc=0.5,
             capacity=1000,
@@ -641,9 +644,9 @@ class Test_Adjust_Battery_Timestamps:
 
         with pytest.raises(
             ValueError,
-            match="end_soc_time must be after the first timestamp",
+            match="charge_end_time must be after the first timestamp",
         ):
-            adjust_battery_timestamps(battery, index)
+            adjust_ev_timestamps(battery, index)
 
     def test_rounding(self):
         """
@@ -656,9 +659,9 @@ class Test_Adjust_Battery_Timestamps:
             pd.Timestamp("2024-01-01 00:00+00:00"),
             pd.Timestamp("2024-01-01 01:00+00:00"),
         ]
-        battery = Battery(
-            start_soc_time=index[0] + datetime.timedelta(minutes=5),
-            end_soc_time=index[1] - datetime.timedelta(minutes=5),
+        battery = EV(
+            charge_start_time=index[0] + datetime.timedelta(minutes=5),
+            charge_end_time=index[1] - datetime.timedelta(minutes=5),
             start_soc=0.5,
             end_soc=0.5,
             capacity=1000,
@@ -667,13 +670,13 @@ class Test_Adjust_Battery_Timestamps:
 
         adjusted_battery = battery.model_copy(
             update={
-                "start_soc_time": index[0],
-                "end_soc_time": index[1],
+                "charge_start_time": index[0],
+                "charge_end_time": index[1],
             }
         )
 
         assert (
-            adjust_battery_timestamps(
+            adjust_ev_timestamps(
                 battery,
                 index,
                 tolerance=datetime.timedelta(minutes=10),
@@ -961,9 +964,9 @@ class Test_Mixed_Timestamp_Adjustments:
             pd.Timestamp("2024-01-01 03:00+00:00"): 40,
         }
 
-        battery = Battery(
-            start_soc_time=pd.Timestamp("2024-01-01 01:20+00:00"),
-            end_soc_time=pd.Timestamp("2024-01-01 02:30+00:00"),
+        battery = EV(
+            charge_start_time=pd.Timestamp("2024-01-01 01:20+00:00"),
+            charge_end_time=pd.Timestamp("2024-01-01 02:30+00:00"),
             start_soc=0.5,
             end_soc=0.5,
             capacity=1000,
@@ -1004,7 +1007,7 @@ class Test_Mixed_Timestamp_Adjustments:
 
         index = generate_common_time_series(
             profiles=[profile],
-            batteries=[battery],
+            evs=[battery],
             heat_pumps=[heat_pump],
             round_freq="30min",
         )
@@ -1030,17 +1033,16 @@ class Test_Mixed_Timestamp_Adjustments:
             pd.Timestamp("2024-01-01 03:00+00:00"): 40,
         }
 
-        # battery
-        assert adjust_battery_timestamps(battery, index) == battery.model_copy(
+        # ev
+        assert adjust_ev_timestamps(battery, index) == battery.model_copy(
             update={
-                "start_soc_time": pd.Timestamp("2024-01-01 01:30+00:00"),
-                "end_soc_time": pd.Timestamp("2024-01-01 02:30+00:00"),
+                "charge_start_time": pd.Timestamp("2024-01-01 01:30+00:00"),
+                "charge_end_time": pd.Timestamp("2024-01-01 02:30+00:00"),
             }
         )
-        assert (
-            adjust_battery_timestamps(battery, index).start_soc_time in index
-        )
-        assert adjust_battery_timestamps(battery, index).end_soc_time in index
+        assert adjust_ev_timestamps(battery, index).charge_start_time in index
+
+        assert adjust_ev_timestamps(battery, index).charge_end_time in index
 
         # heat pump
         assert adjust_heat_pump_timestamps(

@@ -89,14 +89,13 @@ class TestChargeDischargeDeprecated:
         )
 
         # Optimization
-        with pytest.deprecated_call():
-            result = optimize(
-                buy_prices=get_profiles(time_series, buy),
-                sell_prices=get_profiles(time_series, sell),
-                fixed_consumption=get_profiles(time_series, fixed_consumption),
-                batteries=[battery],
-                solver=find_solver(),
-            )
+        result = optimize(
+            buy_prices=get_profiles(time_series, buy),
+            sell_prices=get_profiles(time_series, sell),
+            fixed_consumption=get_profiles(time_series, fixed_consumption),
+            batteries=[battery],
+            solver=find_solver(),
+        )
 
         result_batteries = pd.DataFrame(
             data={
