@@ -7,6 +7,7 @@ Stores parameters needed to model a heat pump system for optimization
 import datetime
 import secrets
 from typing import Optional
+import warnings
 import pandas as pd
 from pydantic import (
     BaseModel,
@@ -124,9 +125,13 @@ class HeatPump(BaseModel):
             The validated HeatPump instance with deprecated fields assigned.
         """
         # Assign deprecated fields if they are provided
-        if hasattr(self, "cop_high_temp") and self.cop_high_temp is not None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            cop_high_temp = self.cop_high_temp
+            cop_low_temp = self.cop_low_temp
+        if cop_high_temp is not None:
             self.cop_output_temperature = self.cop_high_temp
-        if hasattr(self, "cop_low_temp") and self.cop_low_temp is not None:
+        if cop_low_temp is not None:
             self.cop_flow_temperature = self.cop_low_temp
         # Ensure that the new fields are populated
         if self.cop_output_temperature is None:
