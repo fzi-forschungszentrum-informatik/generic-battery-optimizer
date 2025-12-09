@@ -72,7 +72,7 @@ class NewBattery(BaseModel):
     )
 
     # SoCs
-    start_soc: Optional[float] = Field(
+    start_soc: float = Field(
         default=0,
         ge=0,
         le=1,
@@ -81,7 +81,7 @@ class NewBattery(BaseModel):
     )
 
     # Minimum/Maximum SoC at any time
-    min_soc: Optional[float] = Field(
+    min_soc: float = Field(
         ge=0,
         le=1,
         default=0,
@@ -91,7 +91,7 @@ class NewBattery(BaseModel):
             "Value is given in percent. This value is optional."
         ),
     )
-    max_soc: Optional[float] = Field(
+    max_soc: float = Field(
         ge=0,
         le=1,
         default=1,
