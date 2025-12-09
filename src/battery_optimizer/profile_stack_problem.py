@@ -7,6 +7,7 @@ For more complex use cases please use the full model.
 """
 
 import logging
+import warnings
 from battery_optimizer.helpers.parse_profile_stacks import (
     parse_profiles,
 )
@@ -117,12 +118,15 @@ class ProfileStackProblem:
                 "must contain values"
             )
 
-        if batteries is not None:
-            for battery in batteries:
-                if battery.end_soc_time is not None:
-                    temp_index.append(battery.end_soc_time)
-                if battery.start_soc_time is not None:
-                    temp_index.append(battery.start_soc_time)
+        # DEPRECATED - remove in 5.0.0
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            if batteries is not None:
+                for battery in batteries:
+                    if battery.end_soc_time is not None:
+                        temp_index.append(battery.end_soc_time)
+                    if battery.start_soc_time is not None:
+                        temp_index.append(battery.start_soc_time)
 
         if evs is not None:
             for ev in evs:

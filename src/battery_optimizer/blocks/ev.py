@@ -7,7 +7,8 @@ powers.
 """
 
 import datetime
-from battery_optimizer.blocks.battery import BatteryBlock as BatteryBlock
+from battery_optimizer.blocks.battery import NewBatteryBlock as BatteryBlock
+from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.profiles.ev import EV
 import pyomo.environ as pyo
 
@@ -174,5 +175,74 @@ class EVBlock(BatteryBlock):
                 block.discharge_start_time = pyo.Constraint(
                     self.index, expr=discharge_start
                 )
+
+        if self.battery.min_charge_power > 0:
+
+            def min_charge_power_constraint(
+                _, i: datetime.datetime
+            ) -> pyo.Constraint:
+                """
+                Ensure battery is charged with min_charge_power if charging.
+
+                Set a lower bound on the charging power when the battery is
+                charging.
+
+                Parameters
+                ----------
+                _ : pyo.Block
+                    The Pyomo block (not used).
+                i : datetime.datetime
+                    The current timestamp.
+
+                Returns
+                -------
+                pyo.Constraint
+                    The constraint enforcing the minimum charging power.
+                """
+                return (
+                    block.energy_sink[i]
+                    >= self.battery.min_charge_power
+                    * get_period_length(i, self.index)[1]
+                    * block.is_charging[i]
+                )
+
+            block.min_charge_power = pyo.Constraint(
+                self.index, expr=min_charge_power_constraint
+            )
+
+        if self.battery.min_discharge_power > 0:
+
+            def min_discharge_power_constraint(
+                _, i: datetime.datetime
+            ) -> pyo.Constraint:
+                """
+                Ensure battery power above min_discharge_power if discharging.
+
+                Constraint that ensures the battery is discharged with
+                min_discharge_power if it is discharged.
+
+                Parameters
+                ----------
+                _ : pyo.Block
+                    The Pyomo block (not used).
+                i : datetime.datetime
+                    The current timestamp.
+
+                Returns
+                -------
+                pyo.Constraint
+                    The constraint enforcing the minimum discharging power or a
+                    skip constraint.
+                """
+                return (
+                    block.energy_source[i]
+                    >= self.battery.min_discharge_power
+                    * get_period_length(i, self.index)[1]
+                    * block.is_discharging[i]
+                )
+
+            block.min_discharge_power = pyo.Constraint(
+                self.index, expr=min_discharge_power_constraint
+            )
 
         return block

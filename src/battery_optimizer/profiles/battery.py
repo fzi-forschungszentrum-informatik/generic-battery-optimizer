@@ -79,17 +79,6 @@ class NewBattery(BaseModel):
         title="Initial State of Charge",
         description="The initial SoC of the battery in percent (0-1).",
     )
-    end_soc: Optional[float] = Field(
-        default=None,
-        ge=0,
-        le=1,
-        title="SoC at end of optimization period",
-        description=(
-            "The SoC in percent (0-1) that shall be reached by the time "
-            "end_soc_time is reached. After end_soc_time the battery is not "
-            "allowed to be discharged below end_soc. This value is optional."
-        ),
-    )
 
     # Minimum/Maximum SoC at any time
     min_soc: Optional[float] = Field(
@@ -129,6 +118,18 @@ class Battery(NewBattery):
     Power and energy are assumed to be specified in W and Wh
     respectively.
     """
+    end_soc: Optional[float] = Field(
+        default=None,
+        ge=0,
+        le=1,
+        title="SoC at end of optimization period",
+        description=(
+            "The SoC in percent (0-1) that shall be reached by the time "
+            "end_soc_time is reached. After end_soc_time the battery is not "
+            "allowed to be discharged below end_soc. This value is optional."
+        ),
+        deprecated=deprecated_string,
+    )
 
     # Charge end time
     end_soc_time: Optional[datetime] = Field(

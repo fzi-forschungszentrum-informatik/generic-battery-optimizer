@@ -18,6 +18,16 @@ class EV(Battery):
 
     Power and energy are assumed to be specified in W and Wh respectively.
     """
+    end_soc: float = Field(
+        ge=0,
+        le=1,
+        title="SoC at end of optimization period",
+        description=(
+            "The SoC in percent (0-1) that shall be reached by the time "
+            "end_soc_time is reached. After end_soc_time the battery is not "
+            "allowed to be discharged below end_soc. This value is optional."
+        ),
+    )
 
     # start_soc_time
     charge_start_time: datetime.datetime = Field(
