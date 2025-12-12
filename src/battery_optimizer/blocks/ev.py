@@ -96,10 +96,8 @@ class EVBlock(BatteryBlock):
                 if i < self.battery.charge_end_time:
                     return pyo.Constraint.Skip
                 return (
-                    self.battery.end_soc * self.battery.capacity,
-                    block.soc[i],
-                    # This is needed to make sure the result remains feasible
-                    self.battery.end_soc * self.battery.capacity + 0.001,
+                    self.battery.end_soc * self.battery.capacity
+                    == block.soc[i]
                 )
 
             block.charge_completion = pyo.Constraint(
