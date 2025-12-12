@@ -11,6 +11,7 @@ from typing import Any
 
 import pandas as pd
 
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.ev import EV
 from battery_optimizer.profiles.heat_pump import HeatPump
 
@@ -19,6 +20,8 @@ from battery_optimizer.profiles.heat_pump import HeatPump
 # possibly fit-parameters Endpoint vom esg-service
 def generate_common_time_series(
     profiles: list[dict[str | datetime.datetime, Any]] = [],
+    # TODO DEPRECATED: Remove in 5.0.0
+    batteries: list[Battery] = [],
     evs: list[EV] = [],
     heat_pumps: list[HeatPump] = [],
     round_freq: str | None = None,
@@ -33,6 +36,9 @@ def generate_common_time_series(
     ----------
     profiles : list[dict[str, datetime.datetime]]
         A list of dicts containing profiles as dicts with datetimes as keys.
+    batteries : list[Battery]
+        A list of battery components. All timestamps from the batteries will be
+        included in the index.
     evs : list[EV]
         A list of ev components. All timestamps from the evs will be
         included in the index.
@@ -91,6 +97,14 @@ def generate_common_time_series(
     index.update(
         pd.to_datetime(time) for profile in profiles for time in profile.keys()
     )
+
+    # TODO DEPRECATED: Remove in 5.0.0
+    # Batteries
+    for battery in batteries:
+        if battery.start_soc_time:
+            index.add(battery.start_soc_time)
+        if battery.end_soc_time:
+            index.add(battery.end_soc_time)
 
     # EV
     for ev in evs:
