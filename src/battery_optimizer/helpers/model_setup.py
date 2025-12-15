@@ -129,7 +129,7 @@ def generate_common_time_series(
 
     if round_freq is not None:
         index = {pd.to_datetime(time).round(round_freq) for time in index}
-    return sorted(index)
+    return sorted(pd.to_datetime(i) for i in index)
 
 
 # What happens when the profile contains indices that are not in the index
@@ -173,7 +173,7 @@ def reindex_profile(
         The reindexed profile as a dictionary with datetimes as keys.
     """
     # Convert keys to datetime if they are strings
-    datetime_index = pd.to_datetime(index).sort_values()
+    datetime_index = sorted(pd.to_datetime(i) for i in index)
     if tolerance > datetime.timedelta(0):
         adjusted_profile = {}
         for time, value in profile.items():
