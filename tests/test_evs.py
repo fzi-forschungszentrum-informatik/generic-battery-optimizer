@@ -451,7 +451,8 @@ class TestInterruptableCharging:
         This test ensures that an EV configured for non-interruptable charging
         can start its charging session at the second timestamp and continue
         without interruptions until the required state of charge (SoC) is
-        reached.
+        reached. In this test the most cost-effective time step to start
+        charging is the second one.
         """
         model = Model(self.time_series)
 
@@ -477,5 +478,43 @@ class TestInterruptableCharging:
             self.time_series[3]: -500,
             self.time_series[4]: -500,
             self.time_series[5]: -1000,
+            self.time_series[6]: 0,
+        }
+
+    def test_non_interruptable_charging_at_second_time_step_delayed(self):
+        """
+        Test non-interruptable charging starting at the second time step.
+
+        This test ensures that an EV configured for non-interruptable charging
+        can start its charging session at the second timestamp and continue
+        without interruptions until the required state of charge (SoC) is
+        reached. In this test the most cost-effective time step to start
+        charging is the THIRD one but we must start in the second one.
+        """
+        model = Model(self.time_series)
+
+        self.buy_price[self.time_series[1]] = 50  # Discourage charging at t1
+        model.add_buy_profile("buy", self.buy_power, self.buy_price)
+        ev_interruptable = self.ev.model_copy(
+            update={
+                "charging_is_interruptable": False,
+                "charge_start_time": self.time_series[1],
+            }
+        )
+        model.add_ev(ev_interruptable)
+
+        model.add_energy_paths()
+        model.generate_objective()
+        Solver(find_solver()).solve(model.model)
+
+        dict_export = Exporter(model).to_dict()
+        assert sum(dict_export["ev"].values()) == -6000
+        assert dict_export["ev"] == {
+            self.time_series[0]: 0,
+            self.time_series[1]: -500,
+            self.time_series[2]: -2000,
+            self.time_series[3]: -500,
+            self.time_series[4]: -1000,
+            self.time_series[5]: -2000,
             self.time_series[6]: 0,
         }
