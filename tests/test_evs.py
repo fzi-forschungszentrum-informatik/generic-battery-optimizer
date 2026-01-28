@@ -355,13 +355,14 @@ class TestInterruptableCharging:
         start="2025-12-11T06:00:00Z", end="2025-12-11T12:00:00Z", freq="1h"
     )
 
+    # The incremental prices ensure that there is only one optimal solution.
     buy_price = {
         time_series[0]: 50,  # Do not charge
         time_series[1]: 10,  # Charge
-        time_series[2]: 10,  # Charge
-        time_series[3]: 50,  # Do not charge (or charge less)
+        time_series[2]: 11,  # Charge
+        time_series[3]: 51,  # Do not charge (or charge less)
         time_series[4]: 40,  # Do not charge (or charge more)
-        time_series[5]: 10,  # Charge
+        time_series[5]: 12,  # Charge
         time_series[6]: 0,
     }
     buy_power = {time: 10000 for time in time_series}
