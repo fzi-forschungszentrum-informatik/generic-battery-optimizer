@@ -243,4 +243,63 @@ class EVBlock(BatteryBlock):
                 self.index, expr=min_discharge_power_constraint
             )
 
+        if not self.battery.charging_is_interruptable:
+
+            def uninterrupted_charging(
+                _, i: datetime.datetime
+            ) -> pyo.Constraint | pyo.Constraint.Skip:
+                """
+                Enforce uninterrupted charging once started.
+
+                This constraint ensures that once the battery starts charging,
+                it continues to charge at least at min_charge_power until the
+                required charge is completed. Charging starts at
+                charge_start_time and may stop afterwards, but can never
+                restart.
+
+                Parameters
+                ----------
+                _ : pyo.Block
+                    The Pyomo block (not used).
+                i : datetime.datetime
+                    The current timestamp.
+
+                Returns
+                -------
+                pyo.Constraint | pyo.Constraint.Skip
+                    The constraint enforcing uninterrupted charging or a skip
+                    constraint.
+                """
+                if i <= self.battery.charge_start_time:
+                    return pyo.Constraint.Skip
+
+                return (
+                    block.is_charging[self.index.prev(i)]
+                    >= block.is_charging[i]
+                )
+
+            def charge_must_start(
+                _, i: datetime.datetime
+            ) -> pyo.Constraint | pyo.Constraint.Skip:
+                """
+                Force charging to start at charge_start_time.
+
+                This ensures the first charging period begins at the configured
+                start time so the uninterrupted charging block is anchored.
+                """
+                if self.battery.charge_start_time is None:
+                    return pyo.Constraint.Skip
+                if i == self.battery.charge_start_time:
+                    return block.is_charging[i] == 1
+                if i < self.battery.charge_start_time:
+                    return block.is_charging[i] == 0
+                return pyo.Constraint.Skip
+
+            block.uninterrupted_charging = pyo.Constraint(
+                self.index, expr=uninterrupted_charging
+            )
+            block.charge_must_start = pyo.Constraint(
+                self.index, expr=charge_must_start
+            )
+
         return block
