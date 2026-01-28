@@ -338,3 +338,184 @@ class TestChargeTimes:
         assert df_export.to_ev_soc().iloc[-1]["ev_battery"] == pytest.approx(
             0.8, 0.01
         )
+
+
+class TestInterruptableCharging:
+    """
+    Test EV interruptable charging functionality.
+
+    Generally AC charging of EVs is not interruptable. A minimum of 6A per
+    phase is required to keep the connection alive. However, some EVs and
+    charging stations support interruptable charging, allowing the charging
+    process to be paused and resumed as needed. This test class verifies that
+    the battery optimizer can handle EVs with non-interruptable charging.
+    """
+
+    time_series = pd.date_range(
+        start="2025-12-11T06:00:00Z", end="2025-12-11T12:00:00Z", freq="1h"
+    )
+
+    # The incremental prices ensure that there is only one optimal solution.
+    buy_price = {
+        time_series[0]: 50,  # Do not charge
+        time_series[1]: 10,  # Charge
+        time_series[2]: 11,  # Charge
+        time_series[3]: 51,  # Do not charge (or charge less)
+        time_series[4]: 40,  # Do not charge (or charge more)
+        time_series[5]: 12,  # Charge
+        time_series[6]: 0,
+    }
+    buy_power = {time: 10000 for time in time_series}
+
+    ev = EV(
+        name="ev",
+        capacity=6000,
+        start_soc=0,
+        end_soc=1,
+        charge_efficiency=1,
+        charge_start_time=time_series[0],
+        charge_end_time=time_series[-1],
+        max_charge_power=2000,
+        min_charge_power=500,
+    )
+
+    def test_non_interruptable_charging(self):
+        """
+        Test that an EV with non-interruptable charging charges without breaks.
+
+        This test ensures that an EV configured for non-interruptable charging
+        completes its charging session in one continuous block without any
+        interruptions. It starts at timestamp 0 and charges until the required
+        state of charge (SoC) is reached but may adjust the charging power as
+        needed.
+        """
+        model = Model(self.time_series)
+
+        model.add_buy_profile("buy", self.buy_power, self.buy_price)
+        ev_interruptable = self.ev.model_copy(
+            update={"charging_is_interruptable": False}
+        )
+        model.add_ev(ev_interruptable)
+
+        model.add_energy_paths()
+        model.generate_objective()
+        Solver(find_solver()).solve(model.model)
+
+        dict_export = Exporter(model).to_dict()
+        assert sum(dict_export["ev"].values()) == -6000
+        assert dict_export["ev"] == {
+            self.time_series[0]: -500,
+            self.time_series[1]: -2000,
+            self.time_series[2]: -2000,
+            self.time_series[3]: -500,
+            self.time_series[4]: -500,
+            self.time_series[5]: -500,
+            self.time_series[6]: 0,
+        }
+
+    def test_interruptable_charging(self):
+        """
+        Test that an EV with interruptable charging can be charged in parts.
+
+        This test ensures that an EV configured for interruptable charging can
+        be charged in multiple segments rather than requiring a continuous
+        charging session.
+        """
+        model = Model(self.time_series)
+
+        model.add_buy_profile("buy", self.buy_power, self.buy_price)
+        ev_interruptable = self.ev.model_copy(
+            update={"charging_is_interruptable": True}
+        )
+        model.add_ev(ev_interruptable)
+
+        model.add_energy_paths()
+        model.generate_objective()
+        Solver(find_solver()).solve(model.model)
+
+        dict_export = Exporter(model).to_dict()
+        assert sum(dict_export["ev"].values()) == -6000
+        assert dict_export["ev"] == {
+            self.time_series[0]: 0,
+            self.time_series[1]: -2000,
+            self.time_series[2]: -2000,
+            self.time_series[3]: 0,
+            self.time_series[4]: 0,
+            self.time_series[5]: -2000,
+            self.time_series[6]: 0,
+        }
+
+    def test_non_interruptable_charging_at_second_time_step(self):
+        """
+        Test non-interruptable charging starting at the second time step.
+
+        This test ensures that an EV configured for non-interruptable charging
+        can start its charging session at the second timestamp and continue
+        without interruptions until the required state of charge (SoC) is
+        reached. In this test the most cost-effective time step to start
+        charging is the second one.
+        """
+        model = Model(self.time_series)
+
+        model.add_buy_profile("buy", self.buy_power, self.buy_price)
+        ev_interruptable = self.ev.model_copy(
+            update={
+                "charging_is_interruptable": False,
+                "charge_start_time": self.time_series[1],
+            }
+        )
+        model.add_ev(ev_interruptable)
+
+        model.add_energy_paths()
+        model.generate_objective()
+        Solver(find_solver()).solve(model.model)
+
+        dict_export = Exporter(model).to_dict()
+        assert sum(dict_export["ev"].values()) == -6000
+        assert dict_export["ev"] == {
+            self.time_series[0]: 0,
+            self.time_series[1]: -2000,
+            self.time_series[2]: -2000,
+            self.time_series[3]: -500,
+            self.time_series[4]: -500,
+            self.time_series[5]: -1000,
+            self.time_series[6]: 0,
+        }
+
+    def test_non_interruptable_charging_at_second_time_step_delayed(self):
+        """
+        Test non-interruptable charging starting at the second time step.
+
+        This test ensures that an EV configured for non-interruptable charging
+        can start its charging session at the second timestamp and continue
+        without interruptions until the required state of charge (SoC) is
+        reached. In this test the most cost-effective time step to start
+        charging is the THIRD one but we must start in the second one.
+        """
+        model = Model(self.time_series)
+
+        self.buy_price[self.time_series[1]] = 50  # Discourage charging at t1
+        model.add_buy_profile("buy", self.buy_power, self.buy_price)
+        ev_interruptable = self.ev.model_copy(
+            update={
+                "charging_is_interruptable": False,
+                "charge_start_time": self.time_series[1],
+            }
+        )
+        model.add_ev(ev_interruptable)
+
+        model.add_energy_paths()
+        model.generate_objective()
+        Solver(find_solver()).solve(model.model)
+
+        dict_export = Exporter(model).to_dict()
+        assert sum(dict_export["ev"].values()) == -6000
+        assert dict_export["ev"] == {
+            self.time_series[0]: 0,
+            self.time_series[1]: -500,
+            self.time_series[2]: -2000,
+            self.time_series[3]: -500,
+            self.time_series[4]: -1000,
+            self.time_series[5]: -2000,
+            self.time_series[6]: 0,
+        }

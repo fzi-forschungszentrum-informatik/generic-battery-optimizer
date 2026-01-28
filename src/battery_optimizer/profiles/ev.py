@@ -92,3 +92,13 @@ class EV(Battery):
             "discharging. Value is given in W."
         ),
     )
+
+    charging_is_interruptable: bool = Field(
+        default=True,
+        title="Is charging interruptable",
+        description=(
+            "Specifies whether the charging process can be interrupted. If "
+            "set to False the battery must charge at min_charge_power from "
+            "the start time until the charging is finished."
+        ),
+    )
