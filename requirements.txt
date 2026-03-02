@@ -1,8 +1,11 @@
 numpy
 pandas
 matplotlib
-pydantic>=2,<2.12
+pydantic>=2,!=2.12.0
 pyomo
-xlsxwriter
-hplib
+pytest
 pyyaml
+pytest-cov
+pytest-watch
+gurobipy
+hplib

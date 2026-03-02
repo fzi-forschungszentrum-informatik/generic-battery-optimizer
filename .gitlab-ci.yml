@@ -5,10 +5,11 @@
   - "3.11"
   - "3.12"
   - "3.13"
+  - "3.14"
 
 variables:
   # Python version for build/publish
-  LATEST_PYTHON: "3.13"
+  LATEST_PYTHON: "3.14"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
 
 default:
@@ -38,26 +39,29 @@ build:
     paths:
       - dist/
 
+
+.test_job_template: &test_job_template
+  stage: test
+  before_script:
+    - python --version
+    - pip install dist/*.whl battery_optimizer[dev,hplib]
+  parallel:
+    matrix:
+      - PYTHON_VERSION: *python_versions
+
 .run-tests: &run-tests
-  - pip install pytest pyyaml pytest-cov
-  - pip install -r requirements.txt
-  - pip install dist/*.whl
-  - export PYTHONPATH=src
-  - pytest --cov-report term-missing --cov=src tests/
+  - PYTHONPATH=src pytest --cov-report term-missing --cov=src tests/
 
 glpk:
-  stage: test
+  <<: *test_job_template
   variables:
     SOLVER: glpk
   script:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - *run-tests
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
 
 scip:
-  stage: test
+  <<: *test_job_template
   variables:
     SOLVER: scip
     SCIP_VERSION: 10.0.0
@@ -68,26 +72,20 @@ scip:
     - echo "$SHASUM  scipopt.deb" | sha256sum --check -
     - apt install -y --no-install-recommends ./scipopt.deb && rm -rf /var/lib/apt/lists/*
     - *run-tests
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
 
 gurobi:
-  stage: test
+  <<: *test_job_template
   variables:
     SOLVER: gurobi
   script:
     - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
-    - pip install gurobipy
+    - pip install dist/*.whl battery_optimizer[gurobi]
     - *run-tests
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
 
 gurobi-prerelease:
-  stage: test
+  <<: *test_job_template
   allow_failure: true
   variables:
     SOLVER: gurobi
@@ -96,15 +94,10 @@ gurobi-prerelease:
     - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
     - export GRB_LICENSE_FILE=.secure_files/gurobi.lic
     - pip install --pre gurobipy
-    - pip install pytest pyyaml pytest-cov
     # Install prerelease versions without upper version limits
     - pip install --pre --upgrade --upgrade-strategy eager -r <(sed 's/,<[^[:space:]]*//g' requirements.txt)
     - pip install --no-deps dist/*.whl
-    - export PYTHONPATH=src
-    - pytest --cov-report term-missing --cov=src tests/
-  parallel:
-    matrix:
-      - PYTHON_VERSION: *python_versions
+    - PYTHONPATH=src pytest -W error --cov-report term-missing --cov=src tests/
 
 
 publish:
