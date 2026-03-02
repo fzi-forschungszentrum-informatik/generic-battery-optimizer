@@ -97,7 +97,7 @@ gurobi-prerelease:
     # Install prerelease versions without upper version limits
     - pip install --pre --upgrade --upgrade-strategy eager -r <(sed 's/,<[^[:space:]]*//g' requirements.txt)
     - pip install --no-deps dist/*.whl
-    - PYTHONPATH=src pytest --cov-report term-missing --cov=src tests/
+    - PYTHONPATH=src pytest -W error --cov-report term-missing --cov=src tests/
 
 
 publish:
