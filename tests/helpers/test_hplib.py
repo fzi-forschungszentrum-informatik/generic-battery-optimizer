@@ -101,3 +101,58 @@ class TestHpLibWrapper:
         cop = self.hplib.get_cop_output_temperature(5, 9)
         assert 1 < cop < 10
         assert isinstance(cop, float)
+
+    def test_cop_values_single(self):
+        """
+        Test that get_cop_values() returns the same results as calling
+        get_cop_flow_temperature() and get_cop_output_temperature() individually
+        for single-value inputs.
+
+        Raises
+        ------
+        AssertionError
+            If get_cop_values() does not return a tuple of two valid COP floats,
+            or if the values differ from the individually computed ones.
+        """
+        cop_flow, cop_output = self.hplib.get_cop_values(5, 9)
+        assert isinstance(cop_flow, float)
+        assert isinstance(cop_output, float)
+        assert 1 < cop_output < cop_flow < 10
+        assert cop_flow == self.hplib.get_cop_flow_temperature(5, 9)
+        assert cop_output == self.hplib.get_cop_output_temperature(5, 9)
+
+    def test_cop_values_dict(self):
+        """
+        Test that get_cop_values() returns the same results as calling
+        get_cop_flow_temperature() and get_cop_output_temperature() individually
+        for dictionary-based inputs.
+
+        Raises
+        ------
+        AssertionError
+            If get_cop_values() does not return a tuple of two dicts with valid
+            COP values, or if the values differ from the individually computed ones.
+        """
+        outdoor_temperature = {
+            self.time_series[0]: 15,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+        heat_source_temperature = {
+            self.time_series[0]: 15,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+        cop_flow, cop_output = self.hplib.get_cop_values(
+            heat_source_temperature, outdoor_temperature
+        )
+        assert isinstance(cop_flow, dict)
+        assert isinstance(cop_output, dict)
+        for t in cop_flow:
+            assert 1 < cop_output[t] < cop_flow[t] < 10
+        assert cop_flow == self.hplib.get_cop_flow_temperature(
+            heat_source_temperature, outdoor_temperature
+        )
+        assert cop_output == self.hplib.get_cop_output_temperature(
+            heat_source_temperature, outdoor_temperature
+        )

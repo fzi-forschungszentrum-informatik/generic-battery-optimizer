@@ -421,9 +421,9 @@ class HpLibWrapper:
         outdoor_temperature: dict[datetime.datetime, float] | float | int,
     ) -> tuple[dict[datetime.datetime, float], dict[datetime.datetime, float]]:
         """
-        Simulate low and high temperature CoP values.
+        Simulate flow and output temperature CoP values.
 
-        Simulate the cop values for both low and high temperature scenarios.
+        Simulate the cop values for both flow and output temperature scenarios.
         The source temperature and outdoor temperature can be a single float
         value or a dictionary with datetime keys and float values (time
         series).
@@ -443,11 +443,12 @@ class HpLibWrapper:
         -------
         tuple[dict[datetime.datetime, float], dict[datetime.datetime, float]]
             A tuple containing two dictionaries with datetime keys and float
-            values representing the CoP for low and high temperature scenarios.
+            values representing the CoP for flow temperature and output
+            temperature scenarios, respectively.
         """
         return (
-            self.get_cop_low_temp(source_temperature, outdoor_temperature),
-            self.get_cop_high_temp(source_temperature, outdoor_temperature),
+            self.get_cop_flow_temperature(source_temperature, outdoor_temperature),
+            self.get_cop_output_temperature(source_temperature, outdoor_temperature),
         )
 
 
