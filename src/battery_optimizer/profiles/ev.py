@@ -7,6 +7,7 @@ powers.
 """
 
 import datetime
+from typing import Optional
 from pydantic import Field, model_validator
 from battery_optimizer.profiles.battery import NewBattery as Battery
 
@@ -17,24 +18,27 @@ class EV(Battery):
 
     Power and energy are assumed to be specified in W and Wh respectively.
     """
-    end_soc: float = Field(
+    end_soc: Optional[float] = Field(
+        default=None,
         ge=0,
         le=1,
         title="SoC at end of optimization period",
         description=(
             "The SoC in percent (0-1) that shall be reached by the time "
-            "end_soc_time is reached. After end_soc_time the battery is not "
-            "allowed to be discharged below end_soc. This value is optional."
+            "charge_end_time is reached. After charge_end_time the battery is "
+            "not allowed to be discharged below end_soc. This value is "
+            "optional, but must be supplied when charge_end_time is set."
         ),
     )
 
     @model_validator(mode="after")
     def check_end_soc(self) -> "EV":
         """
-        Validate that end_soc is within min_soc and max_soc.
+        Validate end_soc consistency.
 
-        end_soc must be between min_soc and max_soc. If it would be outside
-        this range the model would become infeasible.
+        When end_soc is provided it must be within min_soc and max_soc,
+        otherwise the model would become infeasible.  When charge_end_time is
+        provided, end_soc must also be provided.
 
         Returns
         -------
@@ -44,29 +48,35 @@ class EV(Battery):
         Raises
         ------
         ValueError
-            If end_soc is outside the min_soc and max_soc range.
+            If end_soc is outside the min_soc/max_soc range, or if
+            charge_end_time is set without end_soc.
         """
-        if self.end_soc < self.min_soc or self.end_soc > self.max_soc:
+        if self.end_soc is not None:
+            if self.end_soc < self.min_soc or self.end_soc > self.max_soc:
+                raise ValueError(
+                    f"end_soc ({self.end_soc}) is outside the range of "
+                    f"min_soc ({self.min_soc}) and max_soc ({self.max_soc})."
+                )
+        if self.charge_end_time is not None and self.end_soc is None:
             raise ValueError(
-                f"end_soc ({self.end_soc}) is outside the range of "
-                f"min_soc ({self.min_soc}) and max_soc ({self.max_soc})."
+                "end_soc must be provided when charge_end_time is set."
             )
         return self
 
-    # start_soc_time
-    charge_start_time: datetime.datetime = Field(
+    charge_start_time: Optional[datetime.datetime] = Field(
+        default=None,
         title="Start time for reaching charge_start",
         description=(
-            "The datetime that specifies the time after which the battery is"
-            "available for charging/discharging."
+            "The datetime that specifies the time after which the battery is "
+            "available for charging/discharging. This value is optional."
         ),
     )
-    # end_soc_time
-    charge_end_time: datetime.datetime = Field(
+    charge_end_time: Optional[datetime.datetime] = Field(
+        default=None,
         title="End time for reaching end_soc",
         description=(
             "The datetime that specifies the time when end_soc should be "
-            "reached. This is optional but if it is supplied end_soc must be "
+            "reached. This is optional, but if it is supplied end_soc must be "
             "supplied too."
         ),
     )

@@ -3,6 +3,8 @@ Tests EV specific functionality.
 
 Battery specific tests are located in test_battery.py.
 """
+import datetime
+
 import pandas as pd
 import pytest
 from battery_optimizer.export import Exporter
@@ -14,6 +16,51 @@ from battery_optimizer.model import Model
 from battery_optimizer.profiles.ev import EV
 from battery_optimizer.solver import Solver
 from tests.helpers import find_solver
+
+
+class TestEVOptionalFields:
+    """
+    Test that end_soc, charge_start_time, and charge_end_time are optional.
+
+    All three fields were described as optional in their Field descriptions but
+    were incorrectly declared as required (no default value, non-Optional type).
+    These tests ensure they can be omitted when creating an EV instance.
+    """
+
+    _base = dict(
+        name="ev",
+        capacity=10000,
+        start_soc=0.5,
+        max_charge_power=3000,
+    )
+
+    def test_end_soc_is_optional(self):
+        """EV can be created without providing end_soc (should default to None)."""
+        ev = EV(
+            **self._base,
+            charge_start_time=datetime.datetime(2025, 1, 1),
+        )
+        assert ev.end_soc is None
+
+    def test_charge_start_time_is_optional(self):
+        """EV can be created without providing charge_start_time."""
+        ev = EV(**self._base, end_soc=0.8, charge_end_time=datetime.datetime(2025, 1, 2))
+        assert ev.charge_start_time is None
+
+    def test_charge_end_time_is_optional(self):
+        """EV can be created without providing charge_end_time."""
+        ev = EV(**self._base, end_soc=0.8, charge_start_time=datetime.datetime(2025, 1, 1))
+        assert ev.charge_end_time is None
+
+    def test_charge_end_time_without_end_soc_raises(self):
+        """Setting charge_end_time without end_soc should raise a ValueError."""
+        with pytest.raises(ValueError, match="end_soc"):
+            EV(
+                **self._base,
+                charge_start_time=datetime.datetime(2025, 1, 1),
+                charge_end_time=datetime.datetime(2025, 1, 2),
+                # end_soc intentionally omitted
+            )
 
 
 class TestChargeTimes:
