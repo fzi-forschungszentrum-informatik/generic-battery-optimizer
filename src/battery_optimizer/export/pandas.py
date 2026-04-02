@@ -280,10 +280,10 @@ class ModelDataFrame:
             """
             # Iterate over all but the last row
             for i in range(column.size - 1):
-                # calculate time delta to next timestamp
+                # calculate time delta to next timestamp (in hours)
                 time_delta = (
                     column.index[i + 1] - column.index[i]
-                ).seconds / 3600
+                ).total_seconds() / 3600
                 # calculate energy
                 column.iloc[i] /= time_delta
 
