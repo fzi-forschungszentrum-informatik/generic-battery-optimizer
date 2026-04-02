@@ -340,6 +340,85 @@ class TestChargeTimes:
         )
 
 
+class TestChargeFinishedConstraint:
+    """
+    Test the charge_finished constraint in EVBlock.
+
+    The charge_finished constraint must enforce SoC >= end_soc (not ==) for
+    all timestamps at or after charge_end_time. Using == would freeze the SoC
+    at exactly end_soc, preventing any energy flow (charging or V2G
+    discharging) after the deadline.
+    """
+
+    time_series = pd.date_range(
+        start="2025-01-01T00:00:00Z", end="2025-01-01T03:00:00Z", freq="1h"
+    )
+    # t0: only time when EV can cheaply charge
+    # t1: charge_end_time, SoC must be >= end_soc from here
+    # t2: V2G sell opportunity at high price
+    # t3: last timestamp
+
+    buy_price = {t: 1 for t in time_series}
+    buy_power = {t: 100000 for t in time_series}
+
+    # Profitable V2G sell opportunity at t2
+    sell_price = {t: 0 for t in time_series}
+    sell_price[time_series[2]] = 50
+    sell_power = {t: 100000 for t in time_series}
+
+    ev = EV(
+        name="ev",
+        capacity=6000,
+        start_soc=0.0,
+        end_soc=0.3,
+        charge_start_time=time_series[0],
+        charge_end_time=time_series[1],
+        max_charge_power=6000,
+        max_discharge_power=6000,
+        charge_efficiency=1,
+        discharge_efficiency=1,
+        min_soc=0,
+        max_soc=1,
+        min_charge_power=0,
+        min_discharge_power=0,
+    )
+
+    def test_soc_can_exceed_end_soc_after_charge_end_time(self):
+        """
+        Test that V2G discharge is possible after charge_end_time.
+
+        When the charge_finished constraint uses >= (instead of ==), the
+        optimizer is free to charge the EV above end_soc before charge_end_time
+        and then discharge (V2G) for profit after charge_end_time, as long as
+        the SoC stays at or above end_soc.
+
+        With the == bug the SoC is frozen at exactly end_soc * capacity for
+        every timestamp at or after charge_end_time, making any discharge
+        impossible.
+        """
+        model = Model(self.time_series)
+        model.add_buy_profile("buy", self.buy_power, self.buy_price)
+        model.add_sell_profile("sell", self.sell_power, self.sell_price)
+        model.add_ev(self.ev)
+        model.add_energy_paths()
+        model.generate_objective()
+        Solver(find_solver()).solve(model.model)
+
+        dict_export = Exporter(model).to_dict()
+        ev_data = dict_export["ev"]
+
+        # The optimizer should discharge at t2 (profitable V2G sell opportunity).
+        # This requires SoC > end_soc between t1 and t2, which is only possible
+        # when the constraint is >= (not ==).
+        # With ==: SoC is frozen at end_soc after t1, so discharge is blocked
+        # and ev_data[t2] == 0.
+        assert ev_data[self.time_series[2]] > 0, (
+            "Expected EV to discharge (V2G) at t2 after charge_end_time, "
+            "but no discharge occurred. The charge_finished constraint may be "
+            "using == instead of >= end_soc."
+        )
+
+
 class TestInterruptableCharging:
     """
     Test EV interruptable charging functionality.
