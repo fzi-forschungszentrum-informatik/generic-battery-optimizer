@@ -54,7 +54,7 @@ TEXT_SELL_PROFILE_BASE = "Sell sink: "
 # Fixed consumption profile texts
 TEXT_CONSUMPTION_PROFILE_BASE = "Fixed consumption: "
 # Energy path texts
-TEXT_ENERGY_PATH_MATRIX = "Energy Matrix"
+TEXT_ENERGY_PATH_MATRIX = "energy_matrix"
 TEXT_ENERGY_PATH_SOURCE_CONSTRAINTS = "Energy distribution source constraints"
 TEXT_ENERGY_PATH_SINK_CONSTRAINTS = "Energy distribution target constraints"
 # Objective texts

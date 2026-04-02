@@ -380,7 +380,15 @@ class Exporter:
         energy_matrix_dict: dict[pd.Timestamp, dict[str, dict[str, float]]] = (
             {}
         )
-        for (timestamp, source, target), value in energy_matrix.iteritems():
+        for (
+            timestamp,
+            source_type,
+            source_device,
+            target_type,
+            target_device,
+        ), value in energy_matrix.items():
+            source = f"{source_type}.{source_device}"
+            target = f"{target_type}.{target_device}"
             if timestamp not in energy_matrix_dict:
                 energy_matrix_dict[timestamp] = {}
             if source not in energy_matrix_dict[timestamp]:
@@ -389,19 +397,23 @@ class Exporter:
         for key, value in energy_matrix_dict.items():
             # type: ignore
             sheet_name = f"E-Matrix {key.strftime('%d.%m.%Y %H-%M–%S')}"
-            pd.DataFrame.from_dict(data=value, orient="index").to_excel(
-                writer, sheet_name=sheet_name
-            )
-            # set body column widths
-            writer.sheets[sheet_name].set_column(
-                1,
-                len(self._model.energy_sinks),
-                len(max(self._model.energy_sinks, key=len)),
-            )
-            # set index column width
-            writer.sheets[sheet_name].set_column(
-                0, 0, len(max(self._model.energy_sources, key=len))
-            )
+            df = pd.DataFrame.from_dict(data=value, orient="index")
+            df.to_excel(writer, sheet_name=sheet_name)
+            # derive sink and source names from the DataFrame
+            sinks = [str(col) for col in df.columns]
+            sources = [str(idx) for idx in df.index]
+            # set body column widths based on sink name lengths
+            if sinks:
+                writer.sheets[sheet_name].set_column(
+                    1,
+                    len(sinks),
+                    max(len(sink) for sink in sinks),
+                )
+            # set index column width based on source name lengths
+            if sources:
+                writer.sheets[sheet_name].set_column(
+                    0, 0, max(len(source) for source in sources)
+                )
         writer.close()
 
     def _to_battery_soc(self) -> pd.DataFrame:
