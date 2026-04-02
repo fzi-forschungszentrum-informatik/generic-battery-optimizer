@@ -15,8 +15,9 @@ test_cop_single()
     Tests the COP calculation for single-value inputs.
 """
 
+import pytest
 import pandas as pd
-from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper
+from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper, _validate_distinct_item
 
 
 class TestHpLibWrapper:
@@ -101,3 +102,40 @@ class TestHpLibWrapper:
         cop = self.hplib.get_cop_output_temperature(5, 9)
         assert 1 < cop < 10
         assert isinstance(cop, float)
+
+
+class TestValidateDistinctItem:
+    """
+    Test suite for the _validate_distinct_item helper.
+
+    Verifies that _validate_distinct_item raises ValueError (not AssertionError)
+    when the item is not in the group, and passes silently when it is.
+    This also ensures the check cannot be silently skipped with Python's -O flag,
+    which disables assert statements.
+
+    Methods
+    -------
+    test_raises_value_error_when_item_not_in_group()
+        Tests that ValueError is raised for an item not in the group.
+
+    test_no_error_when_item_in_group()
+        Tests that no error is raised for a valid item.
+    """
+
+    def test_raises_value_error_when_item_not_in_group(self):
+        """
+        Test that ValueError is raised when item is not in group.
+
+        Verifies that the function raises ValueError (not AssertionError) so
+        the check works correctly even when Python is run with the -O flag.
+        """
+        with pytest.raises(ValueError):
+            _validate_distinct_item("invalid", ["a", "b", "c"])
+
+    def test_no_error_when_item_in_group(self):
+        """
+        Test that no error is raised when item is in group.
+
+        Verifies that the function completes successfully for a valid item.
+        """
+        _validate_distinct_item("a", ["a", "b", "c"])

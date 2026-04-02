@@ -469,4 +469,5 @@ def _validate_distinct_item(item: Any, group: Iterable[Any]) -> None:
     ValueError
         If the value is not in the list.
     """
-    assert item in group, f"{item} is not allowed. Allowed values: {group}"
+    if item not in group:
+        raise ValueError(f"{item} is not allowed. Allowed values: {group}")
