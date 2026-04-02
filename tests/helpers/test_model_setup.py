@@ -38,6 +38,27 @@ class Test_Generate_Common_Time_Series:
         index = generate_common_time_series()
         assert index == []
 
+    def test_no_mutable_default_arguments(self):
+        """
+        Test that default parameters are None, not mutable empty lists.
+
+        Using mutable default arguments (e.g. ``profiles=[]``) is a
+        Python anti-pattern: the same list object is shared across all
+        calls and any future mutation of that default would silently
+        corrupt subsequent invocations.  The correct pattern is to use
+        ``None`` as the default and initialise to an empty list inside
+        the function body.
+        """
+        import inspect
+
+        sig = inspect.signature(generate_common_time_series)
+        for param_name in ["profiles", "batteries", "evs", "heat_pumps"]:
+            default = sig.parameters[param_name].default
+            assert default is None, (
+                f"Parameter '{param_name}' uses a mutable default argument "
+                f"(got {default!r}). Use None instead."
+            )
+
     def test_profiles_only(self):
         """
         Test power profile.

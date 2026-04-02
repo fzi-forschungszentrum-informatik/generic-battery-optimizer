@@ -19,11 +19,11 @@ from battery_optimizer.profiles.heat_pump import HeatPump
 # TODO add this as a separate endpoint to the service
 # possibly fit-parameters Endpoint vom esg-service
 def generate_common_time_series(
-    profiles: list[dict[str | datetime.datetime, Any]] = [],
+    profiles: list[dict[str | datetime.datetime, Any]] | None = None,
     # TODO DEPRECATED: Remove in 5.0.0
-    batteries: list[Battery] = [],
-    evs: list[EV] = [],
-    heat_pumps: list[HeatPump] = [],
+    batteries: list[Battery] | None = None,
+    evs: list[EV] | None = None,
+    heat_pumps: list[HeatPump] | None = None,
     round_freq: str | None = None,
 ) -> Sequence[datetime.datetime]:
     """
@@ -94,6 +94,10 @@ def generate_common_time_series(
     ]
     """
     index: set[datetime.datetime] = set()
+    profiles = profiles or []
+    batteries = batteries or []
+    evs = evs or []
+    heat_pumps = heat_pumps or []
     index.update(
         pd.to_datetime(time) for profile in profiles for time in profile.keys()
     )
