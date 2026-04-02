@@ -284,8 +284,13 @@ class HpLibWrapper:
         # Both will be a dict at this point
         if len(source_temperature) != len(outdoor_temperature):
             raise ValueError(
-                "source_temperature and outdoor_temperature must be of the "
-                "same type."
+                "source_temperature and outdoor_temperature must have the "
+                "same number of entries when provided as time series."
+            )
+        if set(source_temperature.keys()) != set(outdoor_temperature.keys()):
+            raise ValueError(
+                "source_temperature and outdoor_temperature must have the "
+                "same datetime keys when provided as time series."
             )
         if any(
             v > MINIMUM_KELVIN for v in [*source_temperature.values(), *outdoor_temperature.values()]

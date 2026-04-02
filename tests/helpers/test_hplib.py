@@ -15,6 +15,7 @@ test_cop_single()
     Tests the COP calculation for single-value inputs.
 """
 
+import pytest
 import pandas as pd
 from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper
 
@@ -101,3 +102,32 @@ class TestHpLibWrapper:
         cop = self.hplib.get_cop_output_temperature(5, 9)
         assert 1 < cop < 10
         assert isinstance(cop, float)
+
+    def test_validate_source_and_outdoor_temp_mismatched_keys(self):
+        """
+        Test that dicts with the same length but different timestamp keys raise ValueError.
+
+        When source_temperature and outdoor_temperature dicts have the same
+        number of entries but different datetime keys, constructing a DataFrame
+        from them silently introduces NaN values (pandas aligns on the union of
+        all keys). This test ensures that a clear ValueError is raised instead.
+        """
+        time_series_a = pd.date_range(
+            start="2021-01-01 08:00:00+00:00",
+            end="2021-01-01 10:00:00+00:00",
+            freq="h",
+        )
+        time_series_b = pd.date_range(
+            start="2021-01-02 08:00:00+00:00",
+            end="2021-01-02 10:00:00+00:00",
+            freq="h",
+        )
+        source_temperature = {ts: 10.0 for ts in time_series_a}
+        outdoor_temperature = {ts: 5.0 for ts in time_series_b}
+
+        assert len(source_temperature) == len(outdoor_temperature)
+
+        with pytest.raises(ValueError, match="same datetime keys"):
+            self.hplib.get_cop_output_temperature(
+                source_temperature, outdoor_temperature
+            )
