@@ -690,7 +690,7 @@ class Model:
             for device_class, devices in device_tree.items()
             for device in devices
         ]
-        print(devices)
+        log.debug("Devices retrieved from model: %s", devices)
         return devices
 
     @staticmethod
