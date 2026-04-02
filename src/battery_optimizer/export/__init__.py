@@ -326,6 +326,13 @@ class Exporter:
         if not filename.endswith(".xlsx"):
             filename = f"{filename}.xlsx"
         log.info("Writing to %s", filename)
+        try:
+            import xlsxwriter  # noqa: F401
+        except ImportError as e:
+            raise ImportError(
+                "xlsxwriter is required for Excel export. "
+                "Install it with: pip install battery_optimizer[excel]"
+            ) from e
         writer = pd.ExcelWriter(filename, engine="xlsxwriter")
 
         components: dict[str, list[pyo.Component]] = {}

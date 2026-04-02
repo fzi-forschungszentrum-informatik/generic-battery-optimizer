@@ -30,6 +30,7 @@ classifiers=[
 
 [project.optional-dependencies]
 dev = ["pytest", "pyyaml", "pytest-cov", "pytest-watch"]
+excel = ["xlsxwriter"]
 gurobi = [
   "gurobipy >=11;python_version <= '3.12'",
   "gurobipy >=12;python_version == '3.13'",
