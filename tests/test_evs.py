@@ -5,6 +5,7 @@ Battery specific tests are located in test_battery.py.
 """
 import pandas as pd
 import pytest
+from pydantic import ValidationError
 from battery_optimizer.export import Exporter
 from battery_optimizer.helpers.model_setup import (
     generate_common_time_series,
@@ -14,6 +15,60 @@ from battery_optimizer.model import Model
 from battery_optimizer.profiles.ev import EV
 from battery_optimizer.solver import Solver
 from tests.helpers import find_solver
+
+
+class TestEVOptionalFields:
+    """
+    Test that charge_end_time, charge_start_time, and end_soc are optional.
+
+    The Field descriptions say these fields are optional, and the blocks code
+    checks for None. This test class verifies that EVs can be created without
+    these fields (they default to None) and that a clear error is raised when
+    charge_end_time is provided without end_soc.
+    """
+
+    base_kwargs = dict(
+        name="ev",
+        capacity=10000,
+        start_soc=0.2,
+        max_charge_power=5000,
+    )
+
+    def test_ev_can_be_created_without_charge_end_time(self):
+        """EV can be created without specifying charge_end_time."""
+        ev = EV(
+            charge_start_time="2025-01-01T08:00:00Z",
+            end_soc=0.8,
+            **self.base_kwargs,
+        )
+        assert ev.charge_end_time is None
+
+    def test_ev_can_be_created_without_charge_start_time(self):
+        """EV can be created without specifying charge_start_time."""
+        ev = EV(
+            charge_end_time="2025-01-01T18:00:00Z",
+            end_soc=0.8,
+            **self.base_kwargs,
+        )
+        assert ev.charge_start_time is None
+
+    def test_ev_can_be_created_without_end_soc_and_charge_end_time(self):
+        """EV can be created without end_soc when charge_end_time is absent."""
+        ev = EV(
+            charge_start_time="2025-01-01T08:00:00Z",
+            **self.base_kwargs,
+        )
+        assert ev.end_soc is None
+        assert ev.charge_end_time is None
+
+    def test_charge_end_time_without_end_soc_raises_error(self):
+        """Providing charge_end_time without end_soc must raise a ValueError."""
+        with pytest.raises((ValidationError, ValueError)):
+            EV(
+                charge_start_time="2025-01-01T08:00:00Z",
+                charge_end_time="2025-01-01T18:00:00Z",
+                **self.base_kwargs,
+            )
 
 
 class TestChargeTimes:

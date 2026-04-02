@@ -17,14 +17,16 @@ class EV(Battery):
 
     Power and energy are assumed to be specified in W and Wh respectively.
     """
-    end_soc: float = Field(
+    end_soc: float | None = Field(
+        default=None,
         ge=0,
         le=1,
         title="SoC at end of optimization period",
         description=(
             "The SoC in percent (0-1) that shall be reached by the time "
-            "end_soc_time is reached. After end_soc_time the battery is not "
-            "allowed to be discharged below end_soc. This value is optional."
+            "charge_end_time is reached. After charge_end_time the battery is "
+            "not allowed to be discharged below end_soc. This field is "
+            "optional but must be supplied when charge_end_time is supplied."
         ),
     )
 
@@ -34,7 +36,8 @@ class EV(Battery):
         Validate that end_soc is within min_soc and max_soc.
 
         end_soc must be between min_soc and max_soc. If it would be outside
-        this range the model would become infeasible.
+        this range the model would become infeasible. Skipped when end_soc is
+        None.
 
         Returns
         -------
@@ -44,9 +47,16 @@ class EV(Battery):
         Raises
         ------
         ValueError
-            If end_soc is outside the min_soc and max_soc range.
+            If end_soc is outside the min_soc and max_soc range, or if
+            charge_end_time is supplied without end_soc.
         """
-        if self.end_soc < self.min_soc or self.end_soc > self.max_soc:
+        if self.charge_end_time is not None and self.end_soc is None:
+            raise ValueError(
+                "end_soc must be supplied when charge_end_time is supplied."
+            )
+        if self.end_soc is not None and (
+            self.end_soc < self.min_soc or self.end_soc > self.max_soc
+        ):
             raise ValueError(
                 f"end_soc ({self.end_soc}) is outside the range of "
                 f"min_soc ({self.min_soc}) and max_soc ({self.max_soc})."
@@ -54,20 +64,22 @@ class EV(Battery):
         return self
 
     # start_soc_time
-    charge_start_time: datetime.datetime = Field(
+    charge_start_time: datetime.datetime | None = Field(
+        default=None,
         title="Start time for reaching charge_start",
         description=(
-            "The datetime that specifies the time after which the battery is"
-            "available for charging/discharging."
+            "The datetime that specifies the time after which the battery is "
+            "available for charging/discharging. This field is optional."
         ),
     )
     # end_soc_time
-    charge_end_time: datetime.datetime = Field(
+    charge_end_time: datetime.datetime | None = Field(
+        default=None,
         title="End time for reaching end_soc",
         description=(
             "The datetime that specifies the time when end_soc should be "
-            "reached. This is optional but if it is supplied end_soc must be "
-            "supplied too."
+            "reached. This field is optional but if it is supplied end_soc "
+            "must be supplied too."
         ),
     )
 
