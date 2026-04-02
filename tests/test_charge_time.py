@@ -1,12 +1,27 @@
+"""
+Unit tests for charge start and end time behavior of the battery.
+
+Test cases:
+- test_start_time: Tests that the battery starts charging only after the
+  specified start time.
+"""
+
 from datetime import datetime
 import unittest
 import pandas as pd
 from battery_optimizer import optimize
-from battery_optimizer.profiles.battery_profile import Battery
-from helpers import find_solver, get_profiles
+from battery_optimizer.profiles.battery import Battery
+from battery_optimizer.profiles.ev import EV
+from tests.helpers import find_solver, get_profiles
 
 
 class TestChargeTime(unittest.TestCase):
+    """
+    Tests for battery charge start and end time behavior.
+
+    Tests the battery parameters start_soc_time and end_soc_time to ensure
+    that the battery only charges within the specified time frame.
+    """
     time_series = pd.DatetimeIndex(
         [
             datetime(2021, 1, 1, 8, 0, 0),
@@ -18,7 +33,13 @@ class TestChargeTime(unittest.TestCase):
     )
 
     def test_start_time(self):
-        """Battery is charged from PV from 3rd timestep"""
+        """
+        Battery is charged from PV from 3rd time step.
+
+        Test that the battery will not charge before the specified
+        start_soc_time. This is the third time step in this test case.
+        At and after this time step the battery should charge.
+        """
         buy = {
             "pv": pd.DataFrame(
                 data={
@@ -56,11 +77,13 @@ class TestChargeTime(unittest.TestCase):
             )
         }
 
-        battery = Battery(
+        battery = EV(
             capacity=10000,
             max_charge_power=10000,
             start_soc=0,
-            start_soc_time=self.time_series[2],
+            end_soc=0,
+            charge_start_time=self.time_series[2],
+            charge_end_time=self.time_series[-1],
             max_discharge_power=10000,
         )
 
@@ -70,7 +93,7 @@ class TestChargeTime(unittest.TestCase):
             fixed_consumption=get_profiles(
                 self.time_series, fixed_consumption
             ),
-            batteries=[battery],
+            evs=[battery],
             solver=find_solver(),
         )
 
@@ -78,7 +101,6 @@ class TestChargeTime(unittest.TestCase):
             data={
                 "pv": [5, 5, 5, 5, 0],
                 "grid_buy": [0, 0, 0, 0, 0],
-                "grid_sell": [0, 0, 0, 0, 0],
             },
             index=self.time_series,
         )
@@ -92,18 +114,30 @@ class TestChargeTime(unittest.TestCase):
 
         sell_result = pd.DataFrame(
             data={
-                "pv": [0, 0, 0, 0, 0],
-                "grid_buy": [0, 0, 0, 0, 0],
                 "grid_sell": [2, 2, 0, 0, 0],
             },
             index=self.time_series,
         )
 
         # Assert power profiles
-        pd.testing.assert_frame_equal(result[0], buy_result, check_dtype=False)
         pd.testing.assert_frame_equal(
-            result[1], sell_result, check_dtype=False
+            result[0],
+            buy_result,
+            check_dtype=False,
+            rtol=1e-6,
+            atol=1e-8,
         )
         pd.testing.assert_frame_equal(
-            result[4], fixed_consumption_result, check_dtype=False
+            result[1],
+            sell_result,
+            check_dtype=False,
+            rtol=1e-6,
+            atol=1e-8,
+        )
+        pd.testing.assert_frame_equal(
+            result[4],
+            fixed_consumption_result,
+            check_dtype=False,
+            rtol=1e-6,
+            atol=1e-8,
         )

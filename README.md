@@ -11,6 +11,9 @@ It takes PowerPriceProfiles and technical data of batteries as input and gives b
 PowerPriceProfiles cointain information about electricity prices and available power at a certain time period of an energy source or sink and can be used to model both dynamic tariffs from the grid, feed-in remuneration,
 and PV generation.
 ![image](overview-ppp-bems.png)
+
+While working with the optimizer make sure to use consistent units throughout the model. As long as consistent units are used for power and price the optimizer will work correctly and the resulting power profiles will be in the same unit as the input power profiles. Note: The heat pump currently uses kW for its input values instead of the default W used by the rest of the model. Make sure to account for this when using heat pumps in the model.
+
 # Getting started
 ## Installing an optimization backend
 To run an optimizer an external Optimizer like GLPK, CPLEX or GUROBI is required. By default the optimizer uses the GLPK optimizer but others may be specified during optimization.
@@ -27,9 +30,13 @@ brew install glpk
 
 For other platforms see the [GLPK Website](https://www.gnu.org/software/glpk/)
 
-The easiest way to install [Gurobi](https://support.gurobi.com/hc/en-us/articles/4534161999889-How-do-I-install-Gurobi-Optimizer) is to use its Python version. This is fully sufficient to use this optimization model. It can be installed with:
+The easiest way to install [Gurobi](https://support.gurobi.com/hc/en-us/articles/4534161999889-How-do-I-install-Gurobi-Optimizer) is to use its Python version. This is fully sufficient to use this optimization model. It can automatically be installed with the optimizer with
 ```bash
-pip install gurobi
+pip install battery_optimizer[gurobi]
+```
+or manually with:
+```bash
+pip install gurobipy
 ```
 
 Gurobi requires licensing to use this model. A license can be obtained free of charge for research purposes from the Gurobi [licensing portal](https://portal.gurobi.com/iam/login/?target=https%3A%2F%2Fportal.gurobi.com%2Fiam%2Flicenses%2Flist). The most flexible option is to use a Gurobi web license. This can be used machine independent including container usage but requires internet access.
@@ -45,7 +52,7 @@ pip install .
 from the projects root folder.
 
 ## Using the optimizer with Python
-The optimization model can be used in one of two ways. A manual way (recommended) which gives a more flexibility to and features and a simplified way that offers a quick ways to optimize simple energy systems. 
+The optimization model can be used in one of two ways. A manual way (recommended) which gives more flexibility to features and a simplified way that offers a quick way to optimize simple energy systems. 
 
 ### Manual usage
 The usage of the optimizer is a 8 (or 9) step process. Initializing the model, adding profiles and devices, generating the energy paths, adding optional constraints on energy paths, generating the objective, initializing a solver, solving the model and exporting the data from the model. 
@@ -59,7 +66,7 @@ The time series is a list of timestamps. A convenient way to generate equidistan
 ```python
 import pandas as pd
 from battery_optimizer.model import Model
-time_series = pd.date_range(start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="H")
+time_series = pd.date_range(start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h")
 my_model = Model(time_series)
 ```
 
@@ -69,7 +76,6 @@ The components take either directly serializable data as input or pydantic model
 The methods return the created block for the model and can be stored for future use to reference the blocks in the model. This is needed to add power limits on energy paths.
 
 Available Methods are:
-|-----------------------|-------------------------------------------------------|
 |Method                 |Device/Profile                                         |
 |-----------------------|-------------------------------------------------------|
 |add_battery            |Batteries - Home battery storage or EV assert_batteries|
@@ -77,12 +83,11 @@ Available Methods are:
 |add_buy_profile        |Energy buy profiles - provide energy for a cost        |
 |add_sell_profile       |Energy sell profiles - can sell energy for a revenue   |
 |add_fixed_consumption  |Inflexible consumption - must be satisfied             |
-|-----------------------|-------------------------------------------------------|
 
 Refer to the documentation of the individual components for the requirements of the components.
 
 ```python
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 buy_block = my_model.add_buy_profile(
     "buy",
     {
@@ -120,6 +125,62 @@ battery_block = my_model.add_battery(
         charge_efficiency=1,
         discharge_efficiency=1,
     )
+)
+```
+
+The heat pump model is one of the more complex components that can be added to an optimization problem.
+Due to its complexity some functionality that may be useful is handled by other methods than the usual device model. These functions are  
+interpolate_heat_energy and interpolate_temperature, provided by the module battery_optimizer.helpers.heat_pump_profile for interpolating input data and the HpLibWrapper class provided by the module battery_optimizer.helpers.hplib.
+The heat pump model relies on two data series that provide CoP information to the model based on the heat output temperature (high or low) and the time step in the simulation. Many external factors can influence the CoP like outdoor temperatures or the temperature the heat pump has to heat to. One option is to estimate these CoP values using [hplib](https://github.com/FZJ-IEK3-VSA/hplib).
+A wrapper around this package is provided by this package from the module battery_optimizer.helpers.hplib. This module abstracts some of the hplib functionality to allow for simple estimation of the two required CoP time-series.
+
+The `HpLibWrapper` class from this module takes a `HpLibProfile` model as an input and provides the methods `get_cop_low_temp`, `get_cop_high_temp` and `get_cop_values`. 
+All three methods accept two inputs. Both can be either a float or a dictionary with datetime keys and floats as values. The `source_temperature` specifies the source temperature the heat pump extracts heat from. This is usually the outdoor temperature for air-water heat pumps or the ground/water temperature for brine-water heat pumps. The `output_temperature` specifies the temperature the heat pump has to heat to. This is usually the flow temperature of the heating system or the temperature the heat pump has to heat the storage tank to.
+
+To use these helping classes create a HpLibProfile  model with the heat pumps information and pass it into the HpLibWrapper:
+```python
+from battery_optimizer.helpers.hplib import HpLibProfile, HpLibWrapper
+hplib = HpLibWrapper(
+    HpLibProfile(
+        type="i-SHWAK V4 12",
+        flow_temperature=35,
+        output_temperature=55,
+    )
+)
+```
+
+Run the prediction of the cop values with:
+```python
+cop_high = hplib.get_cop_high_temp(
+    heat_source_temperature, outdoor_temperature
+)
+cop_low = hplib.get_cop_low_temp(
+    heat_source_temperature, outdoor_temperature
+)
+```
+
+Alternatively both cop time series can be generated simultaneously with:
+```python
+cop_low, cop_low = hplib.get_cop_values(
+    heat_source_temperature, outdoor_temperature
+)
+```
+
+Estimating tank heat losses:
+
+Warm water tanks usually do not retain heat perfectly. To model these heat losses the heat pump model requires a tank heat loss value specified when creating a heat pump model with the parameter `tank_heat_loss` in W/K. This value can be estimated with the helper methods `tank_dimensions` and `heat_loss_tank` provided by the module battery_optimizer.helpers.heat_pump_profile. The tank dimension estimation takes in a tank volume in liters and estimates the tanks height and radius in meters. These dimensions can then be used to estimate the tanks heat loss in W/K with the heat_loss_tank method.
+
+```python
+from battery_optimizer.profiles.heat_pump import HeatPump
+from battery_optimizer.helpers.heat_pump_profile import (
+    heat_loss_tank,
+    tank_dimensions,
+)
+
+heat_pump = HeatPump(
+    ...,
+    heat_loss_tank=heat_loss_tank(*tank_dimensions(100)),
+    tank_volume=100,
 )
 ```
 
@@ -214,7 +275,7 @@ Import the optimizer wrapper, power profile, profile stack and battery as needed
 import random # Just for the random initialization of power/price values
 import pandas as pd # Useful to generate time series for the indices
 from battery_optimizer import optimize
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack, PowerPriceProfile
 ```
@@ -301,29 +362,36 @@ The optimization model is designed to be extensible with minimal effort. Each pr
 To implement a new block create a new file in src > battery_optimizer > blocks and add the following template to the file:
 
 ```python
-class MyBlock:
+from battery_optimizer.blocks.base import BaseBlock
+
+class MyBlock(BaseBlock):
     def __init__(self, index: pyo.Set, my_block_information: MyBlockPydantic):
         self.index = index
         self.my_block_information = my_block_information
 
-    def build_block(self) -> pyo.Block:
-        """Build the block"""
-        block = pyo.Block()
-        # DEFAULT
-        # Source in Matrix
-        block.energy_source = pyo.Var(self.index, bounds=(0, 0), initialize=0)
-        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
-        # Sink in matrix
-        block.energy_sink = pyo.Var(self.index, bounds=(0, 0), initialize=0)
-        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
-        # Construct variables and parameters
-        block.energy_source.construct()
-        block.price_source.construct()
-        block.energy_sink.construct()
-        block.price_sink.construct()
-        # DEFAULT
-
+    def _populate_block(self, block: pyo.Block) -> pyo.Block:
+        """
+        Add custom logic to the block.
+        
+        This method is called when the block is built.
+        Add all logic (constraints, variables, parameters) that the block needs
+        here.
+        
+        Parameters
+        ----------
+        block : pyo.Block
+            The block to populate with custom logic.
+            
+        Returns
+        -------
+        pyo.Block
+            The populated block.
+        """
         ### Your device implementation
+        # e.g. set energy and price limits:
+        for i in self.index:
+            block.energy_source[i].setub(5)
+            block.price_source[i].set_value(3)
 
         return block
 ```

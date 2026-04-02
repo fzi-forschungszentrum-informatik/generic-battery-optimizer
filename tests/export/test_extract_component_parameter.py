@@ -1,0 +1,138 @@
+import pandas as pd
+
+from battery_optimizer.export import Exporter
+from battery_optimizer.model import Model
+from battery_optimizer.profiles.battery import Battery
+from battery_optimizer.solver import Solver
+from tests.helpers import find_solver
+
+
+class TestExtractorComponentParameter:
+    time_series = pd.date_range(
+        start="2021-01-01 08:00:00", end="2021-01-01 10:00:00", freq="h"
+    )
+
+    # Input data
+    buy_power = {
+        time_series[0]: 10,
+        time_series[1]: 10,
+        time_series[2]: 0,
+    }
+    buy_price = {
+        time_series[0]: 1,
+        time_series[1]: 4,
+        time_series[2]: 0,
+    }
+
+    sell = {
+        time_series[0]: 10,
+        time_series[1]: 10,
+        time_series[2]: 0,
+    }
+    sell_price = {
+        time_series[0]: 0,
+        time_series[1]: 3,
+        time_series[2]: 0,
+    }
+
+    battery = Battery(
+        name="test-battery",
+        start_soc=0,
+        end_soc=0,
+        capacity=10000,
+        max_charge_power=10000,
+        max_discharge_power=10000,
+        charge_efficiency=1,
+        discharge_efficiency=1,
+    )
+
+    def test_exporter_battery_soc_dict(self):
+        """
+        Tests the Exporter class's __to_parameter_dict method for correct
+        export of battery soc after running an optimization model.
+
+        The test performs the following steps:
+        1. Initializes an optimization model with time series data.
+        2. Adds buy and sell power profiles with corresponding prices.
+        3. Adds a battery to the model.
+        4. Generates energy paths and the objective function.
+        5. Solves the optimization model.
+        6. Exports the results to a dictionary using the Exporter class.
+        7. Asserts that the exported battery soc match es
+           expected values for each time step.
+        """
+        # Optimization
+        opt = Model(self.time_series)
+        opt.add_buy_profile("buy", self.buy_power, self.buy_price)
+        opt.add_sell_profile("sell", self.sell, self.sell_price)
+        opt.add_battery(self.battery)
+        opt.add_energy_paths()
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+
+        export = Exporter(opt)._Exporter__extract_component_parameter(
+            "batteries", "test-battery", "soc"
+        )
+
+        # Assert soc
+        assert export == {
+            self.time_series[0]: 10,
+            self.time_series[1]: 0,
+            self.time_series[2]: 0,
+        }
+
+    def test_extractor_error_handling(self):
+        """
+        Tests the Exporter class's __extract_component_parameter method for
+        correct error handling when an invalid device class, device name or
+        parameter is provided.
+
+        The test performs the following steps:
+        1. Initializes an optimization model with time series data.
+        2. Adds buy and sell power profiles with corresponding prices.
+        3. Adds a battery to the model.
+        4. Generates energy paths and the objective function.
+        5. Solves the optimization model.
+        6. Attempts to export data using an invalid device class, device name
+           or parameter and asserts that a ValueError is raised with the
+           expected message.
+        """
+        # Optimization
+        opt = Model(self.time_series)
+        opt.add_buy_profile("buy", self.buy_power, self.buy_price)
+        opt.add_sell_profile("sell", self.sell, self.sell_price)
+        opt.add_battery(self.battery)
+        opt.add_energy_paths()
+
+        opt.generate_objective()
+        Solver(find_solver()).solve(opt.model)
+
+        exporter = Exporter(opt)
+
+        try:
+            exporter._Exporter__extract_component_parameter(
+                "invalid_class", "test-battery", "soc"
+            )
+            assert False, "Expected ValueError was not raised"
+        except ValueError as e:
+            assert str(e) == "Device class invalid_class not found"
+
+        try:
+            exporter._Exporter__extract_component_parameter(
+                "batteries", "invalid_device", "soc"
+            )
+            assert False, "Expected ValueError was not raised"
+        except ValueError as e:
+            assert str(e) == "Device invalid_device not found in batteries"
+
+        try:
+            exporter._Exporter__extract_component_parameter(
+                "batteries", "test-battery", "invalid_parameter"
+            )
+            assert False, "Expected ValueError was not raised"
+        except ValueError as e:
+            assert str(e) == (
+                "Parameter invalid_parameter not found in "
+                "batteries.test-battery"
+            )

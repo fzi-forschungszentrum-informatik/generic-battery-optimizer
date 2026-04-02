@@ -1,7 +1,19 @@
+"""
+Static texts and component mapping for the optimization model.
+
+This module defines static text constants used throughout the battery
+optimizer, as well as a mapping between component classes and their
+string identifiers in the model dictionary.
+"""
+
 from battery_optimizer.blocks.battery import BatteryBlock
+from battery_optimizer.blocks.ev import EVBlock
 from battery_optimizer.blocks.fixed_consumption import FixedConsumptionBlock
 from battery_optimizer.blocks.heat_pump import HeatPumpBlock
-from battery_optimizer.blocks.power_profile import PowerProfileBlock
+from battery_optimizer.blocks.power_profile import (
+    BuyProfileBlock,
+    SellProfileBlock,
+)
 from battery_optimizer.static.profiles import (
     MODEL_POWER_ABOVE,
     MODEL_POWER_BELOW,
@@ -50,7 +62,9 @@ TEXT_OBJECTIVE_NAME = "Objective"
 
 COMPONENT_MAP: dict[type, str] = {
     BatteryBlock: "batteries",
-    PowerProfileBlock: "power_profiles",
+    EVBlock: "evs",
+    BuyProfileBlock: "buy_profiles",
+    SellProfileBlock: "sell_profiles",
     FixedConsumptionBlock: "fixed_consumptions",
     HeatPumpBlock: "heat_pumps",
 }

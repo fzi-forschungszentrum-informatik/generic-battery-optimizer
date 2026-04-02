@@ -1,8 +1,17 @@
+"""
+Generic battery optimizer wrapper.
+
+Provides a simple interface to optimize an energy system with batteries,
+electric vehicles and heat pumps.
+For more complex use cases please use the full model.
+"""
+
 import pandas as pd
-from battery_optimizer.profiles.battery_profile import Battery
+from battery_optimizer.profiles.battery import Battery
 from battery_optimizer.profile_stack_problem import ProfileStackProblem
+from battery_optimizer.profiles.ev import EV
 from battery_optimizer.solver import Solver
-from battery_optimizer.export.model import Exporter
+from battery_optimizer.export import Exporter
 from battery_optimizer.profiles.heat_pump import HeatPump
 from battery_optimizer.profiles.profiles import ProfileStack
 
@@ -12,6 +21,7 @@ def optimize(
     sell_prices: ProfileStack | None = None,
     fixed_consumption: ProfileStack | None = None,
     batteries: list[Battery] | None = None,
+    evs: list[EV] | None = None,
     heat_pumps: list[HeatPump] | None = None,
     **kwargs,
 ) -> tuple[
@@ -21,11 +31,17 @@ def optimize(
     pd.DataFrame,
     pd.DataFrame,
     pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
 ]:
-    """Optimize an energy system
+    """
+    Optimize an energy system.
 
-    Arguments
-    ---------
+    Wrapper around the model to simplify usage. For more complex use cases
+    please use the full model.
+
+    Parameters
+    ----------
     buy_prices : ProfileStack
         All profiles to buy energy from. Price is assumed to be in ct/kWh.
         Power is assumed to be in W. If none of the profiles has a price_above
@@ -41,8 +57,12 @@ def optimize(
         the electricity during this time period (unused here).
     batteries : List[Battery]
         A list of batteries that can be used in the optimization.
+    evs : List[EV]
+        A list of electric vehicles that can be used in the optimization.
     heat_pumps : List[HeatPump]
         A list of heat pumps that provide heating energy for a household.
+    **kwargs : dict
+        Additional arguments passed to the solver.
 
     Returns
     -------
@@ -60,13 +80,19 @@ def optimize(
         input. Just for reference.
     heat_pump_power : pd.Dataframe
         The power in W of each heat pump profile used. Heat pumps have an
-        inverter and a heating element
+        inverter and a heating element.
+    ev_power : pd.Dataframe
+        The power in W of each EV profile used. Positive is charge and negative
+        is discharge.
+    ev_soc : pd.Dataframe
+        The SoC of each EV.
     """
     opt = ProfileStackProblem(
         buy_prices=buy_prices,
         sell_prices=sell_prices,
         fixed_consumption=fixed_consumption,
         batteries=batteries,
+        evs=evs,
         heat_pumps=heat_pumps,
     )
     opt.set_up()
@@ -79,4 +105,6 @@ def optimize(
         export.to_battery_soc(),
         export.to_fixed_consumption(),
         export.to_heat_pump_power(),
+        export.to_ev_power(),
+        export.to_ev_soc(),
     )

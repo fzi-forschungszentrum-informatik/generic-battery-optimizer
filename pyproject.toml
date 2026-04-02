@@ -16,10 +16,8 @@ dependencies = [
   "numpy",
   "pandas",
   "matplotlib",
-  "pydantic >= 2",
+  "pydantic >=2, !=2.12.0",
   "pyomo",
-  "xlsxwriter",
-  "hplib",
 ]
 description = "Generic Battery Optimizer"
 readme = "README.md"
@@ -28,4 +26,21 @@ classifiers=[
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pyyaml", "pytest-cov", "pytest-watch"]
+gurobi = [
+  "gurobipy >=11;python_version <= '3.12'",
+  "gurobipy >=12;python_version == '3.13'",
+  "gurobipy >=13;python_version >= '3.14'",
+]
+hplib = ["hplib"]
+
+[tool.numpydoc_validation]
+checks = [
+    "all",   # report on all checks, except the below
+    # Optional section
+    "SA01",  # See Also
+    "EX01",  # Examples
 ]

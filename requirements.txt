@@ -1,11 +1,11 @@
 numpy
 pandas
 matplotlib
-pydantic>=2
+pydantic>=2,!=2.12.0
 pyomo
-xlsxwriter
 pytest
+pyyaml
 pytest-cov
 pytest-watch
+gurobipy
 hplib
-pyyaml

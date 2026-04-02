@@ -1,58 +1,76 @@
+"""
+This module defines a Pyomo block for modeling a heat pump system.
+
+This model can simulate the operation of a heat pump system over a specified
+time index. It decides between two cop values depending on whether a thermal
+energy storage (TES) is being charged to shift electricity usage or not.
+The foundation for this model is the work of Nicolas Schilz 2024 (Flexibilität
+moderner Wärmepumpen).
+"""
+
+import logging
 import pyomo.environ as pyo
-import hplib.hplib as hpl
+from battery_optimizer.blocks.base import BaseBlock
 from battery_optimizer.helpers.blocks import get_period_length
 from battery_optimizer.helpers.heat_pump_profile import (
-    heat_loss_tank,
     interpolate_temperature,
     interpolate_heat_energy,
 )
 from battery_optimizer.profiles.heat_pump import HeatPump
-import logging
-
-from battery_optimizer.static.heat_pump import C_TO_K
 from battery_optimizer.static.numbers import MAX_COP
 
 log = logging.getLogger(__name__)
 
 
-class HeatPumpBlock:
+class HeatPumpBlock(BaseBlock):
+    """
+    A Pyomo block representing a heat pump system.
+
+    This block models the operation of a heat pump system over a specified
+    time index. It includes variables, parameters, and constraints to simulate
+    the heat pump's behavior, including its energy consumption, heat supply,
+    and interactions with a thermal energy storage (TES) system.
+
+    Parameters
+    ----------
+    index : pyo.Set
+        The time index for the heat pump model.
+    heat_pump : HeatPump
+        The heat pump profile containing parameters and settings.
+    """
     def __init__(self, index: pyo.Set, heat_pump: HeatPump):
-        self.index = index
+        """
+        Initialize the heat pump block.
+
+        Store the index and heat pump profile for use in building the heat
+        pump model.
+
+        Parameters
+        ----------
+        index : pyo.Set
+            The time index for the heat pump model.
+        heat_pump : HeatPump
+            The heat pump profile containing parameters and settings.
+        """
+        super().__init__(index)
         self.heat_pump = heat_pump
 
-        # HPL Heat Pump
-        if heat_pump.type in ("Luft/Luft", "Air/Air"):
-            log.warning("L/L-WP")
-            raise NotImplementedError("Air/Air heat pumps are not supported.")
-        if heat_pump.type == "Generic":
-            parameters = hpl.get_parameters(
-                model=heat_pump.type,
-                group_id=heat_pump.id,
-                t_in=heat_pump.t_in - C_TO_K,
-                t_out=heat_pump.t_out - C_TO_K,
-                p_th=heat_pump.p_th / 1000,
-            )
-            self.hpl_heat_pump = hpl.HeatPump(parameters)
-        else:
-            parameters = hpl.get_parameters(model=self.heat_pump.type)
-            self.hpl_heat_pump = hpl.HeatPump(parameters)
+    def _populate_block(self, block: pyo.Block) -> pyo.Block:
+        """
+        Build the heat pump block.
 
-    def build_block(self) -> pyo.Block:
-        """Build the heat pump block"""
-        block = pyo.Block()
-        # DEFAULT
-        # Source in Matrix
-        block.energy_source = pyo.Var(self.index, initialize=0)
-        block.price_source = pyo.Param(self.index, initialize=0, mutable=True)
-        # Sink in matrix
-        block.energy_sink = pyo.Var(self.index, initialize=0)
-        block.price_sink = pyo.Param(self.index, initialize=0, mutable=True)
-        # DEFAULT
-        block.energy_source.construct()
-        block.price_source.construct()
-        block.energy_sink.construct()
-        block.price_sink.construct()
+        This method constructs a Pyomo block that models the operation of a
+        heat pump system over a specified time index. It includes variables,
+        parameters, and constraints to simulate the heat pump's behavior,
+        including its energy consumption, heat supply, and interactions with
+        a thermal energy storage (TES) system.
 
+        Returns
+        -------
+        pyo.Block
+            A Pyomo block representing a heat pump system.
+        """
+        block.energy_sink.setub(None)
         # Add old heat pump block for compatibility
         block.hp_block = pyo.Block(self.index, rule=self.get_block)
 
@@ -89,7 +107,15 @@ class HeatPumpBlock:
 
     def get_block(self, block: pyo.Block):
         """
-        Gestaltung einer Periode im Modell
+        Model a single period of the heat pump operation.
+
+        Sets all parameters, variables and constraints for a single period of
+        the heat pump simulation/optimization.
+
+        Parameters
+        ----------
+        block : pyo.Block
+            The Pyomo block to which the heat pump model will be added.
         """
         # DEFAULT
         # Source in Matrix
@@ -107,12 +133,13 @@ class HeatPumpBlock:
         temp_room = interpolate_temperature(self.heat_pump.temp_room, period)
 
         # Parameters
-        block.outdoor_temperature = pyo.Param(
-            initialize=interpolate_temperature(
-                self.heat_pump.outdoor_temperature, period
-            ),
-            within=pyo.NonNegativeReals,
-        )
+        if self.heat_pump.outdoor_temperature is not None:
+            block.outdoor_temperature = pyo.Param(
+                initialize=interpolate_temperature(
+                    self.heat_pump.outdoor_temperature, period
+                ),
+                within=pyo.Reals,
+            )
 
         block.warm_water_demand = pyo.Param(
             initialize=interpolate_heat_energy(
@@ -130,39 +157,22 @@ class HeatPumpBlock:
             doc="Building heat loss/demand in kW for this period.",
         )
 
-        block.source_temp = pyo.Param(
-            initialize=interpolate_temperature(
-                self.heat_pump.heat_source_temperature, period
-            ),
-            within=pyo.NonNegativeReals,
-            doc=(
-                "Temperature of heat source in K. e.g. outdoor air, ground "
-                "water or soil temperature."
-            ),
-        )
-
         block.cop_high = pyo.Param(
-            initialize=self.hpl_heat_pump.simulate(
-                t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=(
-                    (self.heat_pump.output_temperature - 5) - C_TO_K
-                ),
-                t_amb=(block.outdoor_temperature - C_TO_K),
-                mode=1,
-            )["COP"],
+            initialize=(
+                self.heat_pump.cop_output_temperature[period]
+                if isinstance(self.heat_pump.cop_output_temperature, dict)
+                else self.heat_pump.cop_output_temperature
+            ),
             doc=(
                 "The COP of the heat pump at the maximum output temperature."
             ),
         )
         block.cop_low = pyo.Param(
-            initialize=self.hpl_heat_pump.simulate(
-                t_in_primary=(block.source_temp - C_TO_K),
-                t_in_secondary=(
-                    (self.heat_pump.flow_temperature - 5) - C_TO_K
-                ),
-                t_amb=(block.outdoor_temperature - C_TO_K),
-                mode=1,
-            )["COP"],
+            initialize=(
+                self.heat_pump.cop_flow_temperature[period]
+                if isinstance(self.heat_pump.cop_flow_temperature, dict)
+                else self.heat_pump.cop_flow_temperature
+            ),
             doc=("The COP of the heat pump at the flow output temperature."),
         )
 
@@ -346,7 +356,27 @@ class HeatPumpBlock:
         # wenn TES aufgeladen wird, Temperatur von WP = MAX_TEMP_HP
         # wenn TES nicht aufgeladen wird, dann Temperatur von
         # WP = TEMP_SUPPLY_DEMAND
-        def cop_rule1(block):
+        def cop_rule1(block: pyo.Block) -> pyo.Expression:
+            """
+            Set cop to high if heating TES.
+
+            Sets the COP of the heat pump to the high temperature COP if the
+            heat pump is heating the TES. In this case, the heat pump needs to
+            reach the maximum output temperature of the heat pump to feed the
+            TES.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the heat pump parameters and
+                variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the COP constraint for this
+                period.
+            """
             if (
                 interpolate_heat_energy(
                     self.heat_pump.warm_water_demand, period
@@ -354,13 +384,30 @@ class HeatPumpBlock:
                 > 0
             ):
                 return block.cop_value == block.cop_high
-            if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
-                return block.cop_value == self.heat_pump.cop_air
             return (block.cop_value - block.cop_high) * block.y_TES == 0
 
         block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
 
-        def cop_rule3(block):
+        def cop_rule3(block: pyo.Block) -> pyo.Expression:
+            """
+            Set cop to low if not heating TES.
+
+            Sets the COP of the heat pump to the low temperature COP if the
+            heat pump is not heating the TES. We only need to reach flow
+            temperature for the demand side in this case.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the heat pump parameters and
+                variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the COP constraint for this
+                period.
+            """
             if (
                 interpolate_heat_energy(
                     self.heat_pump.warm_water_demand, period
@@ -368,8 +415,6 @@ class HeatPumpBlock:
                 > 0
             ):
                 return pyo.Constraint.Skip
-            if self.heat_pump.type in ("Luft/Luft", "Air/Air"):
-                return block.cop_value == self.heat_pump.cop_air
             return (block.cop_value - block.cop_low) * (1 - block.y_TES) == 0
 
         block.cop_cons3 = pyo.Constraint(rule=cop_rule3)
@@ -427,8 +472,28 @@ class HeatPumpBlock:
 
         # Wärmestrom Demand
 
-        # Heizbedarf gesamt
-        def heat_supply_Demand_total_rule(block):
+        def heat_supply_Demand_total_rule(block: pyo.Block) -> pyo.Expression:
+            """
+            Total building heat demand.
+
+            Sets the total heat demand in kW of the building for this
+            period.
+            If a heat demand is provided for the last period, a warning is
+            logged and the demand is set to zero to ensure the optimization
+            remains feasible.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the building parameters and
+                variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the total heat demand for this
+                period.
+            """
             # Estimate heat demand based on the building's U-values
             heat_supply_demand = (
                 block.heat_loss_building + block.warm_water_demand
@@ -506,6 +571,7 @@ class HeatPumpBlock:
                 == block.heat_energy_TES
                 * 3600  # conversion seconds to hours (J (Ws) -> Wh)
                 / (
+                    # BUG heat pumps needs a tank volume but should not
                     self.heat_pump.tank_volume
                     * 4.186  # Heat capacity of water in kWh/kgK
                 )
@@ -527,15 +593,28 @@ class HeatPumpBlock:
             )
         )
 
-        # #Energieverlust von Tank
-        def heat_loss_tank_rule(block):
-            if not self.heat_pump.predict_tank_loss:
-                return block.heat_loss_tank == 0
-            return block.heat_loss_tank == heat_loss_tank(
-                self.heat_pump.tank_height,
-                self.heat_pump.tank_radius,
-                self.heat_pump.tank_u_value,
-                (block.temp_TES - temp_room),
+        def heat_loss_tank_rule(block: pyo.Block) -> pyo.Expression:
+            """
+            Calculate the heat loss of the tank.
+
+            Calculates the heat loss for this period of the tank based on its
+            relative heat loss [W/K] and the temperature difference between the
+            tank and the room temperature.
+
+            Parameters
+            ----------
+            block : pyo.Block
+                The Pyomo block containing the tank parameters and variables.
+
+            Returns
+            -------
+            pyo.Expression
+                An expression representing the tank heat loss for this period.
+            """
+            return block.heat_loss_tank == (
+                self.heat_pump.heat_loss_tank
+                / 1000  # Convert W to kW
+                * (block.temp_TES - temp_room)
             )
 
         block.heat_loss_tank_cons = pyo.Constraint(
@@ -551,19 +630,6 @@ class HeatPumpBlock:
             block.temp_TES_cons = pyo.Constraint(
                 rule=(block.temp_TES >= self.heat_pump.flow_temperature)
             )
-
-        # obere Schranke für Tankverluste
-        def heat_loss_tank_ub_rule(block):
-            if not self.heat_pump.predict_tank_loss:
-                return block.heat_loss_tank <= 0
-            return block.heat_loss_tank <= heat_loss_tank(
-                self.heat_pump.tank_height,
-                self.heat_pump.tank_radius,
-                self.heat_pump.tank_u_value,
-                (self.heat_pump.max_temp_tes - temp_room),
-            )
-
-        block.heat_loss_tank_ub = pyo.Constraint(rule=heat_loss_tank_ub_rule)
 
         # #weitere Restriktionen
 
@@ -586,7 +652,7 @@ class HeatPumpBlock:
                     rule=(
                         (
                             block.heat_supply_hp_total
-                            <= (block.heat_demand) * 0.7
+                            <= (block.heat_loss_building) * 0.7
                         )
                     )
                 )
