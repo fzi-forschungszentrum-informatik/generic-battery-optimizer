@@ -140,8 +140,10 @@ def interpolate_temperature(
     if current_period in temperature:
         return temperature[current_period]
     # Interpolate temperature if not available
-    temperature[current_period] = None
-    series = pd.Series(temperature).sort_index().interpolate(method="time")
+    # Work on a copy so the caller's profile data is not modified
+    series = pd.Series(temperature)
+    series[current_period] = None
+    series = series.sort_index().interpolate(method="time")
     return series[current_period]
 
 
