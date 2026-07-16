@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Optional, Union
 import logging
-import matplotlib.pyplot as plt
+
 
 logger = logging.getLogger(__name__)
 
@@ -115,50 +115,6 @@ class PowerPriceProfile(pd.DataFrame):
             feed_in=self.feed_in,
         )
 
-    def plot(
-        self,
-        offset: Optional[pd.Series] = None,
-        power_series: Optional[pd.Series] = None,
-    ):
-        if offset is None:
-            offset = [0 for _ in self.index]
-        extended_index = pd.date_range(
-            start=self.index[0],
-            end=self.index[-1] + self.index.freq.delta,
-            freq=self.index.freqstr,
-        )
-        x = extended_index
-        if self.power.isna().any():
-            y1 = [30 for _ in self.index]
-        else:
-            y1 = self.power.values
-        fig, ax = plt.subplots()
-        prices = self["price"].values
-        norm = plt.Normalize(prices.min(), prices.max())
-        cmap = plt.cm.get_cmap("coolwarm")
-        fig, ax = plt.subplots()
-        for i in range(len(x) - 1):
-            ax.fill_between(
-                x[i : i + 2],
-                offset[:-1],
-                y1[i : i + 2],
-                color=cmap(norm(prices[i])),
-                step="post",
-            )
-        ax.fill_between(x[-1:], offset[-1], y1[-1:], color=cmap(norm(prices[-1])))
-        ax.set_ylabel("Power")
-        cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
-        cbar.set_label("Price")
-        if power_series is not None:
-            power_extended = power_series.values
-            power_extended = np.append(power_extended, power_series[-1])
-            ax.step(
-                extended_index,
-                power_extended,
-                where="post",
-                linewidth=2,
-                color="black",
-            )
 
 
 class PowerLimit(PowerPriceProfile):
@@ -388,76 +344,6 @@ class ProfileStack:
                 total_costs += costs_in_timestep
         return total_costs
 
-    def plot(
-        self,
-        power_series: Optional[pd.Series] = None,
-        price_unit: str = "[ct/kWh]",
-        power_unit: str = "[kW]",
-        fontsize=14,
-    ):
-        """
-        Plots all profiles in the ProfileStack in a stacked plot. The profiles
-        are sorted by price and colored based on their price.
-        """
-        self.sort_existing_profiles()
-        extended_index = pd.date_range(
-            start=self.index[0],
-            end=self.index[-1] + self.index.freq.delta,
-            freq=self.index.freqstr,
-        )
-        offset = pd.Series(index=extended_index, data=0)
-        x = extended_index
-        fig, ax = plt.subplots()
-
-        # Find range of all prices
-        max_price = 0
-        for _, p in self.profiles.items():
-            if max(p["price"]) > max_price:
-                max_price = max(p["price"])
-        min_price = max_price
-        for _, p in self.profiles.items():
-            if max(p["price"]) < min_price:
-                min_price = min(p["price"])
-        norm = plt.Normalize(min_price, max_price)
-        cmap = plt.cm.get_cmap("coolwarm")
-        for _, p in self.profiles.items():
-            extended_power = p["power"].to_list()
-            extended_power.append(extended_power[-1])
-            extended_power = pd.Series(index=extended_index, data=extended_power)
-            y1 = (extended_power + offset).values
-            prices = p["price"].values
-            for i in range(len(x) - 1):
-                ax.fill_between(
-                    x[i : i + 2],
-                    offset[i : i + 2],
-                    y1[i : i + 2],
-                    color=cmap(norm(prices[i])),
-                    step="post",
-                )
-            ax.fill_between(x[-1:], offset[-1], y1[-1:], color=cmap(norm(prices[-1])))
-            offset = offset + p["power"]
-            offset[-1] = offset[-2]
-        ax.set_ylabel(f"Power {power_unit}", fontsize=fontsize)
-        cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
-        cbar.ax.tick_params(labelsize=fontsize)
-        cbar.set_label(f"Price {price_unit}", fontsize=fontsize)
-        if power_series is not None:
-            power_extended = power_series.values
-            power_extended = np.append(power_extended, power_series[-1])
-            ax.step(
-                extended_index,
-                power_extended,
-                where="post",
-                linewidth=2,
-                color="black",
-            )
-        if self.index[-1] - self.index[0] < pd.Timedelta(days=1):
-            plt.gca().xaxis.set_major_formatter(
-                plt.matplotlib.dates.DateFormatter("%H:%M")
-            )
-        plt.xticks(fontsize=fontsize)
-        plt.yticks(fontsize=fontsize)
-        plt.show()
 
     def __eq__(self, other):
         if not hasattr(self, "feed_in") or not hasattr(other, "feed_in"):
