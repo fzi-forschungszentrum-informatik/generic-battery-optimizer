@@ -227,34 +227,68 @@ class ProfileStack:
             )
 
     def add_power_limit(self, limit: PowerLimit):
-        # Note that PowerLimits can currently only be added if there is only one PPP in a stack.
-        if len(self.profiles.keys()) > 1:
-            raise NotImplementedError(
-                "Can currently add only PowerLimit if there is one existing " "ppp yet."
+        """
+        Apply a PowerLimit to the ProfileStack.
+
+        The limit caps the cumulative power of all profiles in the stack.
+        The power below the limit is allocated to the existing profiles in
+        the order given by sort_profiles (profiles with defined power first,
+        each group sorted by mean price). If the PowerLimit defines a
+        penalty price, the power above the limit stays available through
+        additional profiles whose price is increased by the penalty price.
+        Without a penalty price, power above the limit becomes unavailable.
+
+        A NaN power value in the PowerLimit means no limit in that timestep.
+
+        :param limit: PowerLimit to apply to the stack.
+        """
+        if not limit.index.equals(self.index):
+            raise ValueError(
+                "Index of PowerLimit is not identical to index of "
+                "ProfileStack"
             )
-        ppp = next(iter(self.profiles.values()))
-        # Check if PowerLimit actually is lower than existing ppp
-        if (ppp["power"] > limit.power).any():
-            diff_power = ppp["power"] - limit.power
-            ppp["power"] = limit.power
-            # Add price_above if defined by PowerLimit
-            if limit.price.any():
-                price_above = ppp["price"] + limit.price
-                penalty_ppp = PowerPriceProfile(
-                    index=limit.index,
-                    price=price_above.to_list(),
-                    power=diff_power.to_list(),
-                    name=ppp.name + "_penalty",
-                    feed_in=self.feed_in,
+        if limit.feed_in != self.feed_in:
+            raise ValueError(
+                "Can only apply a PowerLimit for the same energy direction "
+                "(feed_in must be the same)"
+            )
+        has_penalty = limit.price.notna().any()
+        self.sort_existing_profiles()
+        # power still available below the limit; NaN means unlimited
+        remaining_limit = limit.power.copy()
+        penalty_profiles = []
+        for name, ppp in self.profiles.items():
+            if ppp["power"].isna().all():
+                # profile with unlimited power: only the remaining limit
+                # power stays below the limit, everything is available
+                # above it
+                power_below = remaining_limit.copy()
+                power_above = None
+            else:
+                power_below = (
+                    ppp["power"].astype(float).clip(upper=remaining_limit)
                 )
-                self.add_ppp(penalty_ppp)
-            if (ppp["power"] > limit.power).any() and (
-                ppp["power"] < limit.power
-            ).any():
-                raise NotImplementedError(
-                    "It is currrently not possible to split up a ppp within a "
-                    "ProfileStack."
+                power_above = ppp["power"] - power_below
+            remaining_limit = remaining_limit - power_below
+            if has_penalty and (
+                power_above is None or (power_above > 0).any()
+            ):
+                penalty_profiles.append(
+                    PowerPriceProfile(
+                        index=self.index,
+                        price=(ppp["price"] + limit.price).to_list(),
+                        power=(
+                            None
+                            if power_above is None
+                            else power_above.to_list()
+                        ),
+                        name=name + "_penalty",
+                        feed_in=self.feed_in,
+                    )
                 )
+            ppp["power"] = power_below
+        for penalty_ppp in penalty_profiles:
+            self.add_ppp(penalty_ppp)
 
     def add_price_to_all_profiles(self, price: Union[pd.Series, PowerPriceProfile]):
         if type(price) == PowerPriceProfile:
@@ -304,7 +338,7 @@ class ProfileStack:
                 available_profiles = self.profiles.copy()
                 remaining_power_in_timestep = power[timestep]
                 costs_in_timestep = 0
-                while remaining_power_in_timestep >= tolerance:
+                while remaining_power_in_timestep > tolerance:
                     if not available_profiles:
                         raise ValueError(
                             "Power of all profiles is not sufficient to meet "
@@ -351,10 +385,10 @@ class ProfileStack:
         if self.feed_in is not other.feed_in:
             return False
 
+        if not other.profiles.keys() == self.profiles.keys():
+            return False
         for key, value in self.profiles.items():
             if not value.equals(other.profiles[key]):
-                return False
-            if not other.profiles.keys() == self.profiles.keys():
                 return False
         return True
 
