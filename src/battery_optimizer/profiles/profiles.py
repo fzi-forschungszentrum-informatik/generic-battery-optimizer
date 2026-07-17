@@ -20,6 +20,8 @@ class PowerPriceProfile(pd.DataFrame):
         power: Optional[List] = None,
         feed_in: bool = False,
         name: str = None,
+        limit_to: List = None,
+        local_generation: bool = False,
     ):
         """
         :param index: Required: Datetime index for the timespan when the
@@ -37,6 +39,22 @@ class PowerPriceProfile(pd.DataFrame):
         If false, the PowerPriceProfile is valid for energy drawn from the grid
 
         :param name: Unique name to identify the profile.
+
+        :param limit_to: Optional: List of device name tokens this profile is
+        restricted to. None (default) means the profile is valid at the grid
+        connection point for every device. If set, the optimizer only allows
+        energy flows between this profile and devices whose model block name
+        contains one of the tokens (substring match, e.g. a device id), and
+        those devices exchange grid energy in this direction exclusively
+        through their matching limited profiles.
+
+        :param local_generation: Optional: Marks a buy profile as local
+        generation behind the grid connection point (e.g. PV). Local
+        generation may feed every device by default - including devices
+        claimed by limited buy profiles - and can itself be restricted to
+        certain devices with limit_to (an empty list means it may only feed
+        the sell profiles, e.g. full feed-in). Limited sell profiles still
+        restrict where local generation may sell to.
         """
         if not type(index) == pd.DatetimeIndex:
             raise TypeError("Only DatetimeIndex is allowed as index.")
@@ -52,6 +70,12 @@ class PowerPriceProfile(pd.DataFrame):
         )
         self.feed_in = feed_in
         self.name = name
+        # object.__setattr__ keeps pandas from interpreting the attribute
+        # as a column assignment
+        object.__setattr__(
+            self, "limit_to", list(limit_to) if limit_to is not None else None
+        )
+        object.__setattr__(self, "local_generation", bool(local_generation))
 
     def __add__(self, other):
         if not self.feed_in == other.feed_in:
@@ -65,6 +89,13 @@ class PowerPriceProfile(pd.DataFrame):
 
         elif isinstance(other, PowerPriceProfile):
             if self.power.isna().all() and other.power.isna().all():  # no power defined
+                self_limit = getattr(self, "limit_to", None)
+                other_limit = getattr(other, "limit_to", None)
+                if self_limit != other_limit:
+                    raise ValueError(
+                        "Cannot merge profiles with different limit_to "
+                        "device restrictions"
+                    )
                 sum_price = self.price + other.price
                 return PowerPriceProfile(
                     index=self.index,
@@ -72,6 +103,7 @@ class PowerPriceProfile(pd.DataFrame):
                     name=(
                         self.name + "+" + other.name if self.name and other.name else ""
                     ),
+                    limit_to=self_limit,
                 )
             else:
                 return ProfileStack([self, other])
@@ -79,7 +111,13 @@ class PowerPriceProfile(pd.DataFrame):
             return ProfileStack([self, other])
 
     def __eq__(self, other):
-        return self.equals(other)
+        if not isinstance(other, pd.DataFrame):
+            return False
+        try:
+            pd.testing.assert_frame_equal(self, other, check_dtype=False)
+        except AssertionError:
+            return False
+        return True
 
     def integrate_to_costs(self, power: pd.Series) -> float:
         """
@@ -113,6 +151,8 @@ class PowerPriceProfile(pd.DataFrame):
             price=self.price,
             power=self.power,
             feed_in=self.feed_in,
+            limit_to=getattr(self, "limit_to", None),
+            local_generation=getattr(self, "local_generation", False),
         )
 
 
@@ -284,6 +324,9 @@ class ProfileStack:
                         ),
                         name=name + "_penalty",
                         feed_in=self.feed_in,
+                        limit_to=getattr(ppp, "limit_to", None),
+                        local_generation=getattr(
+                            ppp, "local_generation", False),
                     )
                 )
             ppp["power"] = power_below
@@ -384,11 +427,10 @@ class ProfileStack:
             return False
         if self.feed_in is not other.feed_in:
             return False
-
         if not other.profiles.keys() == self.profiles.keys():
             return False
         for key, value in self.profiles.items():
-            if not value.equals(other.profiles[key]):
+            if not value == other.profiles[key]:
                 return False
         return True
 
@@ -424,6 +466,8 @@ class ProfileStack:
                     price=df.price,
                     power=df.power,
                     feed_in=self.feed_in,
+                    limit_to=getattr(df, "limit_to", None),
+                    local_generation=getattr(df, "local_generation", False),
                 )
             )
         return ProfileStack(profiles)

@@ -415,6 +415,42 @@ class Model:
             rule=_add_energy_matrix_rules
         )
 
+    def apply_flow_restrictions(self, is_flow_allowed) -> None:
+        """
+        Forbid energy flows between selected sources and sinks.
+
+        Fixes all energy_matrix variables of source→sink pairs the given
+        predicate rejects to 0, removing those energy paths from the model.
+        Must be called after add_energy_paths().
+
+        Parameters
+        ----------
+        is_flow_allowed : Callable[[tuple[str, str], tuple[str, str]], bool]
+            Predicate receiving source and sink as (component type,
+            block name) tuples, e.g. ("buy_profiles", "grid") →
+            ("batteries", "battery1"). Returning False forbids the flow.
+        """
+        if self.model.component("energy_matrix") is None:
+            raise ValueError(
+                "apply_flow_restrictions must be called after "
+                "add_energy_paths"
+            )
+        pair_allowed: dict[tuple, bool] = {}
+        for index in self.model.energy_matrix:
+            _, src_type, src, snk_type, snk = index
+            pair = (src_type, src, snk_type, snk)
+            if pair not in pair_allowed:
+                pair_allowed[pair] = is_flow_allowed(
+                    (src_type, src), (snk_type, snk)
+                )
+                if not pair_allowed[pair]:
+                    log.debug(
+                        "Forbidding energy flow %s.%s -> %s.%s",
+                        src_type, src, snk_type, snk,
+                    )
+            if not pair_allowed[pair]:
+                self.model.energy_matrix[index].fix(0)
+
     def constraint_device_power(
         self,
         a: pyo.Block | list[pyo.Block],
