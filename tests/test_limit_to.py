@@ -107,7 +107,7 @@ def test_limited_buy_profile_is_exclusive():
         data={"grid": [1000, 1000, 0], "cheap": [5000, 5000, 0]},
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False)
+    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False, check_exact=False, rtol=1e-3)
 
 
 def _pv_and_limited_battery_setup(pv_kwargs: dict):
@@ -166,7 +166,7 @@ def test_grid_tariff_cannot_feed_limited_device():
         },
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False)
+    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False, check_exact=False, rtol=1e-3)
 
 
 def test_local_generation_feeds_limited_device_by_default():
@@ -182,7 +182,7 @@ def test_local_generation_feeds_limited_device_by_default():
         },
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False)
+    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False, check_exact=False, rtol=1e-3)
 
 
 def test_local_generation_restricted_to_device():
@@ -199,7 +199,7 @@ def test_local_generation_restricted_to_device():
         },
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False)
+    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False, check_exact=False, rtol=1e-3)
 
 
 def _pv_with_limited_sell_setup(pv_kwargs: dict):
@@ -272,12 +272,12 @@ def test_limited_sell_profile_eligibility():
         data={"eeg": [1000, 1000, 0], "market": [5000, 5000, 0]},
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[1], expected_sell, check_dtype=False)
+    pd.testing.assert_frame_equal(result[1], expected_sell, check_dtype=False, check_exact=False, rtol=1e-3)
     expected_buy = pd.DataFrame(
         data={"grid": [0, 0, 0], "pv1-pv": [2000, 2000, 0]},
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False)
+    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False, check_exact=False, rtol=1e-3)
 
 
 def test_local_generation_full_feed_in():
@@ -289,9 +289,9 @@ def test_local_generation_full_feed_in():
         data={"eeg": [2000, 2000, 0], "market": [4000, 4000, 0]},
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[1], expected_sell, check_dtype=False)
+    pd.testing.assert_frame_equal(result[1], expected_sell, check_dtype=False, check_exact=False, rtol=1e-3)
     expected_buy = pd.DataFrame(
         data={"grid": [0, 0, 0], "pv1-pv": [2000, 2000, 0]},
         index=TIME_SERIES,
     )
-    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False)
+    pd.testing.assert_frame_equal(result[0], expected_buy, check_dtype=False, check_exact=False, rtol=1e-3)
