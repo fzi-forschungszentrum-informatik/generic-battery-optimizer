@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Optional, Union
 import logging
-import matplotlib.pyplot as plt
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,8 @@ class PowerPriceProfile(pd.DataFrame):
         power: Optional[List] = None,
         feed_in: bool = False,
         name: str = None,
+        limit_to: List = None,
+        local_generation: bool = False,
     ):
         """
         :param index: Required: Datetime index for the timespan when the
@@ -37,6 +39,22 @@ class PowerPriceProfile(pd.DataFrame):
         If false, the PowerPriceProfile is valid for energy drawn from the grid
 
         :param name: Unique name to identify the profile.
+
+        :param limit_to: Optional: List of device name tokens this profile is
+        restricted to. None (default) means the profile is valid at the grid
+        connection point for every device. If set, the optimizer only allows
+        energy flows between this profile and devices whose model block name
+        contains one of the tokens (substring match, e.g. a device id), and
+        those devices exchange grid energy in this direction exclusively
+        through their matching limited profiles.
+
+        :param local_generation: Optional: Marks a buy profile as local
+        generation behind the grid connection point (e.g. PV). Local
+        generation may feed every device by default - including devices
+        claimed by limited buy profiles - and can itself be restricted to
+        certain devices with limit_to (an empty list means it may only feed
+        the sell profiles, e.g. full feed-in). Limited sell profiles still
+        restrict where local generation may sell to.
         """
         if not type(index) == pd.DatetimeIndex:
             raise TypeError("Only DatetimeIndex is allowed as index.")
@@ -52,6 +70,12 @@ class PowerPriceProfile(pd.DataFrame):
         )
         self.feed_in = feed_in
         self.name = name
+        # object.__setattr__ keeps pandas from interpreting the attribute
+        # as a column assignment
+        object.__setattr__(
+            self, "limit_to", list(limit_to) if limit_to is not None else None
+        )
+        object.__setattr__(self, "local_generation", bool(local_generation))
 
     def __add__(self, other):
         if not self.feed_in == other.feed_in:
@@ -65,6 +89,13 @@ class PowerPriceProfile(pd.DataFrame):
 
         elif isinstance(other, PowerPriceProfile):
             if self.power.isna().all() and other.power.isna().all():  # no power defined
+                self_limit = getattr(self, "limit_to", None)
+                other_limit = getattr(other, "limit_to", None)
+                if self_limit != other_limit:
+                    raise ValueError(
+                        "Cannot merge profiles with different limit_to "
+                        "device restrictions"
+                    )
                 sum_price = self.price + other.price
                 return PowerPriceProfile(
                     index=self.index,
@@ -72,6 +103,7 @@ class PowerPriceProfile(pd.DataFrame):
                     name=(
                         self.name + "+" + other.name if self.name and other.name else ""
                     ),
+                    limit_to=self_limit,
                 )
             else:
                 return ProfileStack([self, other])
@@ -79,7 +111,13 @@ class PowerPriceProfile(pd.DataFrame):
             return ProfileStack([self, other])
 
     def __eq__(self, other):
-        return self.equals(other)
+        if not isinstance(other, pd.DataFrame):
+            return False
+        try:
+            pd.testing.assert_frame_equal(self, other, check_dtype=False)
+        except AssertionError:
+            return False
+        return True
 
     def integrate_to_costs(self, power: pd.Series) -> float:
         """
@@ -113,52 +151,10 @@ class PowerPriceProfile(pd.DataFrame):
             price=self.price,
             power=self.power,
             feed_in=self.feed_in,
+            limit_to=getattr(self, "limit_to", None),
+            local_generation=getattr(self, "local_generation", False),
         )
 
-    def plot(
-        self,
-        offset: Optional[pd.Series] = None,
-        power_series: Optional[pd.Series] = None,
-    ):
-        if offset is None:
-            offset = [0 for _ in self.index]
-        extended_index = pd.date_range(
-            start=self.index[0],
-            end=self.index[-1] + self.index.freq.delta,
-            freq=self.index.freqstr,
-        )
-        x = extended_index
-        if self.power.isna().any():
-            y1 = [30 for _ in self.index]
-        else:
-            y1 = self.power.values
-        fig, ax = plt.subplots()
-        prices = self["price"].values
-        norm = plt.Normalize(prices.min(), prices.max())
-        cmap = plt.cm.get_cmap("coolwarm")
-        fig, ax = plt.subplots()
-        for i in range(len(x) - 1):
-            ax.fill_between(
-                x[i : i + 2],
-                offset[:-1],
-                y1[i : i + 2],
-                color=cmap(norm(prices[i])),
-                step="post",
-            )
-        ax.fill_between(x[-1:], offset[-1], y1[-1:], color=cmap(norm(prices[-1])))
-        ax.set_ylabel("Power")
-        cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
-        cbar.set_label("Price")
-        if power_series is not None:
-            power_extended = power_series.values
-            power_extended = np.append(power_extended, power_series[-1])
-            ax.step(
-                extended_index,
-                power_extended,
-                where="post",
-                linewidth=2,
-                color="black",
-            )
 
 
 class PowerLimit(PowerPriceProfile):
@@ -271,34 +267,71 @@ class ProfileStack:
             )
 
     def add_power_limit(self, limit: PowerLimit):
-        # Note that PowerLimits can currently only be added if there is only one PPP in a stack.
-        if len(self.profiles.keys()) > 1:
-            raise NotImplementedError(
-                "Can currently add only PowerLimit if there is one existing " "ppp yet."
+        """
+        Apply a PowerLimit to the ProfileStack.
+
+        The limit caps the cumulative power of all profiles in the stack.
+        The power below the limit is allocated to the existing profiles in
+        the order given by sort_profiles (profiles with defined power first,
+        each group sorted by mean price). If the PowerLimit defines a
+        penalty price, the power above the limit stays available through
+        additional profiles whose price is increased by the penalty price.
+        Without a penalty price, power above the limit becomes unavailable.
+
+        A NaN power value in the PowerLimit means no limit in that timestep.
+
+        :param limit: PowerLimit to apply to the stack.
+        """
+        if not limit.index.equals(self.index):
+            raise ValueError(
+                "Index of PowerLimit is not identical to index of "
+                "ProfileStack"
             )
-        ppp = next(iter(self.profiles.values()))
-        # Check if PowerLimit actually is lower than existing ppp
-        if (ppp["power"] > limit.power).any():
-            diff_power = ppp["power"] - limit.power
-            ppp["power"] = limit.power
-            # Add price_above if defined by PowerLimit
-            if limit.price.any():
-                price_above = ppp["price"] + limit.price
-                penalty_ppp = PowerPriceProfile(
-                    index=limit.index,
-                    price=price_above.to_list(),
-                    power=diff_power.to_list(),
-                    name=ppp.name + "_penalty",
-                    feed_in=self.feed_in,
+        if limit.feed_in != self.feed_in:
+            raise ValueError(
+                "Can only apply a PowerLimit for the same energy direction "
+                "(feed_in must be the same)"
+            )
+        has_penalty = limit.price.notna().any()
+        self.sort_existing_profiles()
+        # power still available below the limit; NaN means unlimited
+        remaining_limit = limit.power.copy()
+        penalty_profiles = []
+        for name, ppp in self.profiles.items():
+            if ppp["power"].isna().all():
+                # profile with unlimited power: only the remaining limit
+                # power stays below the limit, everything is available
+                # above it
+                power_below = remaining_limit.copy()
+                power_above = None
+            else:
+                power_below = (
+                    ppp["power"].astype(float).clip(upper=remaining_limit)
                 )
-                self.add_ppp(penalty_ppp)
-            if (ppp["power"] > limit.power).any() and (
-                ppp["power"] < limit.power
-            ).any():
-                raise NotImplementedError(
-                    "It is currrently not possible to split up a ppp within a "
-                    "ProfileStack."
+                power_above = ppp["power"] - power_below
+            remaining_limit = remaining_limit - power_below
+            if has_penalty and (
+                power_above is None or (power_above > 0).any()
+            ):
+                penalty_profiles.append(
+                    PowerPriceProfile(
+                        index=self.index,
+                        price=(ppp["price"] + limit.price).to_list(),
+                        power=(
+                            None
+                            if power_above is None
+                            else power_above.to_list()
+                        ),
+                        name=name + "_penalty",
+                        feed_in=self.feed_in,
+                        limit_to=getattr(ppp, "limit_to", None),
+                        local_generation=getattr(
+                            ppp, "local_generation", False),
+                    )
                 )
+            ppp["power"] = power_below
+        for penalty_ppp in penalty_profiles:
+            self.add_ppp(penalty_ppp)
 
     def add_price_to_all_profiles(self, price: Union[pd.Series, PowerPriceProfile]):
         if type(price) == PowerPriceProfile:
@@ -348,7 +381,7 @@ class ProfileStack:
                 available_profiles = self.profiles.copy()
                 remaining_power_in_timestep = power[timestep]
                 costs_in_timestep = 0
-                while remaining_power_in_timestep >= tolerance:
+                while remaining_power_in_timestep > tolerance:
                     if not available_profiles:
                         raise ValueError(
                             "Power of all profiles is not sufficient to meet "
@@ -388,87 +421,16 @@ class ProfileStack:
                 total_costs += costs_in_timestep
         return total_costs
 
-    def plot(
-        self,
-        power_series: Optional[pd.Series] = None,
-        price_unit: str = "[ct/kWh]",
-        power_unit: str = "[kW]",
-        fontsize=14,
-    ):
-        """
-        Plots all profiles in the ProfileStack in a stacked plot. The profiles
-        are sorted by price and colored based on their price.
-        """
-        self.sort_existing_profiles()
-        extended_index = pd.date_range(
-            start=self.index[0],
-            end=self.index[-1] + self.index.freq.delta,
-            freq=self.index.freqstr,
-        )
-        offset = pd.Series(index=extended_index, data=0)
-        x = extended_index
-        fig, ax = plt.subplots()
-
-        # Find range of all prices
-        max_price = 0
-        for _, p in self.profiles.items():
-            if max(p["price"]) > max_price:
-                max_price = max(p["price"])
-        min_price = max_price
-        for _, p in self.profiles.items():
-            if max(p["price"]) < min_price:
-                min_price = min(p["price"])
-        norm = plt.Normalize(min_price, max_price)
-        cmap = plt.cm.get_cmap("coolwarm")
-        for _, p in self.profiles.items():
-            extended_power = p["power"].to_list()
-            extended_power.append(extended_power[-1])
-            extended_power = pd.Series(index=extended_index, data=extended_power)
-            y1 = (extended_power + offset).values
-            prices = p["price"].values
-            for i in range(len(x) - 1):
-                ax.fill_between(
-                    x[i : i + 2],
-                    offset[i : i + 2],
-                    y1[i : i + 2],
-                    color=cmap(norm(prices[i])),
-                    step="post",
-                )
-            ax.fill_between(x[-1:], offset[-1], y1[-1:], color=cmap(norm(prices[-1])))
-            offset = offset + p["power"]
-            offset[-1] = offset[-2]
-        ax.set_ylabel(f"Power {power_unit}", fontsize=fontsize)
-        cbar = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax)
-        cbar.ax.tick_params(labelsize=fontsize)
-        cbar.set_label(f"Price {price_unit}", fontsize=fontsize)
-        if power_series is not None:
-            power_extended = power_series.values
-            power_extended = np.append(power_extended, power_series[-1])
-            ax.step(
-                extended_index,
-                power_extended,
-                where="post",
-                linewidth=2,
-                color="black",
-            )
-        if self.index[-1] - self.index[0] < pd.Timedelta(days=1):
-            plt.gca().xaxis.set_major_formatter(
-                plt.matplotlib.dates.DateFormatter("%H:%M")
-            )
-        plt.xticks(fontsize=fontsize)
-        plt.yticks(fontsize=fontsize)
-        plt.show()
 
     def __eq__(self, other):
         if not hasattr(self, "feed_in") or not hasattr(other, "feed_in"):
             return False
         if self.feed_in is not other.feed_in:
             return False
-
+        if not other.profiles.keys() == self.profiles.keys():
+            return False
         for key, value in self.profiles.items():
-            if not value.equals(other.profiles[key]):
-                return False
-            if not other.profiles.keys() == self.profiles.keys():
+            if not value == other.profiles[key]:
                 return False
         return True
 
@@ -504,6 +466,8 @@ class ProfileStack:
                     price=df.price,
                     power=df.power,
                     feed_in=self.feed_in,
+                    limit_to=getattr(df, "limit_to", None),
+                    local_generation=getattr(df, "local_generation", False),
                 )
             )
         return ProfileStack(profiles)

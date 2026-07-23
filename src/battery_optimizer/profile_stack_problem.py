@@ -142,6 +142,26 @@ class ProfileStackProblem:
         log.debug("Index of the model:")
         log.debug(index)
 
+        # Capture the device restrictions (limit_to) of all profiles before
+        # they are parsed into plain DataFrames
+        self._buy_limit_to: dict[str, list[str] | None] = {}
+        self._sell_limit_to: dict[str, list[str] | None] = {}
+        self._buy_local_generation: dict[str, bool] = {}
+        if buy_prices is not None:
+            self._buy_limit_to = {
+                name: getattr(profile, "limit_to", None)
+                for name, profile in buy_prices.profiles.items()
+            }
+            self._buy_local_generation = {
+                name: getattr(profile, "local_generation", False)
+                for name, profile in buy_prices.profiles.items()
+            }
+        if sell_prices is not None:
+            self._sell_limit_to = {
+                name: getattr(profile, "limit_to", None)
+                for name, profile in sell_prices.profiles.items()
+            }
+
         # init optimizer
         log.debug("Initializing buy prices")
         if buy_prices is not None:
@@ -240,6 +260,8 @@ class ProfileStackProblem:
         # add all paths
         log.debug("Generating energy paths")
         self.model.add_energy_paths()
+        # restrict energy paths of device-limited profiles (limit_to)
+        self._apply_profile_flow_restrictions()
         # generate objective
         log.debug("Generating objective")
         self.model.generate_objective()
@@ -247,3 +269,114 @@ class ProfileStackProblem:
         if log.getEffectiveLevel() <= logging.DEBUG:
             with open("model.log", "w") as file:
                 self.model.model.pprint(file)
+
+    def _apply_profile_flow_restrictions(self) -> None:
+        """
+        Enforce the device restrictions (limit_to) of all profiles.
+
+        A profile with limit_to may only exchange energy with model blocks
+        whose name contains one of its tokens (typically device ids). The
+        matched devices in turn buy grid energy exclusively from the limited
+        buy profiles matching them (so a power cap of such a profile is a
+        hard cap for those devices) and sell exclusively to the limited sell
+        profiles matching them, falling back to the unrestricted profiles
+        only while no limited profile of that direction matches them.
+        Devices may exchange energy with each other only when they are
+        restricted by the same limited profiles in both directions - this
+        corresponds to separately metered device groups and keeps a
+        billing based on the summed power of each group consistent with
+        the optimized energy flows.
+
+        Buy profiles marked as local_generation (generation behind the grid
+        connection point, e.g. PV) are exempt on the purchase side: they may
+        feed every device by default, or only the devices matching their own
+        limit_to if one is set (an empty list restricts them to selling).
+        On the feed-in side they behave like devices (limited sell profiles
+        claiming them take precedence over unrestricted ones).
+        """
+        limited_buys = {
+            name: tokens
+            for name, tokens in self._buy_limit_to.items()
+            if tokens is not None
+            and not self._buy_local_generation.get(name, False)
+        }
+        limited_sells = {
+            name: tokens
+            for name, tokens in self._sell_limit_to.items()
+            if tokens is not None
+        }
+        restricted_generation = any(
+            self._buy_limit_to.get(name) is not None
+            for name, local in self._buy_local_generation.items()
+            if local
+        )
+        if not limited_buys and not limited_sells \
+                and not restricted_generation:
+            return
+
+        def match(tokens: list[str], block_name: str) -> bool:
+            return any(token in block_name for token in tokens)
+
+        def buy_claims(block_name: str) -> frozenset[str]:
+            return frozenset(
+                name
+                for name, tokens in limited_buys.items()
+                if match(tokens, block_name)
+            )
+
+        def sell_claims(block_name: str) -> frozenset[str]:
+            return frozenset(
+                name
+                for name, tokens in limited_sells.items()
+                if match(tokens, block_name)
+            )
+
+        def signature(block_name: str) -> tuple[frozenset, frozenset]:
+            return buy_claims(block_name), sell_claims(block_name)
+
+        def is_flow_allowed(
+            source: tuple[str, str], sink: tuple[str, str]
+        ) -> bool:
+            source_type, source_name = source
+            sink_type, sink_name = sink
+            if source_type == "buy_profiles":
+                source_limit = self._buy_limit_to.get(source_name)
+                local = self._buy_local_generation.get(source_name, False)
+                if sink_type == "sell_profiles":
+                    sink_limit = self._sell_limit_to.get(sink_name)
+                    if sink_limit is not None:
+                        # a limited sell profile only accepts its devices
+                        # (including local generation named after one)
+                        return match(sink_limit, source_name)
+                    if local:
+                        # local generation falls back to unrestricted sell
+                        # profiles only while no limited one claims it
+                        return not sell_claims(source_name)
+                    if source_limit is not None:
+                        # no resale of a device-limited grid tariff
+                        return False
+                    # plain grid tariff to sell profile (arbitrage path)
+                    return True
+                # sink is a device
+                if local:
+                    # local generation feeds every device by default,
+                    # or only its own limit_to if one is set
+                    if source_limit is not None:
+                        return match(source_limit, sink_name)
+                    return True
+                if source_limit is not None:
+                    # a limited buy profile only feeds its devices
+                    return match(source_limit, sink_name)
+                # an unrestricted grid tariff only feeds unclaimed devices
+                return not buy_claims(sink_name)
+            if sink_type == "sell_profiles":
+                tokens = self._sell_limit_to.get(sink_name)
+                if tokens is not None:
+                    return match(tokens, source_name)
+                # devices fall back to unrestricted sell profiles only
+                # while no limited sell profile claims them
+                return not sell_claims(source_name)
+            # device to device: only within the same restriction group
+            return signature(source_name) == signature(sink_name)
+
+        self.model.apply_flow_restrictions(is_flow_allowed)
