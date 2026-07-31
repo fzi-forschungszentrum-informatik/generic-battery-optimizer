@@ -60,18 +60,19 @@ glpk:
     - apt-get update && apt-get install -y --no-install-recommends gcc g++ glpk-utils libglpk-dev && rm -rf /var/lib/apt/lists/*
     - *run-tests
 
-scip:
-  <<: *test_job_template
-  variables:
-    SOLVER: scip
-    SCIP_VERSION: 10.0.0
-    SHASUM: 68df42ceec4e9d18b2edd8dc4360754f99107a01352590f23041fa5cff5ae8f3
-  script:
-    - apt-get update && apt-get install -y --no-install-recommends curl
-    - curl https://www.scipopt.org/download/release/scipoptsuite_$SCIP_VERSION-1+trixie_amd64.deb -o scipopt.deb
-    - echo "$SHASUM  scipopt.deb" | sha256sum --check -
-    - apt install -y --no-install-recommends ./scipopt.deb && rm -rf /var/lib/apt/lists/*
-    - *run-tests
+scip:                                                                                                                                                                                                                              
+  <<: *test_job_template                                                                                                                                                                                                           
+  variables:                                                                                                                                                                                                                       
+    SOLVER: scip                                                                                                                                                                                                                   
+    SCIP_VERSION: 10.0.0                                                                                                                                                                                                           
+    SHASUM: 68df42ceec4e9d18b2edd8dc4360754f99107a01352590f23041fa5cff5ae8f3                                                                                                                                                       
+    SCIP_DEB_URL: "https://github.com/scipopt/scip/releases/download/v${SCIP_VERSION}/scipoptsuite_${SCIP_VERSION}-1%2Btrixie_amd64.deb"                                                                                           
+  script:                                                                                                                                                                                                                          
+    - apt-get update && apt-get install -y --no-install-recommends curl                                                                                                                                                            
+    - curl --fail --location --retry 5 --retry-delay 10 --retry-max-time 300 --connect-timeout 30 -o scipopt.deb "$SCIP_DEB_URL"                                                                                                   
+    - echo "$SHASUM  scipopt.deb" | sha256sum --check -                                                                                                                                                                            
+    - apt install -y --no-install-recommends ./scipopt.deb && rm -rf /var/lib/apt/lists/*                                                                                                                                          
+    - *run-tests       
 
 gurobi:
   <<: *test_job_template
