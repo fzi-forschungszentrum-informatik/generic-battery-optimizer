@@ -131,6 +131,9 @@ class HeatPumpBlock(BaseBlock):
         _, period_conversion_factor = get_period_length(period, self.index)
 
         temp_room = interpolate_temperature(self.heat_pump.temp_room, period)
+        warm_water_demand = interpolate_heat_energy(
+            self.heat_pump.warm_water_demand, period
+        )
 
         # Parameters
         if self.heat_pump.outdoor_temperature is not None:
@@ -142,9 +145,7 @@ class HeatPumpBlock(BaseBlock):
             )
 
         block.warm_water_demand = pyo.Param(
-            initialize=interpolate_heat_energy(
-                self.heat_pump.warm_water_demand, period
-            ),
+            initialize=warm_water_demand,
             within=pyo.NonNegativeReals,
             doc="Warm water demand in kW for this period.",
         )
@@ -207,6 +208,33 @@ class HeatPumpBlock(BaseBlock):
             doc=(
                 "Electric energy consumption of the heat pump in kW during "
                 "this period."
+            ),
+        )
+        # The heat pump runs at a single output temperature level per period:
+        # at the maximum output temperature while it charges the TES (or
+        # whenever warm water demand must be served) and at flow temperature
+        # otherwise. Splitting the electric power by temperature level keeps
+        # the heat output linear (heat = cop_low * flow share
+        # + cop_high * output share) so the model stays a MILP.
+        block.electric_power_hp_flow = pyo.Var(
+            bounds=(
+                0,
+                self.heat_pump.max_electric_power_hp,
+            ),
+            doc=(
+                "Electric power of the heat pump in kW used while producing "
+                "heat at flow temperature (COP cop_low) during this period."
+            ),
+        )
+        block.electric_power_hp_output = pyo.Var(
+            bounds=(
+                0,
+                self.heat_pump.max_electric_power_hp,
+            ),
+            doc=(
+                "Electric power of the heat pump in kW used while producing "
+                "heat at the maximum output temperature (COP cop_high) "
+                "during this period."
             ),
         )
 
@@ -356,68 +384,66 @@ class HeatPumpBlock(BaseBlock):
         # wenn TES aufgeladen wird, Temperatur von WP = MAX_TEMP_HP
         # wenn TES nicht aufgeladen wird, dann Temperatur von
         # WP = TEMP_SUPPLY_DEMAND
-        def cop_rule1(block: pyo.Block) -> pyo.Expression:
-            """
-            Set cop to high if heating TES.
+        block.electric_power_hp_split = pyo.Constraint(
+            expr=(
+                block.electric_power_hp
+                == block.electric_power_hp_flow
+                + block.electric_power_hp_output
+            ),
+            doc=(
+                "The heat pump's electric power is the sum of the power "
+                "spent at flow temperature and the power spent at the "
+                "maximum output temperature."
+            ),
+        )
 
-            Sets the COP of the heat pump to the high temperature COP if the
-            heat pump is heating the TES. In this case, the heat pump needs to
-            reach the maximum output temperature of the heat pump to feed the
-            TES.
-
-            Parameters
-            ----------
-            block : pyo.Block
-                The Pyomo block containing the heat pump parameters and
-                variables.
-
-            Returns
-            -------
-            pyo.Expression
-                An expression representing the COP constraint for this
-                period.
-            """
-            if (
-                interpolate_heat_energy(
-                    self.heat_pump.warm_water_demand, period
-                )
-                > 0
-            ):
-                return block.cop_value == block.cop_high
-            return (block.cop_value - block.cop_high) * block.y_TES == 0
-
-        block.cop_cons1 = pyo.Constraint(rule=cop_rule1)
-
-        def cop_rule3(block: pyo.Block) -> pyo.Expression:
-            """
-            Set cop to low if not heating TES.
-
-            Sets the COP of the heat pump to the low temperature COP if the
-            heat pump is not heating the TES. We only need to reach flow
-            temperature for the demand side in this case.
-
-            Parameters
-            ----------
-            block : pyo.Block
-                The Pyomo block containing the heat pump parameters and
-                variables.
-
-            Returns
-            -------
-            pyo.Expression
-                An expression representing the COP constraint for this
-                period.
-            """
-            if (
-                interpolate_heat_energy(
-                    self.heat_pump.warm_water_demand, period
-                )
-                > 0
-            ):
-                return pyo.Constraint.Skip
-            return (block.cop_value - block.cop_low) * (1 - block.y_TES) == 0
-
-        block.cop_cons3 = pyo.Constraint(rule=cop_rule3)
+        if warm_water_demand > 0:
+            # Warm water requires the maximum output temperature, so all
+            # heat is produced at cop_high in this period.
+            block.hp_at_output_temperature = pyo.Constraint(
+                expr=block.electric_power_hp_flow == 0,
+                doc=(
+                    "Warm water demand forces the heat pump to run at its "
+                    "maximum output temperature for the whole period."
+                ),
+            )
+            block.cop_value_cons = pyo.Constraint(
+                expr=block.cop_value == block.cop_high,
+                doc="Reported COP at the maximum output temperature.",
+            )
+        else:
+            block.output_temp_only_when_charging_tes = pyo.Constraint(
+                expr=(
+                    block.electric_power_hp_output
+                    <= self.heat_pump.max_electric_power_hp * block.y_TES
+                ),
+                doc=(
+                    "The heat pump only runs at the maximum output "
+                    "temperature (COP cop_high) while it charges the TES."
+                ),
+            )
+            block.flow_temp_only_when_not_charging_tes = pyo.Constraint(
+                expr=(
+                    block.electric_power_hp_flow
+                    <= self.heat_pump.max_electric_power_hp
+                    * (1 - block.y_TES)
+                ),
+                doc=(
+                    "The heat pump only runs at flow temperature (COP "
+                    "cop_low) while it is not charging the TES."
+                ),
+            )
+            block.cop_value_cons = pyo.Constraint(
+                expr=(
+                    block.cop_value
+                    == block.cop_low
+                    + (block.cop_high - block.cop_low) * block.y_TES
+                ),
+                doc=(
+                    "Reported COP: cop_high while charging the TES, "
+                    "cop_low otherwise."
+                ),
+            )
 
         # Wärmeströme
 
@@ -425,10 +451,15 @@ class HeatPumpBlock(BaseBlock):
 
         # Funktion setzt möglichen Wärmestrom von WP
         block.heat_supply_hp_total_cons = pyo.Constraint(
-            rule=(
+            expr=(
                 block.heat_supply_hp_total
-                == block.electric_power_hp * block.cop_value
-            )
+                == block.cop_low * block.electric_power_hp_flow
+                + block.cop_high * block.electric_power_hp_output
+            ),
+            doc=(
+                "Heat output of the heat pump: electric power at each "
+                "output temperature level times the respective COP."
+            ),
         )
 
         block.heat_flow_HP = pyo.Constraint(
@@ -646,15 +677,51 @@ class HeatPumpBlock(BaseBlock):
                 )
             )
 
-        if self.heat_pump.bivalent_temp is not None:
-            if self.heat_pump.bivalent_temp >= block.outdoor_temperature:
-                block.bivalent_temp = pyo.Constraint(
-                    rule=(
-                        (
-                            block.heat_supply_hp_total
-                            <= (block.heat_loss_building) * 0.7
-                        )
+        # Bivalent operation
+        # A heat pump's thermal capacity declines with falling outdoor
+        # temperature. Below the bivalence point it can no longer cover the
+        # full heat demand and the backup heater (via the TES) must supply
+        # the remainder.
+        if self.heat_pump.max_thermal_power_hp is not None:
+            # Physically correct formulation: limit the heat pump to its
+            # (temperature dependent) thermal capacity and let the optimizer
+            # decide how to cover any shortfall.
+            block.hp_thermal_capacity = pyo.Constraint(
+                expr=(
+                    block.heat_supply_hp_total
+                    <= interpolate_heat_energy(
+                        self.heat_pump.max_thermal_power_hp, period
                     )
+                ),
+                doc=(
+                    "The heat pump can not supply more heat than its "
+                    "thermal capacity in kW for this period."
+                ),
+            )
+        elif self.heat_pump.bivalent_temp is not None:
+            # Fallback approximation when no capacity curve is available:
+            # at or below the bivalent temperature the heat pump may only
+            # cover bivalent_heat_fraction of the heat demand (building heat
+            # loss and warm water) directly. Charging the TES stays possible
+            # so heat can be shifted; the remainder of the demand must come
+            # from the backup heater or the TES.
+            outdoor_temperature = interpolate_temperature(
+                self.heat_pump.outdoor_temperature, period
+            )
+            if outdoor_temperature <= self.heat_pump.bivalent_temp:
+                block.bivalent_temp = pyo.Constraint(
+                    expr=(
+                        block.heat_supply_hp_to_demand
+                        <= self.heat_pump.bivalent_heat_fraction
+                        * (
+                            block.heat_loss_building
+                            + block.warm_water_demand
+                        )
+                    ),
+                    doc=(
+                        "Below the bivalent temperature the heat pump only "
+                        "covers a fraction of the heat demand directly."
+                    ),
                 )
 
         # Force SoC to be the same at start and end of optimization

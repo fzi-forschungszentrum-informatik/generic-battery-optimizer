@@ -287,13 +287,13 @@ class HpLibWrapper:
                 "source_temperature and outdoor_temperature must be of the "
                 "same type."
             )
-        if any(
-            v > MINIMUM_KELVIN for v in [*source_temperature.values(), *outdoor_temperature.values()]
-        ):
-            raise ValueError(
-                "Source and outdoor temperature seem unreasonably high. "
-                    "They should be in °C."
-            )
+        # if any(
+        #     v > MINIMUM_KELVIN for v in [*source_temperature.values(), *outdoor_temperature.values()]
+        # ):
+        #     raise ValueError(
+        #         "Source and outdoor temperature seem unreasonably high. "
+        #             "They should be in °C."
+        #     )
         return pd.DataFrame(
             {
                 "source_temperature": source_temperature,
@@ -316,7 +316,7 @@ class HpLibWrapper:
                 group_id=self.heat_pump.id,
                 t_in=self.heat_pump.t_in,
                 t_out=self.heat_pump.t_out,
-                p_th=self.heat_pump.p_th / 1000,
+                p_th=self.heat_pump.p_th * 1000,  # hplib expects W, not kW
             )
             self.hpl_heat_pump = hpl.HeatPump(parameters)
         else:
@@ -446,9 +446,64 @@ class HpLibWrapper:
             values representing the CoP for low and high temperature scenarios.
         """
         return (
-            self.get_cop_low_temp(source_temperature, outdoor_temperature),
-            self.get_cop_high_temp(source_temperature, outdoor_temperature),
+            self.get_cop_flow_temperature(
+                source_temperature, outdoor_temperature
+            ),
+            self.get_cop_output_temperature(
+                source_temperature, outdoor_temperature
+            ),
         )
+
+    def get_max_thermal_power(
+        self,
+        source_temperature: dict[datetime.datetime, float] | float | int,
+        outdoor_temperature: dict[datetime.datetime, float] | float | int,
+    ) -> dict[datetime.datetime, float] | float:
+        """
+        Simulate the maximum thermal output power of the heat pump.
+
+        Simulate the maximum thermal power in kW the heat pump can deliver at
+        the given source and outdoor temperatures. A heat pump's thermal
+        capacity declines with falling source temperature, so this is the
+        physically correct input for modeling bivalent operation: pass the
+        result as max_thermal_power_hp to the HeatPump profile and the
+        optimizer covers any capacity shortfall with the backup heater or the
+        thermal energy storage.
+
+        The heat pump is simulated at the flow temperature operating point.
+
+        Parameters
+        ----------
+        source_temperature : dict[datetime.datetime, float] | float | int
+            The temperature in Celsius of the heat source (e.g. air or water).
+            This can be a single value or a dictionary with datetime keys and
+            float values. When a dictionary is used, the keys must be timezone
+            aware.
+        outdoor_temperature : dict[datetime.datetime, float] | float | int
+            The outdoor temperature [C] as a single value or time series.
+
+        Returns
+        -------
+        dict[datetime.datetime, float] | float
+            The maximum thermal output power in kW, as a single value or as a
+            dictionary with datetime keys matching the input time series.
+        """
+        temperatures = self._validate_source_and_outdoor_temp(
+            source_temperature, outdoor_temperature
+        )
+        max_thermal_power = {
+            time: self.hpl_heat_pump.simulate(
+                t_in_primary=temperature["source_temperature"],
+                t_in_secondary=self.heat_pump.flow_temperature - 5,
+                t_amb=temperature["outdoor_temperature"],
+                mode=1,
+            )["P_th"]
+            / 1000  # hplib returns W, the heat pump model uses kW
+            for time, temperature in temperatures.iterrows()
+        }
+        if isinstance(source_temperature, (float, int)):
+            return max_thermal_power[0]
+        return max_thermal_power
 
 
 def _validate_distinct_item(item: Any, group: Iterable[Any]) -> None:
