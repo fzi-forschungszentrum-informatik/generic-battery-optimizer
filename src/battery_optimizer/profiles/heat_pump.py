@@ -185,11 +185,49 @@ class HeatPump(BaseModel):
         default=None,
         title="Bivalent temperature [C]",
         description=(
-            "The outdoor temperature in Celsius below which the heat pump "
-            "only provides 70% of the building heat demand. The remaining 30% "
-            "are provided by a backup heater."
+            "The outdoor temperature in Celsius at or below which the heat "
+            "pump can only cover a fraction (bivalent_heat_fraction) of the "
+            "heat demand directly. The remainder must be provided by the "
+            "backup heater or the thermal energy storage. This is a crude "
+            "approximation of the heat pump's declining thermal capacity in "
+            "cold weather. Prefer max_thermal_power_hp, which models the "
+            "capacity limit directly and takes precedence over this setting."
         ),
         le=MINIMUM_KELVIN,
+        examples=[-2, 0, 2],
+    )
+    bivalent_heat_fraction: float = Field(
+        default=0.7,
+        gt=0,
+        le=1,
+        title="Heat demand fraction below the bivalent temperature",
+        description=(
+            "The fraction of the heat demand (building heat loss plus warm "
+            "water demand) the heat pump may cover directly in periods where "
+            "the outdoor temperature is at or below bivalent_temp. Only used "
+            "when bivalent_temp is set and max_thermal_power_hp is not."
+        ),
+        examples=[0.5, 0.7, 0.9],
+    )
+    max_thermal_power_hp: Optional[
+        float | dict[datetime.datetime, float]
+    ] = Field(
+        default=None,
+        title="Maximum thermal output of the heat pump [kW]",
+        description=(
+            "The maximum thermal power the heat pump can deliver in kW. "
+            "A heat pump's thermal capacity declines with falling source/"
+            "outdoor temperature, so this is best supplied as a time series "
+            "(dictionary with timezone-aware datetime keys). It can be "
+            "generated with "
+            "battery_optimizer.helpers.hplib.HpLibWrapper."
+            "get_max_thermal_power. This models bivalent operation "
+            "physically: whenever the capacity drops below the heat demand, "
+            "the optimizer must cover the remainder with the backup heater "
+            "or the thermal energy storage. Takes precedence over "
+            "bivalent_temp."
+        ),
+        examples=[12.0],
     )
 
     output_temperature: float = Field(
@@ -238,18 +276,13 @@ class HeatPump(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_electric_power(cls, values: "HeatPump") -> "HeatPump":
+    def validate_electric_power(self) -> "HeatPump":
         """
         Validate electric power values.
 
         Validate that the minimum electric power for both the heat pump and
         the electric heater are less than or equal to their respective maximum
         electric power values.
-
-        Parameters
-        ----------
-        values : HeatPump
-            The instance of the HeatPump model after initial validation.
 
         Returns
         -------
@@ -262,17 +295,17 @@ class HeatPump(BaseModel):
             If minimum electric power is greater than maximum for either
             device.
         """
-        if values.min_electric_power_hp > values.max_electric_power_hp:
+        if self.min_electric_power_hp > self.max_electric_power_hp:
             raise ValueError(
                 "Minimum electric power for heat pump must be less than or "
                 "equal to maximum electric power for heat pump"
             )
-        if values.min_electric_power_hr > values.max_electric_power_hr:
+        if self.min_electric_power_hr > self.max_electric_power_hr:
             raise ValueError(
                 "Minimum electric power for backup heater must be less than "
                 "or equal to maximum electric power for backup heater"
             )
-        return values
+        return self
 
     max_temp_tes: float = Field(
         default=90,
@@ -346,7 +379,8 @@ class HeatPump(BaseModel):
             The validated HeatPump instance.
         """
         if (
-            self.hp_switch_off_temperature or self.bivalent_temp
+            self.hp_switch_off_temperature is not None
+            or self.bivalent_temp is not None
         ) and self.outdoor_temperature is None:
             raise ValueError(
                 "outdoor_temperature must be provided if either "
